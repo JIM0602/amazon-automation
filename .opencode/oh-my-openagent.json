@@ -1,0 +1,8 @@
+{
+  "agents": {
+    "sisyphus": { "model": "github-copilot/claude-opus-4.6" },
+    "oracle": { "model": "github-copilot/gpt-5.4" },
+    "explore": { "model": "github-copilot/grok-code-fast-1" },
+    "librarian": { "model": "github-copilot/gemini-3-flash" }
+  }
+}
