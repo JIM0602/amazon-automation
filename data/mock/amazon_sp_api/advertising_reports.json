@@ -1,0 +1,134 @@
+{
+  "meta": {
+    "description": "SP-API Advertising Reports 模拟数据 — ACoS 15%-35%",
+    "endpoint": "advertising",
+    "generated_at": "2026-03-31",
+    "marketplace": "ATVPDKIKX0DER"
+  },
+  "code": 0,
+  "endpoint": "advertising",
+  "data": [
+    {
+      "campaign_id": "CAMP-001",
+      "name": "PUDIWIND 宠物床-品牌词广告",
+      "budget": 25.0,
+      "spend": 18.4,
+      "impressions": 12450,
+      "clicks": 286,
+      "acos": 21.3,
+      "sales": 86.4,
+      "orders": 3,
+      "ctr": 0.023,
+      "cpc": 0.064,
+      "roas": 4.69,
+      "targeting_type": "MANUAL",
+      "keywords": [
+        {"keyword": "PUDIWIND pet bed", "match_type": "EXACT", "spend": 8.2, "sales": 42.0, "acos": 19.5},
+        {"keyword": "PUDIWIND dog bed", "match_type": "EXACT", "spend": 6.1, "sales": 29.9, "acos": 20.4},
+        {"keyword": "PUDIWIND memory foam bed", "match_type": "PHRASE", "spend": 4.1, "sales": 14.5, "acos": 28.3}
+      ]
+    },
+    {
+      "campaign_id": "CAMP-002",
+      "name": "PUDIWIND 饮水机-商品投放",
+      "budget": 35.0,
+      "spend": 28.7,
+      "impressions": 17890,
+      "clicks": 349,
+      "acos": 24.1,
+      "sales": 119.1,
+      "orders": 3,
+      "ctr": 0.019,
+      "cpc": 0.082,
+      "roas": 4.15,
+      "targeting_type": "MANUAL",
+      "keywords": [
+        {"keyword": "cat water fountain", "match_type": "EXACT", "spend": 14.5, "sales": 56.0, "acos": 25.9},
+        {"keyword": "automatic cat water dispenser", "match_type": "EXACT", "spend": 9.2, "sales": 40.0, "acos": 23.0},
+        {"keyword": "pet water fountain", "match_type": "PHRASE", "spend": 5.0, "sales": 23.1, "acos": 21.6}
+      ]
+    },
+    {
+      "campaign_id": "CAMP-003",
+      "name": "PUDIWIND 玩具-自动投放",
+      "budget": 20.0,
+      "spend": 12.2,
+      "impressions": 9800,
+      "clicks": 201,
+      "acos": 19.8,
+      "sales": 61.6,
+      "orders": 4,
+      "ctr": 0.021,
+      "cpc": 0.061,
+      "roas": 5.05,
+      "targeting_type": "AUTO",
+      "keywords": []
+    },
+    {
+      "campaign_id": "CAMP-004",
+      "name": "PUDIWIND 宠物碗-关键词广告",
+      "budget": 18.0,
+      "spend": 14.1,
+      "impressions": 7420,
+      "clicks": 167,
+      "acos": 23.5,
+      "sales": 60.0,
+      "orders": 4,
+      "ctr": 0.022,
+      "cpc": 0.084,
+      "roas": 4.26,
+      "targeting_type": "MANUAL",
+      "keywords": [
+        {"keyword": "stainless steel dog bowl", "match_type": "EXACT", "spend": 7.8, "sales": 30.0, "acos": 26.0},
+        {"keyword": "pet food bowl set", "match_type": "PHRASE", "spend": 6.3, "sales": 30.0, "acos": 21.0}
+      ]
+    },
+    {
+      "campaign_id": "CAMP-005",
+      "name": "PUDIWIND 清洁用品-再营销广告",
+      "budget": 15.0,
+      "spend": 9.6,
+      "impressions": 6510,
+      "clicks": 132,
+      "acos": 17.2,
+      "sales": 55.8,
+      "orders": 5,
+      "ctr": 0.020,
+      "cpc": 0.073,
+      "roas": 5.81,
+      "targeting_type": "MANUAL",
+      "keywords": [
+        {"keyword": "pet dental care kit", "match_type": "EXACT", "spend": 5.2, "sales": 32.5, "acos": 16.0},
+        {"keyword": "dog toothbrush set", "match_type": "PHRASE", "spend": 4.4, "sales": 23.3, "acos": 18.9}
+      ]
+    },
+    {
+      "campaign_id": "CAMP-006",
+      "name": "PUDIWIND 宠物床-竞品投放",
+      "budget": 22.0,
+      "spend": 19.8,
+      "impressions": 15200,
+      "clicks": 312,
+      "acos": 32.5,
+      "sales": 60.9,
+      "orders": 2,
+      "ctr": 0.021,
+      "cpc": 0.063,
+      "roas": 3.08,
+      "targeting_type": "PRODUCT_TARGETING",
+      "keywords": []
+    }
+  ],
+  "summary": {
+    "total_campaigns": 6,
+    "total_spend": 102.8,
+    "total_sales": 443.8,
+    "total_impressions": 69270,
+    "total_clicks": 1447,
+    "avg_acos": 23.2,
+    "avg_ctr": 0.021,
+    "avg_cpc": 0.071,
+    "overall_roas": 4.32,
+    "period": "2026-03-01 to 2026-03-31"
+  }
+}

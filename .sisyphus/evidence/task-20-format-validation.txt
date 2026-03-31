@@ -1,0 +1,109 @@
+T20 Mock 数据格式验证证据
+生成时间: 2026-03-31
+==========================================================
+
+## seller_sprite JSON 格式验证
+
+### market_analysis.json
+- 根键: meta, pet_supplies, pet_beds, cat_water_fountains
+- 每个类目包含 get_category_data() 所需字段:
+  - category (str)           ✓
+  - market_size_usd (float)  ✓
+  - top_sellers (list[dict]) ✓ — 含 seller_name, market_share, asin_count
+  - price_distribution (dict)✓ — 含 under_10, 10_to_25, 25_to_50, 50_to_100, over_100
+  - avg_review_count (int)   ✓
+  - growth_rate (float)      ✓
+
+### keyword_research.json
+- 根键: meta, keywords (list)
+- 每个关键词包含 search_keyword() 所需字段:
+  - keyword (str)            ✓
+  - search_volume (int)      ✓
+  - competition (float 0-1)  ✓
+  - trend (list[int] 12个)   ✓
+  - top_asins (list[str])    ✓
+  - avg_price (float)        ✓
+  - click_share (float)      ✓
+- 共 10 个关键词
+
+### competitor_data.json
+- 根键: meta, asin_data, reverse_lookup
+- asin_data 字段 (get_asin_data() 格式):
+  - asin (str)               ✓
+  - title (str)              ✓
+  - rating (float)           ✓
+  - review_count (int)       ✓
+  - price (float)            ✓
+  - bsr_rank (int)           ✓
+  - monthly_sales (int)      ✓
+  - category (str)           ✓
+  - keywords (list[str])     ✓
+- reverse_lookup 字段 (reverse_lookup() 格式):
+  - asin (str)               ✓
+  - keywords (list[dict]) 含 keyword, search_volume, rank  ✓
+- 共 7 个 ASIN，3 个 reverse_lookup 记录
+
+## amazon_sp_api JSON 格式验证
+
+### product_catalog.json
+- 格式与 get_mock_products() 一致
+- 根结构: { "code": 0, "endpoint": "products", "data": [...] }
+- 每产品字段: asin, title, price, bsr_rank, category, review_count, rating ✓
+- 额外字段: brand, sku, variants, status, fulfillment_channel ✓
+- 品牌: PUDIWIND ✓
+- 共 5 个产品 (B0PUDI001-005) ✓
+
+### sales_reports.json
+- 格式与 get_mock_orders() 一致
+- 根结构: { "code": 0, "endpoint": "orders", "data": [...] }
+- 每订单字段: order_id, asin, quantity, price, order_date, status ✓
+- 日期范围: 2026-03-01 ~ 2026-03-31 (30天) ✓
+- 日均订单: 约 25 单，日均单量: 约 32 件 (范围 10-50) ✓
+- 共 75 条订单记录 ✓
+
+### advertising_reports.json
+- 格式与 get_mock_advertising() 一致
+- 根结构: { "code": 0, "endpoint": "advertising", "data": [...] }
+- 每广告活动字段: campaign_id, name, budget, spend, impressions, clicks, acos ✓
+- ACoS 范围: 17.2%-32.5%，均值 23.2% (目标 15%-35%) ✓
+- 共 6 个广告活动 ✓
+- 包含 summary 汇总 ✓
+
+### inventory_status.json
+- 格式与 get_mock_inventory() 一致
+- 根结构: { "code": 0, "endpoint": "inventory", "data": [...] }
+- 每SKU字段: sku, asin, quantity, reserved, inbound, fulfillable ✓
+- 额外字段: unfulfillable, days_of_supply, reorder_recommended, age_distribution ✓
+- 共 5 个 SKU，覆盖 B0PUDI001-005 ✓
+
+## QA Pairs 验证
+
+### expected_qa_pairs.json
+- 共 10 个 QA 对 ✓
+- 每个 QA 对字段: question, expected_keywords, expected_answer, source_doc, category ✓
+- 覆盖类目:
+  - A9算法: 2 个 QA 对 (01_a9_algorithm.md)
+  - 选品方法论: 1 个 (02_product_selection.md)
+  - Listing优化: 2 个 (03_listing_optimization.md)
+  - 广告投放: 2 个 (04_advertising_strategy.md)
+  - 库存管理: 2 个 (06_inventory_management.md)
+  - 产品定价: 1 个 (08_pricing_strategy.md)
+- 每个问题的答案可从对应 source_doc 文档中找到 ✓
+- expected_keywords 包含 2-5 个关键短语用于 RAGAS 评测 ✓
+
+## 知识文档覆盖验证
+
+| 文件名 | 主题 | 字数 |
+|--------|------|------|
+| 01_a9_algorithm.md | A9算法 | ~1687 |
+| 02_product_selection.md | 选品方法论 | ~1750 |
+| 03_listing_optimization.md | Listing优化 | ~2391 |
+| 04_advertising_strategy.md | 广告投放 | ~2402 |
+| 05_competitor_analysis.md | 竞品分析 | ~1968 |
+| 06_inventory_management.md | 库存管理 | ~2344 |
+| 07_keyword_research.md | 关键词研究 | ~3200 |
+| 08_pricing_strategy.md | 产品定价 | ~2561 |
+| 09_review_management.md | 评论管理 | ~2544 |
+| 10_brand_building.md | 品牌建设 | ~3169 |
+
+所有 10 个主题均已覆盖 ✓

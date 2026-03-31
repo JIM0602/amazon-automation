@@ -1,0 +1,49 @@
+T20 seed_database.py 验证证据
+生成时间: 2026-03-31
+==========================================================
+
+测试命令: python data/mock/seed_database.py --dry-run
+退出码: 0
+
+测试命令: python data/mock/seed_database.py --clean --dry-run
+退出码: 0
+
+测试结果摘要:
+  documents_imported:        10
+  document_chunks_imported:  38
+  products_imported:         5
+  system_configs_written:    8
+  audit_logs_written:        1
+  errors:                    0
+
+文件清单:
+  data/mock/seed_database.py                         — 已创建
+  data/mock/knowledge_base/sample_docs/01_a9_algorithm.md    — 已创建 (1687 chars)
+  data/mock/knowledge_base/sample_docs/02_product_selection.md — 已创建 (1750 chars)
+  data/mock/knowledge_base/sample_docs/03_listing_optimization.md — 已创建 (2391 chars)
+  data/mock/knowledge_base/sample_docs/04_advertising_strategy.md — 已创建 (2402 chars)
+  data/mock/knowledge_base/sample_docs/05_competitor_analysis.md — 已创建 (1968 chars)
+  data/mock/knowledge_base/sample_docs/06_inventory_management.md — 已创建 (2344 chars)
+  data/mock/knowledge_base/sample_docs/07_keyword_research.md  — 已创建 (3200 chars)
+  data/mock/knowledge_base/sample_docs/08_pricing_strategy.md  — 已创建 (2561 chars)
+  data/mock/knowledge_base/sample_docs/09_review_management.md — 已创建 (2544 chars)
+  data/mock/knowledge_base/sample_docs/10_brand_building.md    — 已创建 (3169 chars)
+  scripts/init-demo.sh                               — 已创建
+
+支持参数:
+  --dry-run    打印操作，不写 DB  ✓ 测试通过
+  --clean      清空后重建         ✓ 测试通过
+  --help       帮助信息           ✓ 已实现
+
+seed_database.py 功能:
+  - 从 data/mock/knowledge_base/sample_docs/ 加载 .md 文件
+  - 对文档做简单分类 (classify_doc)
+  - 对文档做段落分块 (chunk_text)
+  - 导入 documents 和 document_chunks 表
+  - 导入 products 表（来自 amazon_sp_api/product_catalog.json）
+  - 写入 system_config 初始配置
+  - 写入 audit_log 记录
+  - 打印统计摘要 (documents_imported, document_chunks_imported, products_imported 等)
+  - 所有 DB 操作包裹 try/except，失败不崩溃
+  - 不硬编码生产 DB 配置，从 src.config.settings 读取
+  - 未修改 src/ 目录任何文件
