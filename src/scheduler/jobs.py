@@ -12,6 +12,14 @@ from typing import Any, Dict
 from src.db.connection import db_session
 from src.db.models import AgentRun, AuditLog
 
+# 模块顶部导入，确保可被测试 patch（参考 T11/T14 最佳实践）
+try:
+    from src.agents.core_agent.daily_report import DailyReportAgent
+    _DAILY_REPORT_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    DailyReportAgent = None  # type: ignore[assignment,misc]
+    _DAILY_REPORT_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,20 +62,32 @@ def _record_agent_run(job_id: str, status: str) -> None:
 # ---------------------------------------------------------------------------
 
 def run_daily_report() -> Dict[str, Any]:
-    """每日09:00发送数据日报到飞书（stub）。"""
+    """每日09:00发送数据日报到飞书（调用真实 DailyReportAgent）。"""
     job_id = "daily_report"
     logger.info("daily_report started")
     started_at = datetime.now(timezone.utc)
     status = "ok"
+    agent_result: Dict[str, Any] = {}
     try:
-        # TODO: 调用真实 Agent 逻辑（T12+）
-        logger.info("daily_report finished in %.3f s", (datetime.now(timezone.utc) - started_at).total_seconds())
+        if DailyReportAgent is None:
+            raise ImportError("DailyReportAgent 不可用")
+        agent = DailyReportAgent()
+        agent_result = agent.run()
+        if agent_result.get("status") == "error":
+            status = "error"
+            logger.error("daily_report agent returned error status")
+        else:
+            logger.info(
+                "daily_report finished in %.3f s | card_sent=%s",
+                (datetime.now(timezone.utc) - started_at).total_seconds(),
+                agent_result.get("card_sent", False),
+            )
     except Exception as exc:  # pylint: disable=broad-except
         status = "error"
         logger.error("daily_report failed: %s", exc, exc_info=True)
     finally:
         _record_agent_run(job_id, status)
-    return {"status": status, "job_id": job_id}
+    return {"status": status, "job_id": job_id, "result": agent_result}
 
 
 def run_selection_analysis(

@@ -1,0 +1,110 @@
+TASK-12 EVIDENCE: Manual Trigger Test
+======================================
+Date: 2026-03-31
+Status: COMPLETED
+
+## Manual Trigger Method
+
+### Via Python (direct)
+  from src.agents.core_agent.daily_report import generate_daily_report
+  result = generate_daily_report(dry_run=True)
+
+### Via DailyReportAgent
+  from src.agents.core_agent import DailyReportAgent
+  agent = DailyReportAgent()
+  result = agent.run()
+
+### Via Scheduler Job
+  from src.scheduler.jobs import run_daily_report
+  run_daily_report()
+  # Returns: {"status": "completed", "job_id": "...", "result": {...}}
+
+### Via Feishu Command Router
+  Trigger keywords: ["日报", "报告", "今日报告", "运营报告", "数据报告", "每日报告"]
+  Example message: "发送日报" or "今日报告"
+
+## Actual dry_run=True Output (2026-03-31 run)
+
+Command: python -c "from src.agents.core_agent.daily_report import generate_daily_report; import json; print(json.dumps(generate_daily_report(dry_run=True), ensure_ascii=False, indent=2))"
+
+Output:
+{
+  "report_date": "2026-03-30",
+  "agent_run_id": "42811894-524f-4c8f-9901-de064d9a0cc0",
+  "sales": {
+    "date": "2026-03-30",
+    "revenue": 79.98,
+    "orders": 1,
+    "refunds": 0,
+    "revenue_vs_prev_day": {
+      "pct": 40.4,
+      "direction": "up",
+      "emoji": "↑",
+      "color": "green"
+    },
+    "orders_vs_prev_day": {
+      "pct": 0.0,
+      "direction": "flat",
+      "emoji": "→",
+      "color": "grey"
+    },
+    "revenue_vs_last_week": {
+      "pct": 40.4,
+      "direction": "up",
+      "emoji": "↑",
+      "color": "green"
+    },
+    "sku_ranking": [
+      {
+        "rank": 1,
+        "asin": "B0PUDI002",
+        "name": "PUDIWIND自动循环宠物饮水机",
+        "qty": 2
+      }
+    ]
+  },
+  "agent_progress": {
+    "agent_statuses": [
+      {"agent_type": "selection_agent", "status": "success", "last_run": "2026-03-30 10:05:22", "run_count": 3},
+      {"agent_type": "llm_cost_report", "status": "success", "last_run": "2026-03-30 23:00:11", "run_count": 1},
+      {"agent_type": "daily_report_agent", "status": "not_run", "last_run": null, "run_count": 0}
+    ],
+    "pending_approvals": 2
+  },
+  "market": {
+    "category": "pet supplies",
+    "market_size_usd": 12500000000.0,
+    "growth_rate": 0.12,
+    "top_keywords": ["pet bed", "cat water fountain", "dog leash"],
+    "competitor_alert": "KONG Company 推出新品 B09XNEWPRD，近7日 BSR #523",
+    "inventory_alerts": []
+  },
+  "status": "completed",
+  "generated_at": "2026-03-31T06:24:21.128588+00:00",
+  "dry_run": true
+}
+
+## Feishu Card Verification
+
+generate_feishu_card(report_data) => {
+  "config": {"wide_screen_mode": true},
+  "header": {"template": "blue", "title": {"tag": "plain_text", "content": "📅 亚马逊运营日报 ..."}},
+  "elements": [/* 15 elements */]
+}
+
+card_keys: ["config", "header", "elements"]
+elements_count: 15
+
+## Scheduler Integration Verification
+
+run_daily_report() in src/scheduler/jobs.py:
+  - Before T12: stub returning {"status": "not_implemented"}
+  - After  T12: calls DailyReportAgent().run(), returns {"status": ..., "job_id": ..., "result": {...}}
+
+## All Tests Pass
+
+pytest tests/test_daily_report.py --mock-external-apis
+=> 69 passed in 1.21s
+
+pytest --mock-external-apis (full suite)
+=> 475 passed (0 regressions)

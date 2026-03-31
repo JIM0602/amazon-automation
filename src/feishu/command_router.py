@@ -47,8 +47,9 @@ def route_command(message: str, sender_id: str) -> dict:
         )
         return {"action": "help", "message": help_text, "sender_id": sender_id}
 
-    # 4. 日报 / 报告
-    if "日报" in stripped or "报告" in stripped or "今日报告" in stripped:
+    # 4. 日报 / 报告 — 路由到 DailyReportAgent
+    _DAILY_REPORT_KEYWORDS = ["日报", "报告", "今日报告", "运营报告", "数据报告", "每日报告"]
+    if any(kw in stripped for kw in _DAILY_REPORT_KEYWORDS):
         return {"action": "daily_report", "sender_id": sender_id}
 
     # 5. 选品分析
