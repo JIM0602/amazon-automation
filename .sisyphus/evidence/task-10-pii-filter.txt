@@ -1,0 +1,20 @@
+# Task 10 证据 — PII过滤
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 测试覆盖 (10/10 PASS)
+- test_email_redaction          PASS — user@example.com → [REDACTED_EMAIL]
+- test_multiple_emails          PASS — 多个邮箱各自替换
+- test_phone_us_dash_format     PASS — 555-123-4567 → [REDACTED_PHONE]
+- test_phone_us_parenthesis_format PASS — (555) 123-4567 → [REDACTED_PHONE]
+- test_phone_international_format  PASS — +1-555-123-4567 → [REDACTED_PHONE]
+- test_credit_card_redaction    PASS — 4111-1111-1111-1111 → [REDACTED_CARD]
+- test_credit_card_space_separated PASS — 4111 1111 1111 1111 → [REDACTED_CARD]
+- test_no_pii_text_unchanged    PASS — 普通文本不被修改
+- test_combined_pii             PASS — 同时含邮箱+电话+卡号的文本全部脱敏
+- test_filter_pii_returns_string PASS — 返回类型为str
+
+## 关键机制
+- filter_pii() 在 chat() 函数开头调用（通过 _filter_messages_pii）
+- 原始 messages 不被修改（创建新dict列表）
+- test_chat_pii_filtered_before_api_call PASS — 确认API收到的内容已脱敏

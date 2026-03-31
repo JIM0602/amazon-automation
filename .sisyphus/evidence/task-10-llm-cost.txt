@@ -1,0 +1,21 @@
+# Task 10 证据 — LLM调用封装
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 测试运行结果
+pytest tests/test_llm.py --mock-external-apis -v
+46 passed, 1 warning in 1.05s
+
+## 验证的功能
+1. chat() 主接口 - 返回 content/model/input_tokens/output_tokens/cost_usd
+2. _call_llm_api() - litellm优先，降级到openai
+3. _calculate_cost() - 正确计算4种模型的费用
+4. PII过滤在LLM调用前执行
+5. 非阻塞写入agent_runs（数据库失败不影响返回结果）
+6. 模块导入 src.llm.chat / DailyCostLimitExceeded
+
+## 支持的模型和价格 (USD/1K tokens)
+- gpt-4o-mini:        input $0.00015, output $0.00060
+- gpt-4o:             input $0.005,   output $0.015
+- claude-3-5-sonnet:  input $0.003,   output $0.015
+- claude-3-haiku:     input $0.00025, output $0.00125

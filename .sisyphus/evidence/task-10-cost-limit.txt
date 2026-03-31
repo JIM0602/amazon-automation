@@ -1,0 +1,23 @@
+# Task 10 证据 — 每日费用上限
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 测试覆盖
+- test_check_daily_limit_under_limit          PASS — 低于上限时 exceeded=False, warning=False
+- test_check_daily_limit_warning_at_80_percent PASS — 80%时 warning=True, exceeded=False
+- test_check_daily_limit_exceeded_at_100_percent PASS — 100%时 exceeded=True
+- test_check_daily_limit_over_100_percent      PASS — 超过100%时 exceeded=True, percentage>100
+- test_check_daily_limit_returns_all_keys      PASS — 返回所有必需字段
+
+## 返回字段验证
+{
+  "daily_cost": float,   — 今日已花费（USD）
+  "limit": float,        — 每日上限（来自 settings.MAX_DAILY_LLM_COST_USD，默认50.0）
+  "percentage": float,   — 已用百分比
+  "exceeded": bool,      — percentage >= 100%
+  "warning": bool,       — percentage >= 80%
+}
+
+## 超限行为
+- chat()检测到exceeded=True时抛出DailyCostLimitExceeded异常
+- 抛出前不调用LLM API（test_chat_does_not_call_api_when_limit_exceeded PASS）
