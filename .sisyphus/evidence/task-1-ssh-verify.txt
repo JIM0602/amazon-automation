@@ -1,0 +1,5 @@
+状态：待验证（需要JIM配置真实服务器后执行）
+验证命令：ssh -i ~/.ssh/key user@server-ip "python3 --version"
+预期结果：Python 3.11+
+
+验证方法：登录真实服务器后，先确认 SSH 密钥可用，再执行版本检查命令，确认能正常返回 Python 3.11+。

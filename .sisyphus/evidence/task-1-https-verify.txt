@@ -1,0 +1,5 @@
+状态：待验证（需要JIM配置真实服务器后执行）
+验证命令：curl -I https://your-domain.com
+预期结果：HTTP 200/301，且证书正常
+
+验证方法：等域名解析、Nginx 和 Let's Encrypt 配好后，在本地或服务器上访问 HTTPS 地址，确认返回正常响应。
