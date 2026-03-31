@@ -1,0 +1,101 @@
+TASK-2 MIGRATION & ROLLBACK STRUCTURE EVIDENCE
+Generated: 2026-03-31
+Files: alembic.ini, alembic/env.py, alembic/script.py.mako, alembic/versions/
+
+============================================================
+ALEMBIC.INI CONFIGURATION
+============================================================
+Location: E:\amazon-automation\alembic.ini
+
+Key settings:
+- script_location = alembic
+- version_path_separator = os
+- sqlalchemy.url uses %(DB_USER)s:%(DB_PASS)s@%(DB_HOST)s:%(DB_PORT)s/%(DB_NAME)s
+  (placeholder substitution — NO hardcoded passwords)
+- Logging configured for root, sqlalchemy, alembic loggers
+
+============================================================
+ALEMBIC ENV.PY — MIGRATION ENVIRONMENT
+============================================================
+Location: E:\amazon-automation\alembic/env.py
+
+Key capabilities:
+1. DATABASE_URL resolution:
+   - First checks os.environ["DATABASE_URL"] (Docker / CI friendly)
+   - Falls back to src.config.settings.DATABASE_URL (pydantic-settings)
+   - NO hardcoded credentials
+
+2. target_metadata = Base.metadata from src.db.models
+   - Enables autogenerate: alembic revision --autogenerate -m "..."
+   - All 10 tables detected automatically
+
+3. Offline mode (alembic upgrade head --sql):
+   - Generates raw SQL without DB connection
+   - compare_type=True for column type change detection
+
+4. Online mode (alembic upgrade head):
+   - engine_from_config with NullPool for migration safety
+   - Wraps in transaction for atomic migrations
+
+5. pgvector registration:
+   - try/except import of pgvector.sqlalchemy.Vector
+   - Graceful degradation if pgvector not installed
+
+============================================================
+SCRIPT.PY.MAKO — MIGRATION TEMPLATE
+============================================================
+Location: E:\amazon-automation\alembic/script.py.mako
+
+Template variables:
+- ${message}          — migration description
+- ${up_revision}      — new revision ID
+- ${down_revision}    — parent revision ID(s)
+- ${create_date}      — auto timestamp
+- ${imports}          — additional imports (e.g., pgvector)
+- upgrade()           — forward migration function
+- downgrade()         — rollback migration function
+
+============================================================
+ROLLBACK CAPABILITY
+============================================================
+Every generated migration will have:
+  def upgrade() -> None:    # forward: CREATE TABLE, ADD COLUMN, etc.
+      ...
+
+  def downgrade() -> None:  # rollback: DROP TABLE, DROP COLUMN, etc.
+      ...
+
+Rollback commands:
+  alembic downgrade -1          # roll back one step
+  alembic downgrade <revision>  # roll back to specific revision
+  alembic downgrade base        # roll back all migrations
+
+============================================================
+USAGE EXAMPLES
+============================================================
+# Generate initial migration (auto-detect all 10 tables):
+alembic revision --autogenerate -m "initial schema with pgvector"
+
+# Apply migration:
+DATABASE_URL=postgresql://user:pass@host/db alembic upgrade head
+
+# Preview SQL without applying:
+DATABASE_URL=postgresql://user:pass@host/db alembic upgrade head --sql
+
+# Roll back last migration:
+DATABASE_URL=postgresql://user:pass@host/db alembic downgrade -1
+
+# Check current migration state:
+DATABASE_URL=postgresql://user:pass@host/db alembic current
+
+============================================================
+VERIFICATION CHECKLIST
+============================================================
+[x] alembic.ini exists and references alembic/ directory
+[x] alembic/env.py imports Base.metadata from src.db.models
+[x] alembic/env.py reads DATABASE_URL from environment (no hardcoded creds)
+[x] alembic/env.py supports both offline and online migration modes
+[x] alembic/script.py.mako contains upgrade() and downgrade() stubs
+[x] alembic/versions/ directory exists for migration files
+[x] compare_type=True enables column type change detection
+[x] NullPool used in online mode (safe for migration scripts)

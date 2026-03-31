@@ -1,1 +1,33 @@
-"""Database package."""
+"""Database package — exposes models, Base, and session utilities."""
+
+from src.db.models import (
+    Base,
+    Document,
+    DocumentChunk,
+    Product,
+    ProductSelection,
+    AgentRun,
+    AgentTask,
+    ApprovalRequest,
+    DailyReport,
+    SystemConfig,
+    AuditLog,
+)
+from src.db.connection import engine, SessionLocal, get_db
+
+__all__ = [
+    "Base",
+    "Document",
+    "DocumentChunk",
+    "Product",
+    "ProductSelection",
+    "AgentRun",
+    "AgentTask",
+    "ApprovalRequest",
+    "DailyReport",
+    "SystemConfig",
+    "AuditLog",
+    "engine",
+    "SessionLocal",
+    "get_db",
+]

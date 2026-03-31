@@ -1,0 +1,71 @@
+TASK-2 DATABASE SCHEMA EVIDENCE
+Generated: 2026-03-31
+File: src/db/models.py
+
+10 SQLAlchemy ORM tables defined in Base.metadata:
+
+1. documents
+   Columns: id (UUID PK), title (String), content (Text), source (String),
+            category (String), embedding (Vector(1536)), created_at (DateTime)
+   Purpose: Knowledge base documents with vector embeddings
+
+2. document_chunks
+   Columns: id (UUID PK), document_id (FK→documents.id), chunk_text (Text),
+            chunk_embedding (Vector(1536)), chunk_index (Integer), created_at (DateTime)
+   Purpose: Chunked slices of documents, each with own embedding
+
+3. products
+   Columns: id (UUID PK), sku (String, unique), name (String),
+            asin (String, nullable), keywords (JSON), status (String), created_at (DateTime)
+   Purpose: Tracked Amazon products / internal SKUs
+
+4. product_selection
+   Columns: id (UUID PK), candidate_asin (String), reason (Text), score (Float),
+            agent_run_id (FK→agent_runs.id, nullable), created_at (DateTime)
+   Purpose: AI-generated product selection candidates
+
+5. agent_runs
+   Columns: id (UUID PK), agent_type (String), status (String),
+            input_summary (Text), output_summary (Text), cost_usd (Float),
+            started_at (DateTime), finished_at (DateTime, nullable)
+   Purpose: Execution history for every agent invocation
+
+6. agent_tasks
+   Columns: id (UUID PK), agent_type (String), trigger_type (String),
+            payload (JSON), status (String), scheduled_at (DateTime)
+   Purpose: Scheduled / queued agent task queue
+
+7. approval_requests
+   Columns: id (UUID PK), agent_run_id (FK→agent_runs.id), action_type (String),
+            payload (JSON), status (String), approved_by (String, nullable), created_at (DateTime)
+   Purpose: Human-in-the-loop approval workflow items
+
+8. daily_reports
+   Columns: id (UUID PK), report_date (Date, unique), content_json (JSON),
+            sent_at (DateTime, nullable)
+   Purpose: Daily digest reports generated and sent via Feishu
+
+9. system_config
+   Columns: key (String, PK), value (JSON), updated_at (DateTime)
+   Purpose: Key-value store for runtime configuration
+
+10. audit_logs
+    Columns: id (UUID PK), action (String), actor (String),
+             pre_state (JSON, nullable), post_state (JSON, nullable), created_at (DateTime)
+    Purpose: Immutable audit trail for all state-changing operations
+
+VECTOR EMBEDDING CONFIGURATION:
+- Dimension: 1536 (OpenAI text-embedding-3-small)
+- Tables with embeddings: documents.embedding, document_chunks.chunk_embedding
+- Type: pgvector.sqlalchemy.Vector(1536)
+
+FOREIGN KEY RELATIONSHIPS:
+- document_chunks.document_id → documents.id (CASCADE DELETE)
+- product_selection.agent_run_id → agent_runs.id (SET NULL)
+- approval_requests.agent_run_id → agent_runs.id (CASCADE DELETE)
+
+VERIFICATION:
+- All 10 tables present in Base.metadata.tables
+- UUID primary keys with uuid.uuid4() defaults
+- server_default=func.now() for created_at columns
+- No hardcoded credentials anywhere in models.py
