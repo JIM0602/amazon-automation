@@ -548,6 +548,69 @@ test_scheduler.py::TestJobFunctions::test_run_selection_analysis_returns_ok ֻ p
 - 所有目录创建使用 `os.makedirs(path, exist_ok=True)`
 - init-demo.sh 是 bash 脚本，在 bash/zsh 中运行，不在 PowerShell 中运行
 
+## [2026-03-31] T13 核心管理 Agent — 人工审批流程
+
+### 交付物
+- `src/feishu/approval.py`：审批底层模块（create_approval_request / handle_card_callback / get_pending_approvals / check_expired_approvals）
+- `src/agents/core_agent/approval_manager.py`：高阶 ApprovalManager 类（request_approval / process_callback / transition_status / mark_executing/completed/failed）
+- `tests/test_approval.py`：52项单元测试，全部 PASSED
+- `src/api/main.py`（更新）：新增 POST `/feishu/card-callback` 路由
+- `.sisyphus/evidence/task-13-approval-flow.txt` / `task-13-approval-timeout.txt`
+
+### ApprovalRequest 表字段实际情况（重要）
+- **实际字段**：`id, agent_run_id, action_type, payload(JSON), status, approved_by, created_at`
+- **无** `description/impact/reason/risks/expires_at` 独立字段 → 全部存入 `payload` JSON
+- **无** `type` 字段 → 对应字段名是 `action_type`
+- `agent_run_id` 是 NOT NULL FK → 创建审批前必须先创建 AgentRun 记录（`session.flush()` 获取 ID）
+
+### 飞书审批卡片结构要点
+- 按钮放在顶层 `"actions"` 数组中（不是 elements 内），与 header/elements 并列
+- 按钮 value：`{"action": "approve"/"reject", "approval_id": "uuid"}`
+- 卡片回调：从 `payload["action"]["value"]` 读取 action 和 approval_id
+- 操作者：从 `payload["operator"]["open_id"]` 读取
+
+### 超时机制设计
+- `expires_at` 存入 `payload["expires_at"]`（ISO 8601 UTC 字符串）
+- `check_expired_approvals()` 逐条比较 `datetime.now(timezone.utc) > expires_at`
+- 需确保 `datetime.fromisoformat()` 后有 timezone（判断 `.tzinfo is None` 时补 `utc`）
+
+### 状态机合法转换图
+```python
+_VALID_TRANSITIONS = {
+    "pending":   ["approved", "rejected"],
+    "approved":  ["executing"],
+    "rejected":  [],          # 终态
+    "executing": ["completed", "failed"],
+    "completed": [],          # 终态
+    "failed":    [],          # 终态
+}
+```
+
+### audit log 导入（延续 T12 的处理方式）
+- `from src.utils.audit import log_action` 必须在**函数内部**导入，不能在模块顶部
+- 原因：循环导入（audit → db_session → ... → approval）
+- **但 `db_session` 仍在模块顶部导入**（db_session 不造成循环）
+
+### session.flush() 用法
+- 获取 `agent_run.id` 前需要 `session.flush()`（不 commit，只将对象写入 DB 获取自增/UUID）
+- 之后可以 `approval.agent_run_id = agent_run.id`，最后统一 `session.commit()`
+
+### /feishu/card-callback 路由模式
+```python
+@app.post("/feishu/card-callback")
+async def feishu_card_callback(request: Request) -> Response:
+    body = await request.body()
+    payload = json.loads(body)  # 异常返回 400
+    result = handle_card_callback(payload)
+    code = 0 if result["success"] else 1
+    return Response(content=json.dumps({"code": code, "data": result}), ...)
+```
+
+### 测试结果
+52/52 PASSED（test_approval.py）；全套 527/527 PASSED（零回归）
+
+---
+
 ## [2026-03-31] T12 核心管理 Agent — 每日数据汇报模块
 
 ### 交付物

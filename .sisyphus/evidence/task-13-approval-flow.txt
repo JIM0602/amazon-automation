@@ -1,0 +1,97 @@
+T13 审批工作流 — 完整审批流程证据
+====================================
+生成时间：2026-03-31
+任务：T13 核心管理Agent — 人工审批流程
+
+## 实现范围
+
+### 文件交付
+1. src/feishu/approval.py         — 飞书审批卡片发送 + 回调处理 + 状态机底层函数
+2. src/agents/core_agent/approval_manager.py — 高阶审批管理器（ApprovalManager 类）
+3. tests/test_approval.py          — 52项单元测试
+4. src/api/main.py（更新）         — 新增 POST /feishu/card-callback 路由
+
+## 完整审批流程验证
+
+### Step 1: 创建审批请求
+调用：create_approval_request(
+    action_type="selection_list",
+    description="将以下5个SKU加入选品池：A001, A002, A003, A004, A005",
+    impact="选品池扩容，影响5个SKU",
+    reason="高利润率（>30%）、低竞争度",
+    risks="新品库存风险，需小批量测试"
+)
+返回：approval_id = "550e8400-e29b-41d4-a716-446655440000"（示例UUID）
+
+### Step 2: 发送飞书交互卡片
+卡片格式：
+{
+  "config": {"wide_screen_mode": true},
+  "header": {"title": {"tag": "plain_text", "content": "审批请求 — selection_list"}, "template": "orange"},
+  "elements": [
+    {"tag": "div", "text": {"tag": "lark_md", "content": "**描述：** 将以下5个SKU..."}},
+    {"tag": "div", "text": {"tag": "lark_md", "content": "**影响范围：** 选品池扩容..."}},
+    {"tag": "div", "text": {"tag": "lark_md", "content": "**操作原因：** 高利润率..."}},
+    {"tag": "div", "text": {"tag": "lark_md", "content": "**潜在风险：** 新品库存风险..."}},
+    {"tag": "hr"}
+  ],
+  "actions": [
+    {"tag": "button", "text": {"tag": "plain_text", "content": "同意"}, "type": "primary",
+     "value": {"action": "approve", "approval_id": "550e8400-e29b-41d4-a716-446655440000"}},
+    {"tag": "button", "text": {"tag": "plain_text", "content": "拒绝"}, "type": "danger",
+     "value": {"action": "reject", "approval_id": "550e8400-e29b-41d4-a716-446655440000"}}
+  ]
+}
+
+### Step 3: 用户点击"同意" → 飞书发回调
+POST /feishu/card-callback
+Body:
+{
+  "type": "card.action.trigger",
+  "action": {
+    "value": {"action": "approve", "approval_id": "550e8400-e29b-41d4-a716-446655440000"},
+    "tag": "button"
+  },
+  "operator": {"open_id": "ou_abc123def456"}
+}
+
+### Step 4: 系统处理回调
+- 查询 DB：ApprovalRequest.id = "550e8400..."
+- 验证状态为 PENDING
+- 更新：status = "approved"，approved_by = "ou_abc123def456"
+- 写审计日志：action = "approval_approved", actor = "user:ou_abc123def456"
+
+### Step 5: API 响应
+HTTP 200
+{
+  "code": 0,
+  "data": {
+    "success": true,
+    "approval_id": "550e8400-e29b-41d4-a716-446655440000",
+    "new_status": "approved",
+    "message": "审批通过成功"
+  }
+}
+
+### Step 6: Agent 继续执行（状态机）
+mark_executing(approval_id) → status: approved → executing
+mark_completed(approval_id) → status: executing → completed
+
+## 测试验证结果
+
+pytest tests/test_approval.py --mock-external-apis
+结果：52 passed in 1.85s
+
+全套测试（含回归）：
+pytest --mock-external-apis
+结果：527 passed in 11.96s（零回归）
+
+## 状态机合法转换矩阵
+PENDING    → APPROVED   ✓
+PENDING    → REJECTED   ✓
+APPROVED   → EXECUTING  ✓
+EXECUTING  → COMPLETED  ✓
+EXECUTING  → FAILED     ✓
+REJECTED   → *          ✗（终态）
+COMPLETED  → *          ✗（终态）
+FAILED     → *          ✗（终态）

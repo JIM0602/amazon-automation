@@ -1,0 +1,80 @@
+T13 审批工作流 — 超时自动拒绝证据
+======================================
+生成时间：2026-03-31
+任务：T13 核心管理Agent — 审批超时功能
+
+## 超时机制设计
+
+### 超时存储方式
+- expires_at 存储在 ApprovalRequest.payload JSON 字段中
+- 格式：ISO 8601 UTC 字符串，如 "2026-04-01T10:00:00+00:00"
+- 默认超时：24小时（DEFAULT_TIMEOUT_HOURS = 24）
+- 支持自定义：create_approval_request(..., timeout_hours=1.0)
+
+### 超时检查函数
+check_expired_approvals() 工作流程：
+1. 查询所有 status = "pending" 的审批
+2. 读取 payload["expires_at"]
+3. 解析为 datetime，确保 timezone-aware
+4. 比较 datetime.now(timezone.utc) > expires_at
+5. 超时则：status = "rejected", approved_by = "system:timeout"
+6. 写审计日志：action = "approval_timeout_rejected"
+7. 批量 commit
+
+## 测试验证场景
+
+### 场景1：审批超时（expires_at 在过去）
+测试：TestCheckExpiredApprovals::test_rejects_expired_approval
+expires_at = now - 1小时
+结果：status → "rejected", approved_by = "system:timeout"
+count = 1（自动拒绝数量）
+
+### 场景2：审批未超时（expires_at 在未来）
+测试：TestCheckExpiredApprovals::test_does_not_reject_valid_approval
+expires_at = now + 23小时
+结果：status 保持 "pending"（不被拒绝）
+count = 0
+
+### 场景3：没有待审批
+测试：TestCheckExpiredApprovals::test_returns_zero_when_no_pending
+pending列表为空
+结果：count = 0
+
+### 场景4：payload 缺少 expires_at
+测试：TestCheckExpiredApprovals::test_no_expires_at_skipped
+payload = {}
+结果：跳过，不拒绝（count = 0）
+
+### 场景5：超时拒绝写审计日志
+测试：TestCheckExpiredApprovals::test_writes_audit_log_on_timeout
+expires_at = now - 2小时
+结果：audit_session.add 被调用（审计日志已写入）
+
+## 超时配置
+
+### 生产环境（默认24小时）
+create_approval_request(
+    action_type="ad_budget",
+    description="...",
+    ...
+    # timeout_hours 默认 = 24
+)
+
+### 测试/紧急场景（短超时）
+create_approval_request(
+    action_type="test",
+    description="...",
+    ...
+    timeout_hours=0.016  # 约1分钟
+)
+
+### 定时扫描建议
+在 APScheduler 中注册定时任务（每小时执行一次）：
+from src.feishu.approval import check_expired_approvals
+check_expired_approvals()
+
+## 测试结果
+pytest tests/test_approval.py::TestCheckExpiredApprovals --mock-external-apis -v
+结果：5 passed in 0.12s
+
+全套测试：527 passed in 11.96s（零回归）

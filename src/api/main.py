@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 
 from src.feishu.bot_handler import get_bot
 from src.feishu.command_router import route_command
+from src.feishu.approval import handle_card_callback
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,44 @@ async def feishu_webhook(request: Request) -> Response:
 
     return Response(
         content=json.dumps({"code": 0}),
+        media_type="application/json",
+    )
+
+
+# --------------------------------------------------------------------------- #
+#  飞书卡片回调（审批按钮）
+# --------------------------------------------------------------------------- #
+
+@app.post("/feishu/card-callback")
+async def feishu_card_callback(request: Request) -> Response:
+    """接收飞书卡片交互按钮回调，处理审批同意/拒绝。
+
+    飞书卡片回调格式：
+    {
+        "type": "card.action.trigger",
+        "action": {
+            "value": {"action": "approve"/"reject", "approval_id": "uuid"},
+            "tag": "button"
+        },
+        "operator": {"open_id": "ou_xxx"}
+    }
+    """
+    body = await request.body()
+
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError as exc:
+        logger.warning("卡片回调 JSON 解析失败: %s", exc)
+        return Response(
+            content=json.dumps({"code": 1, "msg": "invalid json"}),
+            media_type="application/json",
+            status_code=400,
+        )
+
+    result = handle_card_callback(payload)
+    code = 0 if result.get("success") else 1
+    return Response(
+        content=json.dumps({"code": code, "data": result}),
         media_type="application/json",
     )
 
