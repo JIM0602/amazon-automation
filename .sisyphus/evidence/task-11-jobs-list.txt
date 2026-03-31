@@ -1,0 +1,30 @@
+# Task 11 证据 — 定时任务列表验证
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 验证内容
+验证 SCHEDULED_JOBS 配置中3个预定义任务的字段完整性和 cron 表达式正确性。
+
+## 测试结果
+运行命令: pytest tests/test_scheduler.py::TestScheduledJobsConfig --mock-external-apis -v
+结果: 7 passed
+
+## 任务列表
+| job_id              | trigger | 运行时间     | 描述                     |
+|---------------------|---------|------------|--------------------------|
+| daily_report        | cron    | 每日 09:00  | 每日09:00发送数据日报到飞书  |
+| selection_analysis  | cron    | 周一 10:00  | 每周一10:00运行选品分析     |
+| llm_cost_report     | cron    | 每日 23:00  | 每日23:00发送LLM费用日报   |
+
+## 配置详情
+daily_report:
+  func: src.scheduler.jobs:run_daily_report
+  trigger: cron, hour=9, minute=0
+
+selection_analysis:
+  func: src.scheduler.jobs:run_selection_analysis
+  trigger: cron, day_of_week=mon, hour=10, minute=0
+
+llm_cost_report:
+  func: src.scheduler.jobs:run_llm_cost_report
+  trigger: cron, hour=23, minute=0

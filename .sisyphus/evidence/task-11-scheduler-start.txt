@@ -1,0 +1,26 @@
+# Task 11 证据 — 调度器启动验证
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 验证内容
+测试 APScheduler BackgroundScheduler 单例的创建、启动和关闭行为。
+
+## 测试结果
+运行命令: pytest tests/test_scheduler.py --mock-external-apis -v
+结果: 41 passed, 1 warning in 1.65s
+
+## 关键测试通过项
+- TestGetScheduler::test_returns_scheduler_instance         PASSED
+- TestGetScheduler::test_returns_same_instance_on_second_call PASSED
+- TestStartScheduler::test_loads_all_three_jobs             PASSED
+- TestStartScheduler::test_calls_scheduler_start            PASSED
+- TestStartScheduler::test_skips_if_already_running         PASSED
+- TestShutdownScheduler::test_shutdown_when_running         PASSED
+- TestShutdownScheduler::test_resets_singleton_after_shutdown PASSED
+
+## 调度器模块结构
+src/scheduler/__init__.py — 暴露 get_scheduler(), start_scheduler(), shutdown_scheduler()
+- 模块级 BackgroundScheduler 单例（懒加载）
+- APScheduler 不可用时优雅降级（返回 None）
+- start_scheduler() 加载全部3个 SCHEDULED_JOBS
+- shutdown_scheduler() 优雅关闭，重置单例

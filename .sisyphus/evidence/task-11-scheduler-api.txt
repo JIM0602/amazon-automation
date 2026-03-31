@@ -1,0 +1,42 @@
+# Task 11 证据 — 调度器 API 路由验证
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 验证内容
+验证 FastAPI 调度器管理 API 的全部4个端点正常工作，包括 APScheduler 不可用时的 503 降级。
+
+## 测试结果
+运行命令: pytest tests/test_scheduler.py::TestSchedulerAPIUnavailable tests/test_scheduler.py::TestSchedulerAPIAvailable --mock-external-apis -v
+结果: 15 passed
+
+## API 端点列表
+| 方法 | 路径                                  | 功能             | 测试状态 |
+|------|---------------------------------------|-----------------|---------|
+| GET  | /api/scheduler/jobs                   | 返回任务列表      | PASS    |
+| POST | /api/scheduler/jobs/{job_id}/pause    | 暂停任务          | PASS    |
+| POST | /api/scheduler/jobs/{job_id}/resume   | 恢复任务          | PASS    |
+| POST | /api/scheduler/trigger/{job_id}       | 手动触发一次      | PASS    |
+
+## APScheduler 不可用时的降级行为
+所有端点在 APScheduler 未安装时返回 HTTP 503:
+- GET /api/scheduler/jobs         → 503 "APScheduler 未安装或不可用"
+- POST /api/scheduler/jobs/*/pause → 503
+- POST /api/scheduler/jobs/*/resume → 503
+- POST /api/scheduler/trigger/*   → 503
+
+## 响应格式示例
+GET /api/scheduler/jobs:
+[
+  {
+    "id": "daily_report",
+    "next_run_time": "2026-04-01T09:00:00+00:00",
+    "trigger": "cron[hour='9', minute='0']",
+    "description": "每日09:00发送数据日报到飞书"
+  }
+]
+
+POST /api/scheduler/jobs/daily_report/pause:
+{"status": "paused", "job_id": "daily_report"}
+
+POST /api/scheduler/trigger/daily_report:
+{"status": "triggered", "job_id": "daily_report"}

@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Any, Dict, List
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 
 from src.feishu.bot_handler import get_bot
 from src.feishu.command_router import route_command
@@ -91,3 +92,86 @@ async def feishu_webhook(request: Request) -> Response:
         content=json.dumps({"code": 0}),
         media_type="application/json",
     )
+
+
+# --------------------------------------------------------------------------- #
+#  调度器 API
+# --------------------------------------------------------------------------- #
+
+def _get_scheduler_or_error():
+    """获取调度器实例，未安装时抛出 503。"""
+    from src.scheduler import get_scheduler
+    scheduler = get_scheduler()
+    if scheduler is None:
+        raise HTTPException(
+            status_code=503,
+            detail="APScheduler 未安装或不可用，调度功能不可用",
+        )
+    return scheduler
+
+
+def _get_job_description(job_id: str) -> str:
+    """从配置中获取任务描述。"""
+    from src.scheduler.config import SCHEDULED_JOBS
+    for job_conf in SCHEDULED_JOBS:
+        if job_conf.get("id") == job_id:
+            return job_conf.get("description", "")
+    return ""
+
+
+@app.get("/api/scheduler/jobs")
+async def list_scheduler_jobs() -> List[Dict[str, Any]]:
+    """返回所有定时任务列表（id, next_run_time, trigger, description）。"""
+    scheduler = _get_scheduler_or_error()
+    jobs = scheduler.get_jobs()  # type: ignore[union-attr]
+    result = []
+    for job in jobs:
+        next_run = job.next_run_time
+        result.append({
+            "id": job.id,
+            "next_run_time": next_run.isoformat() if next_run else None,
+            "trigger": str(job.trigger),
+            "description": _get_job_description(job.id),
+        })
+    return result
+
+
+@app.post("/api/scheduler/jobs/{job_id}/pause")
+async def pause_scheduler_job(job_id: str) -> Dict[str, Any]:
+    """暂停指定任务。"""
+    scheduler = _get_scheduler_or_error()
+    try:
+        scheduler.pause_job(job_id)  # type: ignore[union-attr]
+        logger.info("任务已暂停: %s", job_id)
+        return {"status": "paused", "job_id": job_id}
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=f"任务不存在或暂停失败: {exc}") from exc
+
+
+@app.post("/api/scheduler/jobs/{job_id}/resume")
+async def resume_scheduler_job(job_id: str) -> Dict[str, Any]:
+    """恢复指定任务。"""
+    scheduler = _get_scheduler_or_error()
+    try:
+        scheduler.resume_job(job_id)  # type: ignore[union-attr]
+        logger.info("任务已恢复: %s", job_id)
+        return {"status": "resumed", "job_id": job_id}
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=f"任务不存在或恢复失败: {exc}") from exc
+
+
+@app.post("/api/scheduler/trigger/{job_id}")
+async def trigger_scheduler_job(job_id: str) -> Dict[str, Any]:
+    """手动立即触发一次指定任务。"""
+    scheduler = _get_scheduler_or_error()
+    try:
+        job = scheduler.get_job(job_id)  # type: ignore[union-attr]
+        if job is None:
+            raise HTTPException(status_code=404, detail=f"任务不存在: {job_id}")
+        job.modify(next_run_time=__import__("datetime").datetime.now(__import__("datetime").timezone.utc))
+        logger.info("手动触发任务: %s", job_id)
+        return {"status": "triggered", "job_id": job_id}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"触发任务失败: {exc}") from exc
