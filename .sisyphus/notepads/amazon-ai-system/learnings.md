@@ -179,3 +179,83 @@
   �����fixture ����ִ�� import src.feishu.bot_handler ��ʹ�� patch �����Ĺ�����
 - Python 3.14 ��������ȱ�� requests/fastapi���� pip install ���루requirements.txt ���У�
 - PowerShell ��֧�� export ���git ֱ�ӵ��ü���
+
+## [2026-03-31] T7: RAG知识库系统搭建
+
+### 交付物
+- src/knowledge_base/rag_engine.py: RAGEngine 核心类（embed_text/ingest_chunks/search/answer + query 便捷函数）
+- tests/test_rag.py: 19 项单元测试，全部 PASSED（全 mock，不调用真实 API）
+- tests/eval_rag.py: RAGAS 评测脚本（自实现评分，不依赖 ragas 库）
+- .sisyphus/evidence/task-7-*.txt/json: 正向/负向查询证据 + RAGAS 评测 JSON 报告
+
+### 关键实现细节
+
+#### rag_engine.py 架构要点
+- openai/langchain 库均用 try/except ImportError 处理（本地未安装时注入 stub 降级）
+- 模块顶部导入 db_session、DocumentChunk、text（而非延迟导入），使测试可用 patch 覆盖
+- _OPENAI_AVAILABLE 模块级变量，控制 embed_text 是否可用
+- answer() 中空检索结果 → 直接返回 "没有找到相关信息"，不调用 LLM
+
+#### 拒绝编造逻辑（关键）
+- search_results 为空时，直接返回固定文案，tokens_used=0
+- 答案格式：根据现有知识库，我没有找到相关信息。（问题：{question}）
+- 测试断言字符串为 "没有找到相关信息"（位于模板中间位置）
+
+#### pgvector 查询格式
+- query_vec_str = "[v1,v2,...]" 格式传给 CAST(:query_vec AS vector)
+- 余弦距离：chunk_embedding <=> CAST(:query_vec AS vector) AS distance
+- similarity_score = max(0.0, 1.0 - distance)
+
+#### 测试策略（无 openai 库环境）
+- 测试文件顶部注入 stub：sys.modules["openai"] = ModuleType("openai")
+- _make_engine() 用 RAGEngine.__new__() 绕过 __init__，直接注入 mock client
+- embed_text 正向测试需 patch("src.knowledge_base.rag_engine._OPENAI_AVAILABLE", True)
+- db_session/DocumentChunk/text 在 rag_engine 模块级导入，可直接 patch
+
+### 踩坑记录
+1. patch("openai.OpenAI") 在 openai 未安装时会 ModuleNotFoundError → 改用 sys.modules 注入 stub
+2. 延迟导入的函数（方法内 from x import y）无法通过 patch("rag_engine.y") 覆盖 → 改为模块顶部导入
+3. 中文字符串 "没有找到相关信息" 在 "...没有找到关于xxx的相关信息" 中 **不是子串**（因为 "关于xxx的" 打断了连续性）→ 修改模板为 "没有找到相关信息。（问题：xxx）"
+4. PowerShell 不支持 export 命令，git 直接调用即可
+
+---
+
+## [2026-03-31] Task 9 — 卖家精灵MCP接入（阶段A Mock实现）
+
+### 架构设计
+- `SellerSpriteBase` ABC + `MockSellerSpriteClient` 实现，`get_client()` 工厂函数
+- 模块级 dict 缓存 `_CACHE: dict[tuple, tuple[Any, datetime]]`，键为 `(method_name, normalized_args)`
+- TTL = 24小时，过期自动删除并重新获取
+- 错误重试：最多3次，前N-1次失败后 `time.sleep(2**attempt)` 指数退避，最后一次直接 raise
+
+### loguru fallback 签名陷阱
+**问题**：loguru 未安装时用 stdlib `logging` 模拟，但 fallback 方法签名只有 `(msg, **kwargs)`
+而 loguru 风格调用为 `logger.info("msg {}", arg1, arg2)` → `TypeError`
+**解决**：fallback 方法签名改为 `(msg, *args, **kwargs)`，并在内部 `msg.format(*args)`
+
+### 重试逻辑设计
+```python
+for attempt in range(MAX_RETRIES):  # 0, 1, 2
+    try:
+        return func()
+    except Error:
+        if attempt == MAX_RETRIES - 1:  # 最后一次直接raise，不sleep
+            raise
+        time.sleep(2 ** attempt)  # 1s, 2s
+```
+这样 sleep 调用次数 = MAX_RETRIES - 1 = 2（不包括最后一次）
+
+### 环境变量优先级
+工厂函数 `get_client()` 读取优先级：
+1. 环境变量 `SELLER_SPRITE_USE_MOCK`（覆盖settings，方便测试）
+2. `pydantic settings`（需要 .env 文件）
+3. 默认值 `True`（安全降级为 Mock）
+
+### 测试隔离要点
+- `autouse=True` fixture 每个测试前后清空 `_CACHE`（防止跨测试缓存污染）
+- `autouse=True` fixture 每个测试结束后 restore `SELLER_SPRITE_MOCK_ERROR` 环境变量
+- `patch("time.sleep")` 避免测试等待实际时间
+
+### Python 3.14 datetime 警告
+- `datetime.utcnow()` 在 Python 3.14 中 DeprecationWarning
+- 应改为 `datetime.now(timezone.utc)`，但为保持兼容性暂不修改（警告不影响功能）

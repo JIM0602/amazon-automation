@@ -1,0 +1,40 @@
+# Task 9 证据 — 错误处理验证
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 错误处理 & 重试机制验证
+
+### SELLER_SPRITE_MOCK_ERROR=true 错误注入
+- test_mock_error_raises_after_retries: 3次重试后抛出 SellerSpriteApiError ✅
+- test_mock_error_retries_three_times: time.sleep 调用次数=2（前两次失败后sleep，第三次直接raise）✅
+- test_mock_error_uses_exponential_backoff: sleep参数=[1, 2]（2^0=1, 2^1=2秒）✅
+- test_no_error_without_env_var: 未设置环境变量时正常返回数据 ✅
+- test_error_for_asin_data: get_asin_data 错误注入有效 ✅
+- test_error_for_category_data: get_category_data 错误注入有效 ✅
+- test_error_for_reverse_lookup: reverse_lookup 错误注入有效 ✅
+
+### 重试策略说明
+- MAX_RETRIES = 3
+- 前N-1次失败: 记录warning日志 + sleep(2**attempt)
+  - attempt=0: sleep(1)
+  - attempt=1: sleep(2)
+- 第N次失败: 记录error日志 + 直接raise（不sleep）
+- 错误类型: SellerSpriteApiError（继承自 SellerSpriteError）
+
+### 缓存层验证
+- test_second_call_returns_cached: 第二次调用返回缓存结果 ✅
+- test_cache_logs_hit: 缓存命中正常工作 ✅
+- test_different_keywords_separate_cache_entries: 不同关键词各自独立缓存 ✅
+- test_cache_expired_refetches: 25小时后缓存过期，重新获取 ✅
+- test_cache_asin_data: ASIN数据缓存 ✅
+- test_cache_category_data: 类目数据缓存 ✅
+- test_cache_reverse_lookup: 反查数据缓存 ✅
+
+### 缓存实现
+- 类型: 模块级 dict _CACHE
+- 键: (method_name, normalized_args)
+- 值: (result, timestamp)
+- TTL: 24小时 (timedelta(hours=24))
+
+pytest tests/test_seller_sprite.py --mock-external-apis -v
+结果: 52 passed, 45 warnings in 0.17s
