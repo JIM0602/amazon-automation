@@ -70,21 +70,48 @@ def run_daily_report() -> Dict[str, Any]:
     return {"status": status, "job_id": job_id}
 
 
-def run_selection_analysis() -> Dict[str, Any]:
-    """每周一10:00运行选品分析（stub）。"""
+def run_selection_analysis(
+    category: str = "pet_supplies",
+    dry_run: bool = False,
+    subcategory: str = None,
+) -> Dict[str, Any]:
+    """每周一10:00运行选品分析（调用真实 SelectionAgent）。
+
+    Args:
+        category:    分析类目，默认 "pet_supplies"
+        dry_run:     True 时使用 Mock 数据（调度器默认为 False）
+        subcategory: 可选子类目（来自飞书指令）
+
+    Returns:
+        {"status": "ok"/"error", "job_id": "selection_analysis", "report": {...}}
+    """
     job_id = "selection_analysis"
-    logger.info("selection_analysis started")
+    logger.info("selection_analysis started | category=%s dry_run=%s", category, dry_run)
     started_at = datetime.now(timezone.utc)
     status = "ok"
+    report = {}
     try:
-        # TODO: 调用真实 Agent 逻辑（T12+）
-        logger.info("selection_analysis finished in %.3f s", (datetime.now(timezone.utc) - started_at).total_seconds())
+        from src.agents.selection_agent import run as selection_run
+        report = selection_run(
+            category=category,
+            dry_run=dry_run,
+            subcategory=subcategory,
+        )
+        if report.get("status") == "failed":
+            status = "error"
+            logger.error("selection_analysis agent failed: %s", report.get("error"))
+        else:
+            logger.info(
+                "selection_analysis finished in %.3f s | candidate_count=%d",
+                (datetime.now(timezone.utc) - started_at).total_seconds(),
+                len(report.get("candidates", [])),
+            )
     except Exception as exc:  # pylint: disable=broad-except
         status = "error"
         logger.error("selection_analysis failed: %s", exc, exc_info=True)
     finally:
         _record_agent_run(job_id, status)
-    return {"status": status, "job_id": job_id}
+    return {"status": status, "job_id": job_id, "report": report}
 
 
 def run_llm_cost_report() -> Dict[str, Any]:
