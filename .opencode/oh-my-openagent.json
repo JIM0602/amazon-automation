@@ -1,25 +1,42 @@
 {
   "agents": {
     "sisyphus": {
-      "model": "github-copilot/claude-opus-4.6",
-      "variant": "max"
+      "model": "github-copilot/claude-sonnet-4.6"
     },
     "prometheus": {
-      "model": "github-copilot/claude-opus-4.6",
-      "variant": "max"
+      "model": "github-copilot/claude-sonnet-4.6"
     },
     "oracle": {
-      "model": "github-copilot/gpt-5.4",
-      "variant": "high"
+      "model": "github-copilot/gpt-5.4"
     },
     "explore": {
-      "model": "github-copilot/gemini-3-flash-preview"
+      "model": "github-copilot/grok-code-fast-1"
     },
     "multimodal-looker": {
       "model": "github-copilot/gemini-3.1-pro-preview"
     },
     "librarian": {
       "model": "github-copilot/gemini-3-flash-preview"
+    },
+    "atlas": {
+      "model": "github-copilot/claude-sonnet-4.6"
+    },
+    "momus": {
+      "model": "github-copilot/gpt-5.4"
+    },
+    "metis": {
+      "model": "github-copilot/claude-sonnet-4.6"
+    }
+  },
+  "categories": {
+    "visual-engineering": {
+      "model": "github-copilot/gemini-3.1-pro-preview"
+    },
+    "ultrabrain": {
+      "model": "github-copilot/gpt-5.4"
+    },
+    "quick": {
+      "model": "github-copilot/gpt-5.4-mini"
     }
   }
 }

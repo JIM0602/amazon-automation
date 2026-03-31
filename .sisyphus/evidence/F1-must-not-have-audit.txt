@@ -1,0 +1,58 @@
+=== F1 审计结果 ===
+时间：2026-03-31
+检查项：Must NOT Have 7项合规性审计
+结果：
+
+---
+MNH-1: 无硬编码API密钥
+  命令: Get-ChildItem -Path "src" -Filter "*.py" -Recurse | Select-String -Pattern "sk-|api_key\s*=\s*['\`"]" | Where-Object { $_.Line -notmatch "#" }
+  输出: 空（无匹配）✅
+  结论: PASS ✅（无硬编码密钥）
+
+---
+MNH-2: 无Web控制台（Phase 1）
+  命令: Get-ChildItem -Path "src" -Filter "*.py" -Recurse | Select-String -Pattern "flask.*admin|django.*admin|web.*console"
+  输出: 空（无匹配）✅
+  结论: PASS ✅
+
+---
+MNH-3: 无SP-API写入操作（Phase 1）
+  命令: Get-ChildItem -Path "src" -Filter "*.py" -Recurse | Select-String -Pattern "create_listing|update_price|create_campaign"
+  输出: src\utils\audit.py:100: def update_price(sku: str, price: float) -> dict:
+  分析: 该匹配位于 audit.py 第97-101行的文档注释 Example:: 代码块中
+        （作为 @audit_decorator 的用法示例说明，非实际SP-API调用代码）
+        无真实SP-API写入操作代码 ✅
+  结论: PASS ✅（仅文档示例，非实现代码）
+
+---
+MNH-4: 无AI图片生成（Phase 1）
+  命令: Get-ChildItem -Path "src" -Filter "*.py" -Recurse | Select-String -Pattern "dall-e|stable.diffusion|generate_image"
+  输出: 空（无匹配）✅
+  结论: PASS ✅
+
+---
+MNH-5: PostgreSQL端口5432不暴露到宿主机
+  文件: deploy/docker/docker-compose.yml → 存在 ✅
+  检查结果: postgres服务配置：
+    # ⚠️ 重要安全设计：不映射宿主机端口！
+    # postgres 5432 端口仅在 Docker 内部网络对 app 可见
+    # 宿主机无法直接连接数据库，防止数据库暴露到公网
+    # ports:  ← 故意注释掉，不暴露到主机端口
+  postgres服务无 ports 字段 ✅
+  app服务仅映射 "127.0.0.1:8000:8000"（本地回环，安全）✅
+  结论: PASS ✅
+
+---
+MNH-6: .env不在git跟踪中
+  .gitignore 包含 .env 条目 ✅
+  .env 文件不存在（Test-Path返回False）✅
+  结论: PASS ✅
+
+---
+MNH-7: 无自我修改的Agent提示词
+  命令: Get-ChildItem -Path "src" -Filter "*.py" -Recurse | Select-String -Pattern "modify.*prompt|rewrite.*system_prompt|self.*modify"
+  输出: 空（无匹配）✅
+  结论: PASS ✅
+
+---
+总结: Must NOT Have [7/7] 全部合规 ✅

@@ -1,0 +1,76 @@
+====================================================================
+F4 Must NOT Do 合规检查报告
+检查时间：2026-03-31
+====================================================================
+
+=== F4 检查项：检查1 PostgreSQL端口5432不暴露到宿主机 ===
+结果：PASS
+详情：
+- 文件：deploy/docker/docker-compose.yml
+- postgres 服务无 ports: 字段（第64-67行注释明确说明："故意注释掉，不暴露宿主机端口"）
+- app 服务 ports 仅绑定 "127.0.0.1:8000:8000"（第21行，仅本地回环）
+- 防火墙脚本（setup-server.sh 第136行）明确注释："不开放 5432 端口！数据库只在 Docker 内部网络"
+
+=== F4 检查项：检查2 无硬编码API密钥 ===
+结果：PASS
+详情：
+- 搜索模式：sk-[a-zA-Z0-9]{20,}
+  grep结果：空（无匹配）
+- 搜索模式：OPENAI_API_KEY\s*=\s*['"]{a-z}
+  grep结果：空（无匹配）
+- 所有敏感配置通过 .env 文件 + env_file 机制注入，不硬编码
+
+=== F4 检查项：检查3 用户手册无技术术语（T19约束）===
+结果：PASS
+详情：
+- 搜索路径：docs/user-guide/*.md
+- 搜索模式：API|数据库|容器|Docker|PostgreSQL|向量|embedding|token|endpoint
+- 过滤排除：08-FAQ（技术参考区豁免）
+- grep结果：空（无匹配）
+- 用户手册内容面向非技术用户，无技术术语混入
+
+=== F4 检查项：检查4 无SP-API写入操作（Phase 1约束）===
+结果：PASS（豁免）
+详情：
+- 搜索模式：create_listing|update_price|create_campaign|submit_feed
+- 发现 1 处匹配：src/utils/audit.py 第100行
+- 内容为 docstring Example 中的演示代码（@audit_decorator 装饰器使用示例）：
+    @audit_decorator("product_price_updated", actor="agent:pricing")
+    def update_price(sku: str, price: float) -> dict:
+        ...
+- 该函数体为 "..." 占位符，不是实际SP-API调用实现
+- 判定：PASS（注释/示例代码，非违规实现）
+
+=== F4 检查项：检查5 审计日志不可删除（T16约束）===
+结果：PASS
+详情：
+- 搜索模式：DELETE.*audit_log|drop.*audit|truncate.*audit
+- grep结果：空（无匹配）
+- 审计日志无删除操作，模型定义（models.py）中audit_logs表无DELETE权限配置
+
+=== F4 检查项：检查6 部署脚本无硬编码IP或密钥 ===
+结果：PASS
+详情：
+- deploy/scripts/deploy.sh：
+  * 应用目录变量化：APP_DIR="/opt/amazon-ai"（路径常量，非IP）
+  * 飞书Webhook通过环境变量 $FEISHU_WEBHOOK_URL 读取，非硬编码
+  * 第147行有 "http://your-domain.com/health" 占位符（明显是示例文本，非真实IP/域名）
+  * 无任何固定IP或密钥
+- deploy/scripts/setup-server.sh：
+  * 无硬编码IP地址
+  * 无硬编码密码
+  * 所有密钥通过 .env 文件注入
+
+=== F4 检查项：检查7 RAG拒绝编造（T7约束）===
+结果：PASS
+详情：
+- 文件：src/knowledge_base/rag_engine.py 第368-377行
+- 逻辑：当 search_results 为空时，直接构造拒绝回答：
+    answer_text = f"根据现有知识库，我没有找到相关信息。（问题：{question}）"
+    return {"answer": answer_text, "sources": [], ...}
+- 无调用LLM凭空生成（直接 return，不调用 _llm_client）
+- 同时记录 logger.info 日志（第371行）
+
+====================================================================
+Must NOT Do 汇总：7/7 项通过
+====================================================================

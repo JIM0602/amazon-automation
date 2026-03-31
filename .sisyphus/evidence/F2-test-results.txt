@@ -1,0 +1,31 @@
+F2 CODE QUALITY REVIEW - TEST RESULTS
+======================================
+Date: 2026-03-31
+Reviewer: F2 Automated Code Quality Auditor
+
+COMMAND EXECUTED
+----------------
+python -m pytest tests/ --mock-external-apis -q
+
+RAW OUTPUT (last 10 lines)
+--------------------------
+====================== 581 passed, 91 warnings in 12.98s ======================
+
+RESULT SUMMARY
+--------------
+Passed:  581
+Failed:    0
+Errors:    0
+Warnings: 91 (all DeprecationWarning about datetime.utcnow() - non-blocking)
+
+WARNING ANALYSIS
+----------------
+- PytestConfigWarning: Unknown config option 'asyncio_mode' (1 occurrence) - harmless
+- DeprecationWarning: datetime.datetime.utcnow() deprecated in Python 3.14+
+  - Location: src/seller_sprite/client.py lines 58, 67
+  - Also triggered in: tests/test_seller_sprite.py line 392
+  - Risk Level: LOW - functional but needs future migration to datetime.now(datetime.UTC)
+
+VERDICT
+-------
+PASS - 581/581 tests passed, 0 failures, 0 errors

@@ -1,0 +1,74 @@
+# ================================
+# PUDIWIND AI System — systemd 服务单元文件
+# 功能：系统启动时自动运行 Docker Compose，实现24/7持续运行
+#
+# 安装方法（在服务器上执行）：
+# 1. 复制此文件到 systemd 目录：
+#    sudo cp /opt/amazon-ai/deploy/systemd/amazon-ai.service /etc/systemd/system/
+#
+# 2. 重新加载 systemd 配置：
+#    sudo systemctl daemon-reload
+#
+# 3. 启用服务（开机自启）：
+#    sudo systemctl enable amazon-ai
+#
+# 4. 立即启动服务：
+#    sudo systemctl start amazon-ai
+#
+# 5. 查看服务状态：
+#    sudo systemctl status amazon-ai
+#
+# 6. 查看服务日志：
+#    sudo journalctl -u amazon-ai -f
+# ================================
+
+[Unit]
+# 服务描述信息
+Description=PUDIWIND AI System - Amazon 运营自动化服务
+
+# 详细文档说明
+Documentation=https://github.com/your-org/amazon-automation
+
+# 启动依赖：必须在网络和 Docker 服务就绪后才启动
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+
+[Service]
+# 服务类型：oneshot + RemainAfterExit 表示执行命令后服务保持激活状态
+Type=oneshot
+RemainAfterExit=yes
+
+# 工作目录
+WorkingDirectory=/opt/amazon-ai
+
+# 设置环境变量文件（从 .env 读取配置）
+EnvironmentFile=-/opt/amazon-ai/.env
+
+# 启动命令：启动所有 Docker 容器
+ExecStart=/usr/bin/docker compose \
+    -f /opt/amazon-ai/deploy/docker/docker-compose.yml \
+    up -d --remove-orphans
+
+# 停止命令：优雅停止所有容器
+ExecStop=/usr/bin/docker compose \
+    -f /opt/amazon-ai/deploy/docker/docker-compose.yml \
+    down
+
+# 重启策略：非正常退出时自动重启
+Restart=on-failure
+RestartSec=10s
+
+# 启动超时：给 Docker 容器足够的启动时间（包括拉取镜像）
+TimeoutStartSec=120s
+
+# 标准输出和错误输出写入 journald（通过 journalctl 查看）
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=amazon-ai
+
+
+[Install]
+# 安装到 multi-user.target，即系统正常多用户模式下自动启动
+WantedBy=multi-user.target

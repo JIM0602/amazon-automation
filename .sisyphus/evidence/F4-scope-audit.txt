@@ -1,0 +1,85 @@
+====================================================================
+F4 范围保真度检查 — 综合审计报告
+检查时间：2026-03-31
+====================================================================
+
+【Part 1：Must NOT Do 合规检查】
+
+检查1 PostgreSQL端口不暴露：PASS
+检查2 无硬编码API密钥：PASS
+检查3 用户手册无技术术语：PASS
+检查4 无SP-API写入操作：PASS（audit.py中的update_price为docstring示例，非实际实现）
+检查5 审计日志不可删除：PASS
+检查6 部署脚本无硬编码IP/密钥：PASS（deploy.sh中"your-domain.com"为占位示例）
+检查7 RAG拒绝编造：PASS（search_results为空时直接return，不调用LLM）
+
+Must NOT Do 结果：7/7 通过
+
+--------------------------------------------------------------------
+【Part 2：抽样5个任务实现一致性检查】
+
+任务T7（RAG系统）
+  规格要求：rag_engine.py 有 embed_text/ingest_chunks/search/answer 方法
+  检查结果：PASS
+  证据：
+    src/knowledge_base/rag_engine.py:111  def embed_text
+    src/knowledge_base/rag_engine.py:144  def ingest_chunks
+    src/knowledge_base/rag_engine.py:221  def search
+    src/knowledge_base/rag_engine.py:339  def answer
+  4个方法全部存在，符合规格
+
+任务T12（每日报告）
+  规格要求：generate_daily_report(dry_run=True) 返回 {status: completed, ...}
+  检查结果：PASS
+  证据：
+    - 函数签名（第555行）：def generate_daily_report(dry_run: bool = True) -> Dict[str, Any]
+    - 返回值（第598-607行）明确包含 "status": "completed"
+    - 函数docstring 明确说明返回格式与规格一致
+
+任务T16（Kill Switch）
+  规格要求：is_stopped()每次查DB不缓存；activate_stop()先写DB再飞书通知
+  检查结果：PASS
+  证据：
+    - is_stopped()（第61-83行）：每次调用均使用 with db_session() as session: 查询DB
+      无任何缓存变量或 @lru_cache 装饰器，满足"不缓存"要求
+    - activate_stop()（第103-148行）操作顺序：
+      1. 写入system_config（第122-127行）
+      2. 暂停APScheduler任务（第134行）
+      3. 记录audit_log（第137-143行）
+      4. 飞书通知（第146-148行）
+      先写DB再发飞书通知，符合规格
+
+任务T18（部署）
+  规格要求：deploy/docker/有Dockerfile+docker-compose.yml；deploy/scripts/有4个脚本；docs/deployment-guide.md存在
+  检查结果：PASS（轻微超出规格，但无负面影响）
+  证据：
+    deploy/docker/ 文件：.dockerignore, docker-compose.yml, Dockerfile（3个文件）
+    deploy/scripts/ 文件：backup-db.sh, deploy.sh, monitor.sh, setup-server.sh（4个脚本，符合要求）
+    docs/deployment-guide.md：存在（Test-Path返回True）
+  注：scripts中有4个脚本（含backup-db.sh和monitor.sh），超出最低要求，属正常增强
+
+任务T19（使用手册）
+  规格要求：docs/user-guide/有8个.md文件（含README应为9）；command_router.py指令在手册中覆盖
+  检查结果：PASS
+  证据：
+    (Get-ChildItem docs/user-guide/*.md).Count = 9（含README，符合规格"9"）
+    command_router.py 路由指令覆盖验证：
+      - "?" / "？" / "问：" → 知识库问答 ✓
+      - "暂停所有" / "紧急停机" → 紧急停机 ✓
+      - "帮助" / "help" → 帮助列表 ✓
+      - "日报" / "报告" → 日报 ✓
+      - "选品" → 选品分析 ✓
+
+抽样检查结果：5/5 任务通过
+
+--------------------------------------------------------------------
+【Part 3：跨任务文件污染检查】
+
+见 F4-contamination.txt
+
+--------------------------------------------------------------------
+【综合结果】
+
+Tasks [5/5 sampled compliant] | Must NOT Do [7/7] | Contamination [见F4-contamination.txt]
+
+====================================================================

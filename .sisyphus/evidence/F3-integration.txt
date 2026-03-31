@@ -1,0 +1,60 @@
+F3 跨模块集成流程验证报告
+=====================================
+执行日期: 2026-03-31
+验证方式: 代码检查 + pytest集成测试通过结果
+
+## 流程1：飞书消息 → 选品Agent → 候选产品输出
+验证文件: tests/integration/test_e2e_flow.py :: TestSelectionFullPipeline
+
+覆盖测试:
+- test_selection_full_pipeline_returns_report: 飞书"选品分析"命令 → route_command → selection_analysis action → run(category, dry_run=True) → status=completed + candidates≥3
+- test_selection_full_pipeline_candidate_fields: 候选产品包含asin/product_name/reason/market_data/risks/score/kb_references所有字段
+- test_selection_full_pipeline_kb_integration: KB知识库原则被整合，kb_principles_used≥1，候选产品reason包含知识库引用
+- test_selection_full_pipeline_restricted_category_rejection: 受限类目(weapons)返回status=failed
+
+飞书命令路由验证:
+- test_feishu_selection_command_flow: route_command("选品分析", sender) → action=="selection_analysis" ✓
+
+流程1状态: PASS ✓
+
+---
+
+## 流程2：触发日报 → 3板块数据收集 → 飞书卡片生成
+验证文件: tests/integration/test_e2e_flow.py :: TestDailyReportFlow
+
+覆盖测试:
+- test_daily_report_full_pipeline: generate_daily_report(dry_run=True) → status=completed + 3板块(sales/agent_progress/market) + generate_feishu_card()生成可序列化JSON卡片(len>200)
+- test_daily_report_sales_section_complete: sales板块含revenue/orders/refunds/sku_ranking/revenue_vs_prev_day/orders_vs_prev_day/revenue_vs_last_week
+- test_daily_report_agent_progress_section: agent_progress含agent_statuses列表≥1 + pending_approvals整数
+- test_daily_report_market_section: market含category/market_size_usd/growth_rate/inventory_alerts/competitor_alert
+- test_daily_report_agent_class_run: DailyReportAgent.run(dry_run=True) → status=ok + report + card + card_sent=False
+- test_daily_report_feishu_card_has_required_sections: 卡片含action按钮 + ≥2分割线
+
+飞书命令路由验证:
+- test_feishu_daily_report_command_flow: route_command("今日报告", sender) → action=="daily_report" ✓
+
+流程2状态: PASS ✓
+
+---
+
+## 流程3：飞书消息 → RAG问答 → 回复用户
+验证文件: tests/integration/test_e2e_flow.py :: TestRAGFullPipeline + TestFeishuCommandFlow
+
+覆盖测试:
+- test_rag_full_pipeline_returns_answer: RAGEngine.answer() → 返回dict含answer/sources/model/tokens_used，answer非空，sources≥1
+- test_rag_pipeline_question_to_answer_chain: 完整数据流验证，sources含"亚马逊选品指南"
+- test_feishu_knowledge_query_flow: route_command("?如何处理差评") → action=knowledge_query → handle_qa() → 返回字符串答案 + bot.send_thinking调用1次 + bot.update_message调用1次
+- test_feishu_qa_context_isolation: 不同用户(user_A/user_B)上下文相互隔离
+
+流程3状态: PASS ✓
+
+---
+
+## 集成测试总计
+tests/integration/test_e2e_flow.py: 21个测试 ✓
+tests/integration/test_concurrent.py: 14个测试 ✓
+tests/integration/test_error_recovery.py: 19个测试 ✓
+（以上54个集成测试全部包含在581 passed中）
+
+## 结论
+Integration [3/3] — 3个跨模块集成流程全部验证通过

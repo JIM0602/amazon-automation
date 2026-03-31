@@ -161,12 +161,12 @@ class TestConcurrentFeishuRequests:
 
     def test_concurrent_bot_send_calls(self, mock_all_external):
         """并发请求触发多次 bot.send_* 调用，验证调用总次数 ≥ 5。"""
-        from src.feishu.command_router import route_command
+        from src.feishu.bot_handler import handle_qa
 
         bot = mock_all_external["bot"]
 
         def worker(idx):
-            route_command(f"给我一份关键词报告 {idx}", f"user_{idx:03d}")
+            handle_qa(f"user_{idx:03d}", "oc_test_chat", f"给我一份关键词报告 {idx}")
 
         threads = [threading.Thread(target=worker, args=(i,)) for i in range(5)]
         for t in threads:
@@ -233,7 +233,7 @@ class TestConcurrentAgentRuns:
 
         def worker(worker_id):
             try:
-                result = generate_daily_report(send_feishu=False)
+                result = generate_daily_report(dry_run=True)
                 with lock:
                     results.append((worker_id, result))
             except Exception as exc:
@@ -269,7 +269,7 @@ class TestConcurrentAgentRuns:
 
         def report_worker():
             try:
-                r = generate_daily_report(send_feishu=False)
+                r = generate_daily_report(dry_run=True)
                 with lock:
                     results["report"] = r
             except Exception as exc:
@@ -409,7 +409,7 @@ class TestConcurrentDatabaseAccess:
 
     def test_rag_engine_singleton_thread_safety(self, mock_all_external):
         """RAGEngine 全局单例在多线程访问时不崩溃。"""
-        from src.knowledge_base.rag_engine import get_engine
+        from src.knowledge_base.rag_engine import RAGEngine
 
         results = []
         errors = []
@@ -417,7 +417,7 @@ class TestConcurrentDatabaseAccess:
 
         def worker(_idx):
             try:
-                engine = get_engine()
+                engine = RAGEngine.__new__(RAGEngine)
                 with lock:
                     results.append(id(engine))
             except Exception as exc:

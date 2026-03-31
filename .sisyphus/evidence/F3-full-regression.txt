@@ -1,0 +1,41 @@
+F3 全量回归测试报告
+=====================================
+执行日期: 2026-03-31
+环境: Windows PowerShell / mock-external-apis
+
+## 执行命令
+python -m pytest tests/ --mock-external-apis -q
+
+## 实际结果
+581 passed, 0 failed, 0 errors
+警告: 91 warnings（均为非阻塞的 DeprecationWarning 和 PytestConfigWarning）
+执行耗时: 12.91s
+
+## 警告详情（非阻塞）
+- PytestConfigWarning: Unknown config option: asyncio_mode（pytest配置项，不影响执行）
+- DeprecationWarning: datetime.datetime.utcnow() deprecated（src/seller_sprite/client.py，功能正常）
+
+## 测试文件覆盖
+- tests/test_audit.py ✓
+- tests/test_bot_handler.py ✓
+- tests/test_command_router.py ✓
+- tests/test_cost_monitor.py ✓
+- tests/test_daily_report.py ✓
+- tests/test_killswitch.py ✓
+- tests/test_llm_client.py ✓
+- tests/test_rag_engine.py ✓
+- tests/test_scheduler.py ✓
+- tests/test_selection_agent.py ✓
+- tests/test_seller_sprite.py ✓
+- tests/integration/*.py ✓（54个集成测试）
+
+## 验证关键模块导入
+执行: python -c "from src.feishu.bot_handler import handle_qa; from src.feishu.command_router import route_command; from src.agents.core_agent.daily_report import generate_daily_report; from src.agents.selection_agent import run; from src.utils.killswitch import is_stopped, activate_stop; from src.utils.audit import log_action; print('ALL IMPORTS OK')"
+结果: ALL IMPORTS OK ✓
+
+## dry_run 模式验证
+执行: generate_daily_report(dry_run=True)
+结果: status= completed ✓
+
+## 结论
+PASS — 581/581 测试通过，0失败，0错误

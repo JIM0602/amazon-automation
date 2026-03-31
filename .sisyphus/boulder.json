@@ -1,0 +1,108 @@
+{
+  "active_plan": "E:\\amazon-automation\\.sisyphus\\plans\\amazon-ai-system.md",
+  "started_at": "2026-03-31T03:02:48.871Z",
+  "session_ids": [
+    "ses_2c21a86bcfferNvPfeTv7rv6BN",
+    "ses_2be24b498ffehh9PdrQEsptr12",
+    "ses_2be1f5903ffeAIDdPYgMywd7OS",
+    "ses_2be120736ffeY7L4RZnT3xwTco",
+    "ses_2be059745ffezOH30RGu9tYiMv",
+    "ses_2bdfd019effeAhuc1Pjnn4PwOc",
+    "ses_2bdf58a29ffe0BQMRTTriaAZ5z",
+    "ses_2bdec5020fferZFP5fhg8MDv7d",
+    "ses_2bddb71c0ffelQ7SX1YknDAaq5",
+    "ses_2bdd22af2ffeq29T67yb41JDWZ",
+    "ses_2bdd29a84ffeuw7zTnfeJBbKat",
+    "ses_2bdc1dedfffeDKNoI847REjQBP",
+    "ses_2bdc19583ffegoPbTThz5LIO98",
+    "ses_2bdc135b1ffeBZdaLSIrRFsafE",
+    "ses_2bd91765bffe4lom6Fp2qPZI6p",
+    "ses_2bd776b19ffeV81HEoYGTBgo2h",
+    "ses_2bd692ea7ffeD5b2m7Y4tohIrX",
+    "ses_2bd5aeee4ffeZGVnby0OKC1k7j",
+    "ses_2bd4395b4ffewmCQogU6epgISI",
+    "ses_2bd355787ffezFuPGl70l2zh9J",
+    "ses_2bd27b07cffeGcJfT4ORIrZldf",
+    "ses_2bd201284ffeOMs6M2dCxy5nXN",
+    "ses_2bd148db4ffekfDexrhjFyQx9M",
+    "ses_2bd0c2472ffe2FSu2W2C2ohJo7",
+    "ses_2bd08ab6effeKd7lUDEOUyT0eg",
+    "ses_2bd032e47ffeamdcJlKGLi8YsC"
+  ],
+  "plan_name": "amazon-ai-system",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "云服务器和基础环境搭建",
+      "session_id": "ses_2be24b498ffehh9PdrQEsptr12",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-03-31T03:09:32.512Z"
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "数据库设计和搭建（PostgreSQL + pgvector）",
+      "session_id": "ses_2bdf58a29ffe0BQMRTTriaAZ5z",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-03-31T04:00:57.210Z"
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "知识库RAG系统搭建（向量化 + 检索）",
+      "session_id": "ses_2bdec5020fferZFP5fhg8MDv7d",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-03-31T04:21:11.053Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "飞书机器人问答功能（对接RAG）",
+      "session_id": "ses_2bdc1dedfffeDKNoI847REjQBP",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-03-31T05:07:17.416Z"
+    },
+    "todo:12": {
+      "task_key": "todo:12",
+      "task_label": "12",
+      "task_title": "核心管理Agent — 每日数据汇报",
+      "session_id": "ses_2bd776b19ffeV81HEoYGTBgo2h",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-03-31T06:27:30.644Z"
+    },
+    "todo:13": {
+      "task_key": "todo:13",
+      "task_label": "13",
+      "task_title": "核心管理Agent — 人工审批流程",
+      "session_id": "ses_2bd692ea7ffeD5b2m7Y4tohIrX",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-03-31T06:40:19.704Z"
+    },
+    "todo:17": {
+      "task_key": "todo:17",
+      "task_label": "17",
+      "task_title": "端到端集成测试 — 系统级验证",
+      "session_id": "ses_2bd4395b4ffewmCQogU6epgISI",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-03-31T07:13:38.987Z"
+    },
+    "todo:18": {
+      "task_key": "todo:18",
+      "task_label": "18",
+      "task_title": "云服务器部署与24/7运行配置",
+      "session_id": "ses_2bd032e47ffeamdcJlKGLi8YsC",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-03-31T08:26:55.734Z"
+    }
+  }
+}
