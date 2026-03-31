@@ -1,0 +1,7 @@
+验证目标：mock 函数返回数量正确。
+
+预期结果：
+- get_mock_products() >= 3
+- get_mock_orders(days=30) >= 30
+- get_mock_advertising() >= 5
+- get_mock_inventory() >= 3

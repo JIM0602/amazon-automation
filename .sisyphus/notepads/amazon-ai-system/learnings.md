@@ -61,3 +61,121 @@
 - 已统一补齐配置入口 src/config.py，使用 pydantic-settings 读取 .env。
 - 已补充 pytest 配置、Makefile 快捷命令、固定版本 requirements.txt 和 pyproject.toml。
 - 已新增 .env.example、.gitignore、golden_qa 占位数据与任务证据文件。
+
+### Task 6 交付记录
+- 已新增 docs/sp-api-guide.md，明确 Phase 1 仅使用 Mock 数据，SP-API 申请与联调放到 Phase 2。
+- 已新增 src/amazon_api/mock.py，覆盖 products / orders / advertising / inventory 四类 Mock 数据与统一路由接口。
+- 已补充 data/mock/products.json 与 data/mock/orders.json，并为订单数据准备了 30 天样例。
+- 已新增 tests/test_mock_data.py，验证数量、字段完整性和路由行为。
+
+## [2026-03-31] T2: ���ݿ���ƺʹ
+
+### SQLAlchemy + pgvector �ؼ�ģʽ
+- pgvector.sqlalchemy.Vector(1536) ����Ƕ�������У�ά�ȹ̶�Ϊ1536��text-embedding-3-small��
+- pgvector �ڲ��Ի���������ʱ��ͨ�� try/except ����Ϊ UserDefinedType stub��SQLite �����δ֪����
+- UUID ������Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4) ��� PostgreSQL ԭ�� UUID ����
+
+### ����ʼ�����棨�ؼ������ѵ��
+- **����** ��ģ�鼶�� engine = create_engine(settings.DATABASE_URL)����Ϊ��
+  1. ����ʱ settings.DATABASE_URL ��δ mock�����Ի�ʧ�ܣ�
+  2. psycopg2 δ��װʱ�� ImportError�����ػ�����
+  3. SQLite ������ pool_size/max_overflow ����
+- ��ȷ������������ get_engine()��ͨ���������� _LazyEngine ����ģ�鼶 engine ����
+- ������ÿ�� test ǰ����� _reset_connection_cache() ��� _engine = None ����
+
+### Alembic ����Ҫ��
+- lembic.ini �� sqlalchemy.url �� %(DB_USER)s ռλ������Ӳ��������
+- lembic/env.py ���ȶ�ȡ os.environ["DATABASE_URL"]��Docker/CI������� pydantic-settings
+- compare_type=True ���������ͱ����⣨����ά�ȸı�ʱ Alembic �ɸ�֪��
+- pool.NullPool ���� online migration mode������Ǩ�ƽ��̳������ӳأ�
+
+### ���Բ���
+- utouse=True fixture �����в���ǰע�� pgvector stub �� mock settings
+- SQLite in-memory ��Ϊ ORM CRUD ���Ժ�ˣ�sqlite:// + StaticPool + check_same_thread=False��
+- importlib.reload() �ڲ�����Ӧ����ʹ�ã����ܵ��� proxy ����ʧЧ��ֱ���� _reset_connection_cache() + get_engine() ���ȶ�
+
+### 10�����Ĺؼ��ֶα���
+- system_config: key �� PK��String�������� UUID
+- udit_logs: �� gent_type���� ctor
+- product_selection.agent_run_id: nullable��FK SET NULL��
+- pproval_requests.approved_by: nullable������ǰΪ�գ�
+- daily_reports.sent_at: nullable������ǰΪ�գ�
+- gent_runs.finished_at: nullable��������Ϊ�գ�
+
+## [2026-03-31] T4: ֪ʶ���ĵ�Ԥ����
+
+### ������
+- ���� src/knowledge_base/document_processor.py��DocumentProcessor �����ࣩ
+- ���� scripts/preprocess_docs.py��CLI ��ڣ�
+- ��� tests/golden_qa.json��20���ƽ�QA��6�������⸲�ǣ�
+- ���� tests/test_preprocess.py��31����Ԫ���ԣ�ȫ��ͨ����
+
+### �ؼ�ʵ��ϸ��
+- ����ʹ�ùؼ��ʼ�����߷ֲ��ԣ��� LLM ����
+- �ֿ鰴���䣨\n\n���и�ַ������� token��1 token �� 4 �ַ���
+- ȥ���� MD5 ��ϣ��O(n) ���Ӷ�
+- python-docx / unstructured ͨ�� try/except ImportError ����δ��װ����
+- os.makedirs(path, exist_ok=True) ���� mkdir -p��Windows PowerShell ���ݣ�
+
+### ���Բ���
+- ȫ������ʵ��ʱ�ļ���tmp_path fixture������ mock_open�����ӽ���ʵ��Ϊ
+- TestClassifyDocument: 8 ��������ȫ��6��� + �߽磨���ַ�������ؼ��ʣ�
+- TestChunkDocument: 6 ���������顢��顢overlap�����ĵ���metadata��
+- TestDeduplicate: 5 ���������ظ�����ȫ�ظ������ظ������б������ƣ�
+- TestProcessBatch: 7 ����������ṹ��������JSON�������Ŀ¼��
+- TestLoadDocument: 5 ������txt/md���ء��������ļ�����֧�ָ�ʽ����ϴ��
+
+### ��
+- PowerShell ��֧�� export ���git/python ֱ�ӵ��ü���
+- ���Զ��� max_tokens ʱ�������䳬����������������ģ�����Ӧ��Ϊ����������ֿ项
+
+## [2026-03-31] T4: ֪ʶ���ĵ�Ԥ����
+
+### ������
+- DocumentProcessor: load/classify/deduplicate/chunk/process_batch
+- CLI: scripts/preprocess_docs.py (--input/--output/--check-duplicates)
+- 20���ƽ�QA����6�����
+- 31����Ԫ����ȫ��ͨ��
+
+### �ؼ�ʵ��
+- ����: �ؼ��ʼ�����߷ֲ��ԣ���LLM
+- �ֿ�: �������и�ַ�����token(1t��4c)��100token�ص�
+- ȥ��: MD5��ϣ
+- ��ѡ����: try/except ImportError����
+
+### ��
+- chunk���Զ���ӦΪ��������项���ǡ�ÿ�鲻����X����������ɳ��ޣ�
+- PowerShell��֧��export/2>&1���
+
+## [2026-03-31] T5: ��������˻�������
+
+### ��������
+- src/feishu/bot_handler.py: FeishuBot �ࣨToken���� + ��Ϣ���� + Webhook������
+- src/feishu/command_router.py: ��Ϣ����·�ɣ�4�ֹ���
+- src/api/main.py: FastAPI Ӧ����ڣ�/health + /feishu/webhook��
+- tests/test_feishu.py: 27����Ԫ���ԣ�ȫ�� PASSED
+
+### �ؼ�ʵ��ϸ��
+- tenant_access_token ������ԣ�expire_at - 300����ǰˢ�£���ֹ�߽�ʧЧ��
+- ��Ϣ content �ֶα����� JSON �ַ�������Ƕ�� dict��������API�淶Ҫ��
+- Webhook ǩ���㷨��SHA256(timestamp + nonce + encrypt_key + body_str)
+- mock patch ·������ģ�鱻��������ִ�У�fixture ��Ҫ�� import �� patch
+
+### ·�ɹ������ȼ�
+1. �� ? �� �� ��ͷ �� knowledge_query���� query ��ȡ��
+2. �������ձ����򡸱��桹 �� daily_report
+3. ������ѡƷ�� �� selection_analysis
+4. ���� �� unknown�����ذ�����ʾ��
+
+### FastAPI Webhook �ؼ�����
+1. ��ȡ body + headers
+2. parse_webhook_event��ǩ����֤ + JSON������
+3. type=url_verification �� ���� challenge
+4. event_type=im.message.receive_v1 �� ��ȡ�ı� �� route_command
+5. �����¼� �� ���ԣ����� {"code": 0}
+
+### �ȿӼ�¼
+- patch("src.feishu.bot_handler.settings") ��ģ��δ������ʱ�� AttributeError
+  �����fixture ����ִ�� import src.feishu.bot_handler ��ʹ�� patch �����Ĺ�����
+- Python 3.14 ��������ȱ�� requests/fastapi���� pip install ���루requirements.txt ���У�
+- PowerShell ��֧�� export ���git ֱ�ӵ��ü���
