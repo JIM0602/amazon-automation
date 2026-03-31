@@ -55,3 +55,9 @@
 - src/db/models.py
 - src/db/connection.py
 - src/db/__init__.py
+
+### Task 3 交付记录
+- 已创建 Python 项目骨架目录：src/、tests/、data/ 及各子包占位文件。
+- 已统一补齐配置入口 src/config.py，使用 pydantic-settings 读取 .env。
+- 已补充 pytest 配置、Makefile 快捷命令、固定版本 requirements.txt 和 pyproject.toml。
+- 已新增 .env.example、.gitignore、golden_qa 占位数据与任务证据文件。

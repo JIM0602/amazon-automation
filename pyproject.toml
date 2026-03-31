@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "amazon-ai-system"
+version = "0.1.0"
+description = "PUDIWIND亚马逊AI智能化运营系统"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m not integration')",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

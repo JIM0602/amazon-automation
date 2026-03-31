@@ -1,0 +1,10 @@
+验证步骤：python -c "from src.config import settings; print('Config loaded OK')"
+状态：需要.env文件后可验证配置加载
+目录结构：已创建
+- src/ ✓
+- tests/ ✓
+- data/ ✓
+- Makefile ✓
+- .env.example ✓
+- requirements.txt ✓
+- pyproject.toml ✓

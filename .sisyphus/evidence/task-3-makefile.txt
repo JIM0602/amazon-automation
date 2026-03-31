@@ -1,0 +1,4 @@
+验证步骤：
+  1. make test → pytest tests/ --mock-external-apis -v
+  2. make lint → ruff check src/ tests/
+状态：已创建，可在安装依赖后执行
