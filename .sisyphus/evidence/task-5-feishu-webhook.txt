@@ -1,0 +1,62 @@
+Task 5 - Feishu Bot Webhook Handling Verification
+=================================================
+Date: 2026-03-31
+Status: PASSED (27/27 tests)
+
+## Webhook处理器验证
+
+### 端点
+- FastAPI: POST /feishu/webhook
+
+### 飞书URL验证握手
+请求:
+```json
+{"type": "url_verification", "challenge": "xxxx"}
+```
+响应:
+```json
+{"challenge": "xxxx"}
+```
+测试: test_url_verification_returns_challenge: PASSED
+
+### 消息事件处理
+请求结构:
+```json
+{
+  "header": {"event_type": "im.message.receive_v1"},
+  "event": {
+    "message": {
+      "message_type": "text",
+      "content": "{\"text\": \"?如何优化广告\"}"
+    },
+    "sender": {"sender_id": {"open_id": "ou_xxx"}}
+  }
+}
+```
+响应: {"code": 0}
+测试: test_message_event_returns_code_zero: PASSED
+
+### 签名验证
+算法: SHA256(timestamp + nonce + encrypt_key + body)
+头字段: X-Lark-Signature, X-Lark-Request-Timestamp, X-Lark-Request-Nonce
+- test_validates_signature_with_encrypt_key: PASSED
+- test_rejects_wrong_signature: PASSED
+- test_skips_signature_check_without_encrypt_key: PASSED
+
+### 错误处理
+- 签名失败 → 400 + {"code": 1, "msg": "..."}
+- 非文本消息 → 忽略，返回 {"code": 0}
+- 非消息事件 → 忽略，返回 {"code": 0}
+
+## 测试通过项目
+- test_url_verification_returns_challenge: PASSED
+- test_message_event_returns_code_zero: PASSED
+- test_invalid_json_returns_400: PASSED
+- test_non_message_event_returns_code_zero: PASSED
+- test_non_text_message_type_ignored: PASSED
+- test_parses_valid_json_body: PASSED
+- test_raises_on_invalid_json: PASSED
+
+## 完整测试报告
+pytest tests/test_feishu.py --mock-external-apis -v
+27 passed, 1 warning in 0.98s

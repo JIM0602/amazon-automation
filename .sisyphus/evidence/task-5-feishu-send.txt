@@ -1,0 +1,51 @@
+Task 5 - Feishu Bot Send Logic Verification
+===========================================
+Date: 2026-03-31
+Status: PASSED (27/27 tests)
+
+## send_text_message 发送逻辑验证
+
+### API端点
+- URL: POST https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id
+- 鉴权: Authorization: Bearer {tenant_access_token}
+
+### 请求Payload格式
+```json
+{
+  "receive_id": "{chat_id}",
+  "msg_type": "text",
+  "content": "{\"text\": \"消息内容\"}"
+}
+```
+
+### send_card_message 发送逻辑验证
+
+### 请求Payload格式
+```json
+{
+  "receive_id": "{chat_id}",
+  "msg_type": "interactive",
+  "content": "{...card_json_string...}"
+}
+```
+
+## Token获取验证
+- URL: POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal
+- Body: {"app_id": "...", "app_secret": "..."}
+- 响应: {"code": 0, "tenant_access_token": "...", "expire": 7200}
+- 有效期缓存：expire秒内复用，提前5分钟刷新
+
+## 测试通过项目
+- test_fetches_token_on_first_call: PASSED
+- test_caches_token_within_expiry: PASSED
+- test_refreshes_token_when_expired: PASSED
+- test_raises_on_api_error: PASSED
+- test_sends_correct_payload: PASSED
+- test_sets_authorization_header: PASSED
+- test_sends_interactive_msg_type: PASSED
+- test_card_content_serialized_as_json_string: PASSED
+
+## 关键设计决策
+- content字段必须是JSON字符串（非嵌套dict），符合飞书API规范
+- Authorization头格式：Bearer {token}（空格分隔）
+- Token刷新窗口：expire_at - 300秒（提前5分钟），防止边界失效
