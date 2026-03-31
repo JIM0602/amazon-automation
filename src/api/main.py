@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="PUDIWIND AI System", version="0.1.0")
 
+# --------------------------------------------------------------------------- #
+#  系统管理路由（审计日志 + Kill Switch）
+# --------------------------------------------------------------------------- #
+from src.api.system import router as system_router  # noqa: E402
+app.include_router(system_router)
+
 
 # --------------------------------------------------------------------------- #
 #  健康检查

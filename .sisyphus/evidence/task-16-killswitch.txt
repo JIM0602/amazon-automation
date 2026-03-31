@@ -1,0 +1,62 @@
+# Task 16 证据 — 紧急停机（Kill Switch）系统
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 模块：src/utils/killswitch.py
+
+### 函数签名
+- is_stopped() -> bool
+- activate_stop(reason: str, triggered_by: str) -> None
+- deactivate_stop(triggered_by: str) -> None
+- check_killswitch() -> Callable（装饰器工厂）
+- SystemStoppedError（自定义异常，含 reason 属性）
+
+### 设计特点
+1. is_stopped() 每次查询 DB（不缓存），保证实时生效
+   - 支持 JSON 字段中的字符串 "true"/"false" 和布尔值 True/False
+   - DB 错误时安全降级返回 False
+2. activate_stop() 操作流程：
+   - 写入 system_config（emergency_stop="true" 及元数据）
+   - 调用 _pause_all_jobs() 暂停所有 APScheduler 任务
+   - 记录 audit_log（action="emergency_stop_activated"）
+   - 发送飞书通知（如可用）
+3. deactivate_stop() 操作流程：
+   - 读取停机前状态信息（用于 audit log pre_state）
+   - 更新 system_config（emergency_stop="false"）
+   - 调用 _resume_all_jobs() 恢复所有任务
+   - 记录 audit_log（action="emergency_stop_deactivated"）
+4. check_killswitch() 装饰器：
+   - 每次在函数执行前调用 is_stopped() 检查状态
+   - 停机时 raise SystemStoppedError（包含函数名和停机原因）
+   - 使用 functools.wraps 保留原函数元数据
+
+### system_config 表使用的 key
+- emergency_stop: "true"/"false"
+- emergency_stop_reason: 停机原因
+- emergency_stop_triggered_by: 触发者
+- emergency_stop_activated_at: 激活时间（ISO 8601）
+
+### 测试结果（18/18 通过）
+tests/test_killswitch.py::TestSystemStoppedError::test_is_exception PASSED
+tests/test_killswitch.py::TestSystemStoppedError::test_default_message PASSED
+tests/test_killswitch.py::TestIsStopped::test_is_stopped_true_string PASSED
+tests/test_killswitch.py::TestIsStopped::test_is_stopped_false_string PASSED
+tests/test_killswitch.py::TestIsStopped::test_is_stopped_true_bool PASSED
+tests/test_killswitch.py::TestIsStopped::test_is_stopped_not_configured PASSED
+tests/test_killswitch.py::TestIsStopped::test_is_stopped_db_error_returns_false PASSED
+tests/test_killswitch.py::TestIsStopped::test_is_stopped_reads_db_every_time PASSED
+tests/test_killswitch.py::TestActivateStop::test_activate_stop_writes_config PASSED
+tests/test_killswitch.py::TestActivateStop::test_activate_stop_pauses_scheduler PASSED
+tests/test_killswitch.py::TestActivateStop::test_activate_stop_records_audit_log PASSED
+tests/test_killswitch.py::TestDeactivateStop::test_deactivate_stop_writes_config PASSED
+tests/test_killswitch.py::TestDeactivateStop::test_deactivate_stop_resumes_scheduler PASSED
+tests/test_killswitch.py::TestDeactivateStop::test_deactivate_stop_records_audit_log PASSED
+tests/test_killswitch.py::TestCheckKillswitch::test_check_killswitch_allows_when_not_stopped PASSED
+tests/test_killswitch.py::TestCheckKillswitch::test_check_killswitch_raises_when_stopped PASSED
+tests/test_killswitch.py::TestCheckKillswitch::test_check_killswitch_preserves_function_metadata PASSED
+tests/test_killswitch.py::TestCheckKillswitch::test_check_killswitch_error_includes_function_name PASSED
+
+### API 端点
+GET  /api/system/status  — 返回停机状态 {stopped, reason, triggered_by, activated_at}
+POST /api/system/stop    — 激活停机 body: {reason, triggered_by}
+POST /api/system/resume  — 解除停机 body: {triggered_by}（可选）

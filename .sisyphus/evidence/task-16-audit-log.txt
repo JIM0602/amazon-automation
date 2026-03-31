@@ -1,0 +1,38 @@
+# Task 16 证据 — 审计日志系统
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 模块：src/utils/audit.py
+
+### 函数签名
+- log_action(action: str, actor: str, pre_state: dict = None, post_state: dict = None) -> None
+- get_recent_logs(limit: int = 50) -> list[dict]
+- audit_decorator(action: str, actor: str = "system") -> Callable
+
+### 设计特点
+- log_action 使用 try/except 包裹所有 DB 操作，失败只记录日志，不抛出异常（非阻塞）
+- db_session 在模块顶部导入，保证测试 patch 生效
+- audit_decorator 使用 functools.wraps 保留原函数元数据
+- 异常情况下仍然记录审计日志（post_state 包含 error_type 和 error）
+
+### 测试结果（9/9 通过）
+tests/test_audit.py::TestLogAction::test_log_action_basic PASSED
+tests/test_audit.py::TestLogAction::test_log_action_with_states PASSED
+tests/test_audit.py::TestLogAction::test_log_action_non_blocking_on_error PASSED
+tests/test_audit.py::TestGetRecentLogs::test_get_recent_logs_returns_list PASSED
+tests/test_audit.py::TestGetRecentLogs::test_get_recent_logs_passes_limit PASSED
+tests/test_audit.py::TestGetRecentLogs::test_get_recent_logs_returns_empty_on_error PASSED
+tests/test_audit.py::TestAuditDecorator::test_audit_decorator_logs_on_success PASSED
+tests/test_audit.py::TestAuditDecorator::test_audit_decorator_logs_on_exception PASSED
+tests/test_audit.py::TestAuditDecorator::test_audit_decorator_preserves_function_metadata PASSED
+
+### 审计日志字段映射（来自 AuditLog 模型）
+- id: UUID PK
+- action: 操作名称（indexed）
+- actor: 操作者
+- pre_state: JSON（操作前状态）
+- post_state: JSON（操作后状态）
+- created_at: 时间戳
+
+### API 端点
+GET /api/system/audit-logs?limit=50 — 返回最近50条审计日志

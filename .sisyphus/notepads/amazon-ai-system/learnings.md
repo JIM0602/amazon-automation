@@ -404,3 +404,60 @@ def client_factory(*args, **kwargs):
 with patch("httpx.Client", side_effect=client_factory):
     result = bitable_client.batch_create_records(...)
 ```
+
+## [2026-03-31] T16 — 审计日志系统 & 紧急停机（Kill Switch）
+
+### 模块结构
+- `src/utils/audit.py`：`log_action / get_recent_logs / audit_decorator`
+- `src/utils/killswitch.py`：`is_stopped / activate_stop / deactivate_stop / check_killswitch / SystemStoppedError`
+- `src/api/system.py`：4个 FastAPI 路由（GET status / POST stop / POST resume / GET audit-logs）
+- `src/utils/__init__.py`：re-export 上述所有公共 API
+
+### 关键设计决策
+
+#### Kill Switch 无缓存原则
+- `is_stopped()` 每次必须读 DB，绝不缓存
+- 使用模块级 `db_session` 导入，测试 patch 可正常覆盖
+- system_config 中使用多个辅助 key：`emergency_stop_reason/triggered_by/activated_at`
+
+#### audit_logs 写入非阻塞模式
+```python
+try:
+    with db_session() as session:
+        session.add(AuditLog(...))
+        session.commit()
+except Exception as exc:
+    logger.error("审计日志写入失败（非致命）: %s", exc)
+    # 不 re-raise，保证主流程继续
+```
+
+#### _upsert_config 不依赖 PostgreSQL 特有语法
+- 使用 `session.get(SystemConfig, key)` → 若 None 则 add，否则修改 value
+- 避免 `pg_insert().on_conflict_do_update()`，确保 SQLite 兼容（测试环境）
+
+#### check_killswitch 装饰器工厂模式
+```python
+@check_killswitch()   # 注意：必须带括号，是装饰器工厂
+def run_agent():
+    ...
+```
+- 工厂模式允许未来扩展参数（如指定豁免角色）
+
+#### activate_stop 操作顺序（重要）
+1. 写入 system_config（先持久化，保证状态可恢复）
+2. 暂停调度任务（调用 _pause_all_jobs）
+3. 写入 audit_log（记录，非阻塞）
+4. 飞书通知（最后，非关键路径）
+
+### system_config 表字段使用约定
+- key `emergency_stop`: "true" / "false"（字符串）
+- 存储 JSON 字段的 value 类型 = JSON，所以实际是 `"true"` 字符串
+- `is_stopped()` 中同时处理 bool/str 两种情况
+
+### 踩坑预防
+1. `_upsert_config` 避免使用 PostgreSQL 特有的 UPSERT 语法（`insert().on_conflict_do_update()`），改用 get-then-set
+2. killswitch.py 中导入 audit 模块时使用函数内导入（`from src.utils.audit import log_action`），避免循环导入
+3. FastAPI 路由注册：在 main.py 中用 `from src.api.system import router; app.include_router(router)` 完成
+
+### 测试结果
+27/27 PASSED（test_audit.py: 9 + test_killswitch.py: 18）
