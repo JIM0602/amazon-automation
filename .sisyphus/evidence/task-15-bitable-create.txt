@@ -1,0 +1,47 @@
+# Task 15 证据 — Bitable Create Record（新建记录）
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 场景描述
+验证 BitableSyncClient.create_record() 方法：
+- 成功时返回 API 返回的 record dict
+- 调用正确的 URL（POST /bitable/v1/apps/{app_token}/tables/{table_id}/records）
+- 请求头携带 Bearer token
+- API 错误时返回空 dict
+- HTTP 异常时返回空 dict，不抛出异常
+- 成功时写入 audit_logs 表（action=bitable.create_record, actor=bitable_sync）
+
+## 测试结果
+tests/test_bitable_sync.py::TestCreateRecord::test_returns_record_on_success PASSED
+tests/test_bitable_sync.py::TestCreateRecord::test_calls_correct_url PASSED
+tests/test_bitable_sync.py::TestCreateRecord::test_sends_bearer_token PASSED
+tests/test_bitable_sync.py::TestCreateRecord::test_returns_empty_dict_on_api_error PASSED
+tests/test_bitable_sync.py::TestCreateRecord::test_returns_empty_dict_on_http_exception PASSED
+tests/test_bitable_sync.py::TestCreateRecord::test_writes_audit_log_on_success PASSED
+
+## API 端点
+POST https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records
+Authorization: Bearer {tenant_access_token}
+Content-Type: application/json; charset=utf-8
+
+Request body:
+{
+  "fields": {
+    "列名": "值"
+  }
+}
+
+Response (success):
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "record": {
+      "record_id": "recXXXXXX",
+      "fields": {...}
+    }
+  }
+}
+
+## 实现文件
+src/feishu/bitable_sync.py — BitableSyncClient.create_record()
