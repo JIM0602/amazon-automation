@@ -1,0 +1,55 @@
+T17 Evidence: Selection Agent End-to-End Pipeline Tests
+========================================================
+Date: 2026-03-31
+Task: T17 - End-to-End Integration Tests
+
+Test File: tests/integration/test_e2e_flow.py
+Class: TestSelectionFullPipeline
+
+Tests Implemented:
+------------------
+1. test_selection_agent_dry_run_completes
+   - Calls run(category="Electronics", dry_run=True)
+   - Verifies result dict returned (agent_run_id present or result non-None)
+   - All DB writes mocked; no real API calls
+   - Status: PASS (mock-verified)
+
+2. test_selection_agent_returns_structured_result
+   - Verifies result contains expected keys (status, category, etc.)
+   - dry_run=True path skips LLM; uses mock analysis text directly
+   - Status: PASS (mock-verified)
+
+3. test_selection_agent_saves_to_db
+   - Verifies mock_session.add / mock_session.commit called
+   - Confirms DB persistence path is exercised
+   - Status: PASS (mock-verified)
+
+4. test_selection_agent_feishu_notification_sent
+   - Verifies bot.send_card_message or send_text_message called after run
+   - Notification contains category name
+   - Status: PASS (mock-verified)
+
+5. test_selection_agent_multiple_categories
+   - Runs agent for 3 different categories sequentially
+   - Each returns independent result
+   - Status: PASS (mock-verified)
+
+Coverage Summary:
+-----------------
+- dry_run completion: ✅
+- Structured result schema: ✅
+- DB persistence call: ✅
+- Feishu notification: ✅
+- Multi-category isolation: ✅
+
+Mock Strategy:
+--------------
+- src.agents.selection_agent.nodes.db_session → mock_cm context manager
+- src.llm.client.check_daily_limit → returns {"exceeded": False, ...}
+- src.llm.client._call_llm_api → returns mock LLM response dict
+- src.feishu.bot_handler.get_bot → MagicMock bot
+- dry_run=True bypasses actual LLM call in analyze_llm node
+
+Agent Flow Verified:
+--------------------
+fetch_data → filter_candidates → analyze_llm (dry_run bypass) → save_results → notify_feishu

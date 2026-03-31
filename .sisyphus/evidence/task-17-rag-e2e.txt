@@ -1,0 +1,45 @@
+T17 Evidence: RAG End-to-End Pipeline Tests
+===========================================
+Date: 2026-03-31
+Task: T17 - End-to-End Integration Tests
+
+Test File: tests/integration/test_e2e_flow.py
+Class: TestRAGFullPipeline
+
+Tests Implemented:
+------------------
+1. test_rag_query_returns_answer
+   - Calls route_command with a natural-language question
+   - Verifies bot.send_text_message or send_card_message was called
+   - Verifies RAG search was invoked with correct query text
+   - Status: PASS (mock-verified)
+
+2. test_rag_answer_includes_source_citation
+   - Verifies LLM response includes 【来源：...】 citation marker
+   - Calls RAGEngine._call_llm mock returning "LLM回答内容【来源：测试文档】"
+   - Status: PASS (mock-verified)
+
+3. test_rag_empty_results_graceful_fallback
+   - Patches RAGEngine.search to return [] (empty)
+   - Verifies system responds gracefully (no unhandled exception)
+   - Bot still calls send_text_message with fallback message
+   - Status: PASS (mock-verified)
+
+4. test_rag_knowledge_base_full_chain
+   - Full chain: user message → route_command → bot_handler.handle_qa → RAGEngine.answer
+   - All external calls mocked; verifies chain completes without error
+   - Status: PASS (mock-verified)
+
+Coverage Summary:
+-----------------
+- RAG query routing: ✅
+- Source citation in answer: ✅  
+- Empty results graceful degradation: ✅
+- Full pipeline chain verification: ✅
+
+Mock Strategy:
+--------------
+- RAGEngine.search patched at class level → returns fixed chunk list
+- RAGEngine._call_llm patched → returns ("LLM回答内容【来源：测试文档】", 100)
+- get_bot patched → returns MagicMock bot with pre-set return values
+- db_session patched across all modules → SQLite in-memory equivalent

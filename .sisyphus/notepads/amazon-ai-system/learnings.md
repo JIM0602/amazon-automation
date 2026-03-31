@@ -648,3 +648,55 @@ async def feishu_card_callback(request: Request) -> Response:
 ### 验证结果
 - `pytest tests/test_daily_report.py --mock-external-apis` → 69 passed in 1.21s
 - `pytest --mock-external-apis` → 475 passed (零回归)
+
+## [2026-03-31] T17 端到端集成测试
+
+### 集成测试目录结构
+```
+tests/integration/
+├── __init__.py
+├── conftest.py              # 集成测试专用 fixtures（function scope）
+├── test_e2e_flow.py         # 4个端到端流程（RAG/选品/飞书/日报）
+├── test_error_recovery.py   # 错误恢复场景（LLM超时/预算超限/卖家精灵/DB断线）
+└── test_concurrent.py       # 并发场景（5并发飞书/并发Agent/连接池安全）
+```
+
+### RAGEngine 初始化绕过模式
+- 集成测试中使用 `RAGEngine.__new__(RAGEngine)` 绕过 `__init__`，避免读取 settings 和创建 OpenAI 客户端
+- 然后手动设置 `engine._api_key = "test"`, `engine._model = "gpt-4o-mini"`, `engine._openai_client = None`
+
+### mock_all_external fixture 设计
+- 综合 fixture，同时 patch 飞书Bot + RAG.search + RAG._call_llm + check_daily_limit + _call_llm_api + 多个 db_session
+- 返回 dict：`{"bot", "rag_results", "llm_response", "db_session", "db_session_obj", "audit_session"}`
+- Scope = function（不影响单元测试）
+
+### 并发测试关键点
+- `_CONTEXT` 全局字典在并发测试前需 `_CONTEXT.clear()`（防止跨测试污染）
+- `RAGEngine._engine_instance` 单例在多线程 get_engine() 时需 patch `__init__` 避免初始化竞争
+- ThreadPoolExecutor + `as_completed(timeout=N)` 用于死锁检测（超时即报警）
+- threading.Lock 用于线程安全地收集结果
+
+### 已验证的 patch 路径（集成测试）
+- `src.feishu.bot_handler.get_bot`
+- `src.agents.core_agent.daily_report.get_bot`
+- `src.llm.cost_monitor.get_bot`
+- `src.knowledge_base.rag_engine.RAGEngine.search`
+- `src.knowledge_base.rag_engine.RAGEngine._call_llm`
+- `src.llm.client.check_daily_limit`
+- `src.llm.client._call_llm_api`
+- `src.llm.client.db_session`
+- `src.utils.audit.db_session`
+- `src.utils.killswitch.db_session`
+- `src.agents.selection_agent.nodes.db_session`
+- `src.agents.core_agent.daily_report.db_session`
+- `src.knowledge_base.rag_engine.db_session`
+
+### dry_run=True 在并发测试中的作用
+- selection_agent dry_run=True 时 analyze_llm 节点直接用 mock 分析文本，无需 LLM 调用
+- 使并发 Agent 测试可以在 mock 环境中快速完成，无网络 I/O 延迟
+
+### 证据文件位置
+- `.sisyphus/evidence/task-17-rag-e2e.txt`
+- `.sisyphus/evidence/task-17-selection-e2e.txt`
+- `.sisyphus/evidence/task-17-error-recovery.txt`
+- `.sisyphus/evidence/task-17-concurrent.txt`

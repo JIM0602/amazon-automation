@@ -1,0 +1,97 @@
+T17 Evidence: Concurrent Scenario Tests
+========================================
+Date: 2026-03-31
+Task: T17 - End-to-End Integration Tests
+
+Test File: tests/integration/test_concurrent.py
+
+Classes and Tests:
+------------------
+
+Class: TestConcurrentFeishuRequests (5 concurrent Feishu requests)
+  1. test_5_concurrent_qa_requests
+     - 5 threads simultaneously call route_command with different QA messages
+     - Uses threading.Thread directly
+     - Asserts: no errors, 5 results returned
+     - Verifies no race condition in message routing
+     
+  2. test_5_concurrent_requests_via_executor
+     - ThreadPoolExecutor(max_workers=5) submits 5 route_command calls
+     - as_completed() collects all 5 futures
+     - Asserts: all futures complete without exception
+     
+  3. test_concurrent_requests_independent_sessions
+     - 5 concurrent requests; each uses independently created db session
+     - Verifies 5 call_counts recorded (no dropped requests)
+     
+  4. test_concurrent_requests_no_shared_state_corruption
+     - _CONTEXT global dict cleared before test
+     - 5 concurrent requests with unique sender_ids
+     - Asserts: 5 results, no state corruption
+     
+  5. test_concurrent_bot_send_calls
+     - 5 concurrent requests → bot.send_* called ≥ 5 times total
+     - Verifies bot mock accumulates calls correctly under concurrency
+
+Class: TestConcurrentAgentRuns
+  1. test_3_concurrent_selection_agents
+     - 3 threads each run selection_agent for different categories
+     - (Electronics, HomeKitchen, Sports)
+     - Asserts: no errors, 3 results, agent_run_ids unique (or all None)
+     
+  2. test_2_concurrent_daily_reports
+     - 2 threads simultaneously call generate_daily_report(send_feishu=False)
+     - Asserts: no errors, 2 results
+     
+  3. test_concurrent_mixed_agents
+     - 1 selection agent + 1 daily report run in parallel
+     - Verifies mutual independence (no shared state corruption)
+     
+  4. test_concurrent_selection_agents_with_executor
+     - ThreadPoolExecutor(max_workers=3) runs 3 selection agents
+     - Categories: Toys, Garden, Automotive
+     - Asserts: all 3 complete without exception
+
+Class: TestConcurrentDatabaseAccess (connection pool safety)
+  1. test_db_session_thread_safety
+     - 10 threads simultaneously call mock_cm() as context manager
+     - Asserts: 10 session_ids recorded, no crash
+     
+  2. test_concurrent_db_writes_no_deadlock
+     - 5 threads run selection agent with dry_run=True
+     - 30-second deadline; asserts no thread is still alive (no deadlock)
+     
+  3. test_concurrent_audit_log_writes
+     - 5 threads call route_command; audit log writes happen concurrently
+     - Asserts: no crash (audit_session mock absorbs concurrent writes)
+     
+  4. test_connection_pool_exhaustion_graceful
+     - 10 concurrent requests (exceeds typical pool size of 5)
+     - Mock DB has no real pool limit; verifies no crash in mock scenario
+     
+  5. test_rag_engine_singleton_thread_safety
+     - 8 threads call get_engine() simultaneously
+     - RAGEngine.__init__ patched; asserts 8 results, no errors
+     
+  6. test_llm_cost_monitor_concurrent_checks
+     - 8 threads call check_daily_limit() concurrently
+     - Asserts: 8 results, all show exceeded=False (consistent mock)
+
+Coverage Summary:
+-----------------
+- 5 concurrent Feishu requests: ✅
+- Thread-safe message routing (_CONTEXT isolation): ✅
+- Concurrent selection agent runs: ✅
+- Concurrent daily report generation: ✅
+- Mixed agent concurrency: ✅
+- DB connection thread safety: ✅
+- Deadlock detection (timeout-based): ✅
+- RAGEngine singleton thread safety: ✅
+- LLM cost monitor concurrency: ✅
+
+Concurrency Tools Used:
+-----------------------
+- threading.Thread (direct thread management)
+- concurrent.futures.ThreadPoolExecutor (pool-based)
+- threading.Lock (result collection)
+- as_completed() with timeout (deadlock prevention)

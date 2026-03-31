@@ -1,0 +1,90 @@
+T17 Evidence: Error Recovery Scenario Tests
+============================================
+Date: 2026-03-31
+Task: T17 - End-to-End Integration Tests
+
+Test File: tests/integration/test_error_recovery.py
+
+Classes and Tests:
+------------------
+
+Class: TestLLMTimeoutRecovery
+  1. test_llm_timeout_raises_and_handled
+     - _call_llm_api raises TimeoutError
+     - System catches → returns error response (no unhandled exception)
+     
+  2. test_llm_api_call_failure_graceful
+     - _call_llm_api raises ConnectionError
+     - route_command still returns (degraded) response
+     
+  3. test_llm_partial_response_handled
+     - _call_llm_api returns incomplete dict (missing 'content')
+     - System handles KeyError gracefully
+     
+  4. test_rag_llm_timeout_falls_back_to_search_results
+     - RAGEngine._call_llm raises TimeoutError
+     - System falls back to raw search results or empty answer
+     - No crash
+
+Class: TestBudgetExceededRecovery
+  1. test_budget_exceeded_blocks_llm_call
+     - check_daily_limit returns {"exceeded": True, "daily_cost": 55.0}
+     - LLM call is NOT made (DailyCostLimitExceeded raised)
+     - Bot sends budget-exceeded warning message
+     
+  2. test_budget_exceeded_feishu_warning_sent
+     - Verifies get_bot().send_text_message called with warning text
+     
+  3. test_budget_warning_threshold_notification
+     - check_daily_limit returns {"exceeded": False, "warning": True, "percentage": 85}
+     - Warning notification sent but operation continues
+     
+  4. test_selection_agent_respects_budget_limit
+     - selection agent with exceeded budget → DailyCostLimitExceeded
+     - Agent result indicates budget error
+
+Class: TestSellerSpriteErrorRecovery
+  1. test_seller_sprite_unavailable_uses_cached_data
+     - SellerSprite API raises ConnectionError
+     - Agent falls back to cached/mock data
+     - Selection still completes (degraded mode)
+     
+  2. test_seller_sprite_rate_limit_retry
+     - SellerSprite returns 429 rate limit
+     - System retries or degrades gracefully
+     
+  3. test_seller_sprite_malformed_response_handled
+     - SellerSprite returns invalid JSON
+     - JSONDecodeError caught; agent continues with empty data
+
+Class: TestDatabaseErrorRecovery
+  1. test_db_connection_error_on_write
+     - mock_session.commit raises OperationalError
+     - System catches; returns error status (no crash)
+     
+  2. test_db_reconnect_on_next_request
+     - After DB error, subsequent request succeeds (mock reset)
+     
+  3. test_db_rollback_on_exception
+     - mid-transaction exception → mock_session.rollback called
+     
+  4. test_db_timeout_handled_gracefully
+     - mock_session.__enter__ raises TimeoutError
+     - System returns error response
+     
+  5. test_audit_log_db_error_does_not_break_main_flow
+     - audit db_session raises error
+     - Main operation still completes (audit is non-critical)
+     
+  6. test_rag_db_error_returns_empty_results
+     - RAG db_session raises OperationalError
+     - RAGEngine.search returns [] gracefully
+
+Coverage Summary:
+-----------------
+- LLM timeout/failure: ✅
+- Budget limit enforcement: ✅
+- SellerSprite degradation: ✅
+- DB error handling + rollback: ✅
+- Audit log non-critical path: ✅
+- Cross-component error isolation: ✅
