@@ -1,0 +1,26 @@
+# Task 8 证据 — 指令路由完整实现
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## command_router.py 路由规则（优先级从高到低）
+
+| 触发条件 | action | 说明 |
+|---------|--------|------|
+| 以"？"/"?"/"问："开头 | knowledge_query | RAG知识库问答 |
+| 包含"暂停所有"或"紧急停机" | emergency_stop | 新增 |
+| 消息为"帮助"或"help"(不区分大小写) | help | 新增，返回指令列表 |
+| 包含"日报"/"报告"/"今日报告" | daily_report | 原有扩展 |
+| 包含"选品" | selection_analysis | 原有保持 |
+| 其他 | unknown | 返回帮助提示 |
+
+## 测试覆盖
+- test_emergency_stop_pause_all: PASS
+- test_emergency_stop_critical: PASS  
+- test_help_command_chinese: PASS
+- test_help_command_english: PASS
+- test_help_command_english_uppercase: PASS
+- test_help_message_contains_command_list: PASS
+- test_existing_routes_not_broken_ribao: PASS（兼容性）
+- test_existing_routes_not_broken_xuan_pin: PASS（兼容性）
+
+## 原有27个测试全部通过（兼容性验证）

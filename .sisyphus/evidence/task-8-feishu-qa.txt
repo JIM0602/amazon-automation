@@ -1,0 +1,30 @@
+# Task 8 证据 — 飞书机器人问答功能（RAG集成）
+# 生成时间: 2026-03-31
+# 验证结果: PASS
+
+## 测试运行结果
+
+### tests/test_feishu_qa.py --mock-external-apis
+31 passed, 1 warning in 1.17s
+
+### tests/test_feishu.py（兼容性验证）
+27 passed, 1 warning in 1.58s（原有全部通过）
+
+## 实现的功能
+
+### bot_handler.py 新增
+1. `send_thinking(chat_id)` - 发送"🤔 正在思考中..."占位消息，返回 message_id
+2. `update_message(message_id, new_content)` - 使用 PATCH API 更新消息内容
+3. `_CONTEXT: dict` - 模块级会话上下文字典
+4. `_add_to_context(user_id, role, content)` - 添加上下文，超过5轮自动清空
+5. `handle_qa(user_id, chat_id, question)` - 完整问答流程
+
+### 会话上下文逻辑
+- 存储在 `_CONTEXT[user_id]` 列表中
+- 每轮2条：{"role":"user",...} + {"role":"assistant",...}
+- 超过10条（5轮）时触发清空（`len > _MAX_CONTEXT_ROUNDS * 2`）
+
+### RAG 集成
+- `try/except ImportError` 处理 rag_query 不可用情况
+- `try/except Exception` 处理运行时错误
+- 错误时统一返回"系统出错，请稍后重试"，不暴露内部错误堆栈

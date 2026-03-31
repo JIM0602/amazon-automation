@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import time
 from typing import Optional
 
@@ -14,12 +15,26 @@ try:
 except ImportError:  # pragma: no cover
     settings = None  # type: ignore[assignment]
 
+try:
+    from src.knowledge_base.rag_engine import query as rag_query
+except ImportError:  # pragma: no cover
+    rag_query = None  # type: ignore[assignment]
+
+logger = logging.getLogger(__name__)
+
 # --------------------------------------------------------------------------- #
 #  飞书 Open API 端点
 # --------------------------------------------------------------------------- #
 _FEISHU_API_BASE = "https://open.feishu.cn/open-apis"
 _TOKEN_URL = f"{_FEISHU_API_BASE}/auth/v3/tenant_access_token/internal"
 _SEND_MSG_URL = f"{_FEISHU_API_BASE}/im/v1/messages?receive_id_type=chat_id"
+_UPDATE_MSG_URL = f"{_FEISHU_API_BASE}/im/v1/messages/{{message_id}}"
+
+# --------------------------------------------------------------------------- #
+#  会话上下文存储（内存，模块级字典）
+# --------------------------------------------------------------------------- #
+_CONTEXT: dict = {}
+_MAX_CONTEXT_ROUNDS = 5
 
 
 class FeishuBot:
@@ -103,6 +118,29 @@ class FeishuBot:
         resp.raise_for_status()
         return resp.json()
 
+    def send_thinking(self, chat_id: str) -> str:
+        """发送"🤔 正在思考中..."临时消息，返回 message_id。"""
+        result = self.send_text_message(chat_id, "🤔 正在思考中...")
+        # 从响应中提取 message_id
+        message_id = result.get("data", {}).get("message_id", "")
+        return message_id
+
+    def update_message(self, message_id: str, new_content: str) -> dict:
+        """用新内容替换已发送的消息（PUT /im/v1/messages/{message_id}）。"""
+        url = _UPDATE_MSG_URL.format(message_id=message_id)
+        payload = {
+            "msg_type": "text",
+            "content": json.dumps({"text": new_content}, ensure_ascii=False),
+        }
+        resp = requests.patch(
+            url,
+            headers=self._auth_headers(),
+            json=payload,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     # ---------------------------------------------------------------------- #
     #  Webhook 解析
     # ---------------------------------------------------------------------- #
@@ -164,3 +202,73 @@ def get_bot() -> FeishuBot:
             encrypt_key=getattr(settings, "FEISHU_ENCRYPT_KEY", None),
         )
     return _bot_instance
+
+
+# --------------------------------------------------------------------------- #
+#  模块级问答辅助函数
+# --------------------------------------------------------------------------- #
+
+def _get_context(user_id: str) -> list:
+    """获取用户会话上下文列表。"""
+    return _CONTEXT.get(user_id, [])
+
+
+def _add_to_context(user_id: str, role: str, content: str) -> None:
+    """向用户会话上下文追加一条消息，超过5轮时清除。"""
+    if user_id not in _CONTEXT:
+        _CONTEXT[user_id] = []
+    _CONTEXT[user_id].append({"role": role, "content": content})
+    # 每轮含一条 user + 一条 assistant，超过5轮（10条）时清除
+    if len(_CONTEXT[user_id]) > _MAX_CONTEXT_ROUNDS * 2:
+        _CONTEXT[user_id] = []
+
+
+def handle_qa(user_id: str, chat_id: str, question: str) -> str:
+    """完整问答流程：发送thinking → 调用RAG → 格式化 → 更新消息。
+
+    Args:
+        user_id: 发送者 open_id（用于会话上下文）。
+        chat_id: 飞书群/会话 ID（用于发送消息）。
+        question: 用户提问文本。
+
+    Returns:
+        最终回答字符串。
+    """
+    bot = get_bot()
+
+    # 1. 发送"正在思考中..."占位消息
+    message_id = ""
+    try:
+        message_id = bot.send_thinking(chat_id)
+    except Exception:
+        logger.warning("send_thinking 失败，跳过占位消息")
+
+    # 2. 记录用户问题到上下文
+    _add_to_context(user_id, "user", question)
+
+    # 3. 调用 RAG 获取答案
+    answer = ""
+    try:
+        if rag_query is None:
+            raise ImportError("rag_query 不可用")
+        answer = rag_query(question)
+    except ImportError:
+        answer = "系统出错，请稍后重试"
+    except Exception:
+        answer = "系统出错，请稍后重试"
+
+    # 4. 记录助手回答到上下文
+    _add_to_context(user_id, "assistant", answer)
+
+    # 5. 更新占位消息为正式回答
+    if message_id:
+        try:
+            bot.update_message(message_id, answer)
+        except Exception:
+            logger.warning("update_message 失败，尝试发送新消息")
+            try:
+                bot.send_text_message(chat_id, answer)
+            except Exception:
+                logger.error("send_text_message 也失败，放弃发送")
+
+    return answer
