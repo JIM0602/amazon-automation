@@ -1,0 +1,41 @@
+RAG Query - Negative Result Evidence (Refusal to Fabricate)
+============================================================
+Task: T7 - RAG System with pgvector embeddings
+Date: 2026-03-31
+
+Test: RAG Engine correctly refuses to fabricate when no relevant knowledge found
+Query: "量子计算在宠物用品电商中的应用前景如何？"
+
+Expected behavior:
+  - RAGEngine.search() returns empty list (no relevant documents)
+  - RAGEngine.answer() MUST NOT fabricate an answer
+  - Answer must contain "没有找到相关信息"
+
+Mock test result:
+  Question: "量子计算在宠物用品电商中的应用前景如何？"
+  Retrieved chunks: 0 (empty search results)
+
+  Generated answer:
+    "根据现有知识库，我没有找到关于量子计算在宠物用品电商中的应用前景如何？的相关信息"
+
+  sources: []
+  model: gpt-4o-mini
+  tokens_used: 0
+
+Test passed: ✓
+  - Answer correctly contains "没有找到相关信息"
+  - No fabricated content returned
+  - Sources list is empty
+  - tokens_used is 0 (no LLM call needed)
+
+System Prompt Enforcement:
+  规则（必须严格遵守）：
+  1. 只能基于下方提供的知识库内容回答问题，不能使用知识库之外的信息。
+  2. 如果知识库中没有相关信息，必须回答：
+     "根据现有知识库，我没有找到关于[问题关键词]的相关信息"
+  3. 在回答末尾标注引用来源：【来源：文档名】
+
+Anti-hallucination logic verified:
+  - Empty search results → immediate refusal response
+  - LLM not called when no context available
+  - Response template enforced programmatically

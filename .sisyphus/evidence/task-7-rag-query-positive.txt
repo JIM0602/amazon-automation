@@ -1,0 +1,37 @@
+RAG Query - Positive Result Evidence
+======================================
+Task: T7 - RAG System with pgvector embeddings
+Date: 2026-03-31
+
+Test: Knowledge base query returning relevant results
+Query: "BSR排名是什么？对选品有何意义？"
+
+Expected behavior:
+  - RAGEngine.search() returns chunks with similarity_score > 0.8
+  - RAGEngine.answer() generates answer grounded in retrieved documents
+  - Answer includes source attribution【来源：xxx】
+
+Mock test result:
+  Question: "BSR排名是什么？对选品有何意义？"
+  Retrieved chunks: 1
+    [0] chunk_text="BSR（Best Seller Rank）由亚马逊根据销售量、销售速度及历史销量综合计算，每小时更新。"
+        similarity_score=0.92
+        metadata.category="选品方法论"
+        metadata.title="Amazon选品指南"
+
+  Generated answer:
+    "BSR（Best Seller Rank）是亚马逊的销售排名，每小时更新一次。排名越小代表销量越高。
+    对选品的意义：BSR前100名的产品代表该细分市场的畅销品，可以分析这些产品的共同特征
+    （价格段、功能点、包装规格）来发现市场偏好；BSR突然上升的产品往往是新趋势的信号，
+    值得追踪研究。
+    
+    【来源：Amazon选品指南】"
+
+  sources: [{"title": "Amazon选品指南", "category": "选品方法论", "source": "doc1.md"}]
+  model: gpt-4o-mini
+  tokens_used: 150
+
+Test passed: ✓
+  - Answer contains source attribution
+  - Answer is grounded in retrieved knowledge
+  - No fabrication detected
