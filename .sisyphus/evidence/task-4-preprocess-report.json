@@ -1,0 +1,74 @@
+{
+  "task": "T4: 知识库文档预处理（清洗、分类、分块）",
+  "generated_at": "2026-03-31",
+  "files_created": [
+    "src/knowledge_base/document_processor.py",
+    "scripts/preprocess_docs.py",
+    "tests/test_preprocess.py"
+  ],
+  "files_modified": [
+    "tests/golden_qa.json"
+  ],
+  "document_processor_structure": {
+    "class": "DocumentProcessor",
+    "methods": [
+      {
+        "name": "load_document",
+        "signature": "load_document(self, file_path: str) -> dict",
+        "supported_formats": ["docx", "md", "txt"],
+        "returns": "{title, content, source, format}"
+      },
+      {
+        "name": "classify_document",
+        "signature": "classify_document(self, content: str) -> str",
+        "categories": [
+          "选品方法论",
+          "广告策略",
+          "Listing优化",
+          "品牌建设",
+          "供应链管理",
+          "通用运营"
+        ],
+        "method": "keyword_matching"
+      },
+      {
+        "name": "deduplicate",
+        "signature": "deduplicate(self, documents: list[dict]) -> list[dict]",
+        "method": "md5_hash_comparison"
+      },
+      {
+        "name": "chunk_document",
+        "signature": "chunk_document(self, doc: dict, max_tokens: int = 800, overlap_tokens: int = 100) -> list[dict]",
+        "strategy": "paragraph_based_chunking",
+        "token_estimate": "1_token_equals_4_chars",
+        "chunk_fields": ["chunk_text", "chunk_index", "metadata"]
+      },
+      {
+        "name": "process_batch",
+        "signature": "process_batch(self, input_dir: str, output_dir: str) -> dict",
+        "report_fields": ["total", "succeeded", "failed", "categories", "failed_files"]
+      }
+    ]
+  },
+  "test_results": {
+    "total_tests": 31,
+    "passed": 31,
+    "failed": 0,
+    "test_classes": [
+      "TestClassifyDocument (8 tests)",
+      "TestChunkDocument (6 tests)",
+      "TestDeduplicate (5 tests)",
+      "TestProcessBatch (7 tests)",
+      "TestLoadDocument (5 tests)"
+    ]
+  },
+  "cli_script": {
+    "path": "scripts/preprocess_docs.py",
+    "args": ["--input <dir>", "--output <dir>", "--check-duplicates"],
+    "output": "data/processed_docs/*.json + preprocess_report.json"
+  },
+  "optional_deps_handled": {
+    "python-docx": "try/except ImportError → _DOCX_AVAILABLE flag",
+    "unstructured": "try/except ImportError → _UNSTRUCTURED_AVAILABLE flag"
+  }
+}
