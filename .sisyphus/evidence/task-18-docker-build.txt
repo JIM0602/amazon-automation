@@ -1,41 +1,28 @@
-T18 云端部署配置 — 交付清单
-日期: 2026-03-31
+T18 QA 场景：Docker 构建与启动验证
+执行时间：2026-04-01 06:39:26 UTC
+服务器：ubuntu@52.221.207.30
+---
+=== Docker Compose PS ===
+NAME                 IMAGE                    COMMAND                  SERVICE    CREATED          STATUS                       PORTS
+amazon-ai-app        amazon-ai-app:latest     "python -m uvicorn…"    app        19 minutes ago   Up 19 minutes (healthy)      127.0.0.1:8000->8000/tcp
+amazon-ai-postgres   pgvector/pgvector:pg16   "docker-entrypoint…"    postgres   3 hours ago      Up About an hour (healthy)   5432/tcp
 
-已创建文件:
-- deploy/docker/Dockerfile            (2032 bytes) — 多阶段构建，python:3.11-slim，非root appuser
-- deploy/docker/docker-compose.yml    (3138 bytes) — app + postgres，postgres不暴露5432宿主机端口
-- deploy/docker/.dockerignore         (814 bytes)  — 排除.env、__pycache__、tests等
-- deploy/scripts/setup-server.sh      (7141 bytes) — Ubuntu/CentOS自动检测，安装Docker，配置UFW
-- deploy/scripts/deploy.sh            (5104 bytes) — git pull → build --no-cache → up -d → 健康检查 → 飞书通知
-- deploy/scripts/backup-db.sh         (4694 bytes) — pg_dump+gzip，保留7天，自动删除过期
-- deploy/scripts/monitor.sh           (8045 bytes) — 容器状态+磁盘>80%+内存>80%告警，飞书webhook通知
-- deploy/nginx/nginx.conf             (5376 bytes) — HTTP→HTTPS重定向，WebSocket支持，Let's Encrypt占位
-- deploy/systemd/amazon-ai.service    (2089 bytes) — 系统自启动，After=docker.service
-- docs/deployment-guide.md            (19857 bytes) — 全中文大白话9章节部署指南
+=== Docker Images ===
+IMAGE                    ID             DISK USAGE   CONTENT SIZE
+amazon-ai-app:latest     26974b96b221       1.21GB          261MB
+pgvector/pgvector:pg16   7d400e340efb        621MB          156MB
 
-docker-compose config 验证结果:
-[Docker 未安装于本地开发环境（Windows PowerShell）]
-[文件内容完整性验证如下]
+=== Health Check (GET /health) ===
+Response: {"status":"ok"}
 
-docker-compose.yml 关键内容验证:
-✅ app 服务: port 127.0.0.1:8000:8000（仅绑定回环）
-✅ postgres 服务: 无 ports 映射（仅内部网络5432）
-✅ app depends_on postgres (condition: service_healthy)
-✅ app 资源限制: memory: 2g
-✅ postgres 资源限制: memory: 1g
-✅ network: internal (bridge)
-✅ volumes: postgres_data（持久化）, app_logs
-
-Dockerfile 关键内容验证:
-✅ 多阶段构建: builder + runtime
-✅ 非root用户: useradd -r appuser
-✅ 健康检查: HEALTHCHECK CMD curl -f http://localhost:8000/health
-✅ 启动命令: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
-
-关键设计决策:
-- postgres 端口 5432 未映射宿主机（仅内部网络），防止数据库直接暴露
-- app 以 appuser 非root身份运行，提升安全性
-- 每日备份保留7天，自动删除过期文件
-- 监控阈值：磁盘>80%、内存>80% 触发飞书告警
-- nginx 同时支持普通 HTTP 代理和 WebSocket 升级（飞书回调需要）
-- systemd 服务在 Docker 服务启动后才运行，保证依赖顺序
+=== Container Details ===
+Created: 2026-04-01T06:20:14.175652962Z, Status: running, Health: healthy
+---
+结论：PASS
+原因：
+1. 两个容器 (app + postgres) 均处于 healthy 状态
+2. app 容器基于 amazon-ai-app:latest 镜像运行，镜像大小 1.21GB
+3. /health 端点返回 {"status":"ok"}，服务正常响应
+4. 容器已稳定运行 19 分钟，postgres 运行超过 1 小时
+5. 端口 8000 正确映射到 127.0.0.1:8000（仅本地访问，安全配置）
+6. app 容器 depends_on postgres (condition: service_healthy)，启动顺序正确

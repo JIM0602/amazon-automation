@@ -1,0 +1,53 @@
+T18 QA 场景：.env.example 完整性验证
+执行时间：2026-04-01 06:44:00 UTC
+执行位置：本地（E:\amazon-automation）
+---
+=== 验证脚本（Python 本地执行）===
+import re
+with open('src/config.py', encoding='utf-8') as f:
+    config_content = f.read()
+with open('.env.example', encoding='utf-8') as f:
+    env_content = f.read()
+field_names = re.findall(r'^\s{4}([A-Z][A-Z0-9_]+):', config_content, re.MULTILINE)
+[检查每个字段是否出现在 .env.example 中]
+
+=== config.py Settings 类字段（共20个）===
+1.  DATABASE_URL
+2.  OPENAI_API_KEY
+3.  OPENAI_MODEL
+4.  ANTHROPIC_API_KEY
+5.  FEISHU_APP_ID
+6.  FEISHU_APP_SECRET
+7.  FEISHU_VERIFY_TOKEN
+8.  FEISHU_ENCRYPT_KEY
+9.  FEISHU_TEST_CHAT_ID
+10. SELLER_SPRITE_API_KEY
+11. SELLER_SPRITE_USE_MOCK
+12. MAX_DAILY_LLM_COST_USD
+13. DRY_RUN
+14. APP_HOST
+15. APP_PORT
+16. LOG_LEVEL
+17. AMAZON_SP_API_ACCESS_KEY
+18. AMAZON_SP_API_SECRET_KEY
+19. AMAZON_SP_API_REFRESH_TOKEN
+20. AMAZON_MARKETPLACE_ID
+
+=== 验证结果 ===
+Total fields: 20
+Missing from .env.example: [] (空，无缺失)
+Coverage: 20 / 20 (100%)
+
+所有字段均在 .env.example 中有对应条目：✅ DATABASE_URL ✅ OPENAI_API_KEY ✅ OPENAI_MODEL
+✅ ANTHROPIC_API_KEY ✅ FEISHU_APP_ID ✅ FEISHU_APP_SECRET ✅ FEISHU_VERIFY_TOKEN
+✅ FEISHU_ENCRYPT_KEY ✅ FEISHU_TEST_CHAT_ID ✅ SELLER_SPRITE_API_KEY
+✅ SELLER_SPRITE_USE_MOCK ✅ MAX_DAILY_LLM_COST_USD ✅ DRY_RUN ✅ APP_HOST
+✅ APP_PORT ✅ LOG_LEVEL ✅ AMAZON_SP_API_ACCESS_KEY ✅ AMAZON_SP_API_SECRET_KEY
+✅ AMAZON_SP_API_REFRESH_TOKEN ✅ AMAZON_MARKETPLACE_ID
+---
+结论：PASS
+原因：
+1. config.py Settings 类共定义 20 个环境变量字段
+2. .env.example 覆盖率：20/20 = 100%
+3. 无任何字段缺失
+4. 新开发者可完全依据 .env.example 配置完整的运行环境
