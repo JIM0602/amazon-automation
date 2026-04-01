@@ -434,14 +434,6 @@ def generate_feishu_card(report_data: Dict[str, Any]) -> Dict[str, Any]:
                     f"| **订单环比：** {_format_change_text(ord_vs_prev) if ord_vs_prev else '—'}"
                 ),
             },
-            "extra": {
-                "tag": "note",
-                "elements": [
-                    rev_prev_tag,
-                    rev_week_tag,
-                    ord_prev_tag,
-                ],
-            },
         },
         {
             "tag": "div",

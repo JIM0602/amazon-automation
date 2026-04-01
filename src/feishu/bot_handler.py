@@ -99,6 +99,8 @@ class FeishuBot:
             json=payload,
             timeout=10,
         )
+        if not resp.ok:
+            logger.error("send_text_message 失败: status=%s body=%s chat_id=%s", resp.status_code, resp.text, chat_id)
         resp.raise_for_status()
         return resp.json()
 
@@ -115,6 +117,8 @@ class FeishuBot:
             json=payload,
             timeout=10,
         )
+        if not resp.ok:
+            logger.error("send_card_message 失败: status=%s body=%s chat_id=%s", resp.status_code, resp.text, chat_id)
         resp.raise_for_status()
         return resp.json()
 

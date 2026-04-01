@@ -92,8 +92,8 @@ async def feishu_webhook(request: Request) -> Response:
             if text:
                 result = route_command(text, sender_id)
                 action = result.get("action", "")
-                logger.info("路由结果: %s (sender=%s)", action, sender_id)
                 chat_id = message_obj.get("chat_id", "")
+                logger.info("收到指令: action=%s chat_id=%s sender=%s", action, chat_id, sender_id)
 
                 if action == "daily_report" and chat_id:
                     try:
@@ -113,7 +113,28 @@ async def feishu_webhook(request: Request) -> Response:
                     try:
                         bot.send_text_message(chat_id, "⏳ 正在进行选品分析，请稍候...")
                         from src.agents.selection_agent import run
-                        result_text = run()
+                        report = run()
+                        # 将 dict 格式化为可读文本
+                        candidates = report.get("candidates", [])
+                        status = report.get("status", "completed")
+                        error = report.get("error")
+                        if error:
+                            result_text = f"❌ 选品分析出错：{error}"
+                        elif not candidates:
+                            result_text = "⚠️ 选品分析完成，但未找到合适的候选产品。"
+                        else:
+                            lines = [f"✅ 选品分析完成（类目：{report.get('category', '')}）\n"]
+                            for i, c in enumerate(candidates[:5], 1):
+                                name = c.get("name") or c.get("title") or c.get("asin") or f"产品{i}"
+                                score = c.get("score") or c.get("composite_score") or ""
+                                reason = c.get("reason") or c.get("recommendation_reason") or ""
+                                lines.append(f"{i}. {name}")
+                                if score:
+                                    lines.append(f"   综合评分：{score}")
+                                if reason:
+                                    lines.append(f"   推荐理由：{reason}")
+                                lines.append("")
+                            result_text = "\n".join(lines).strip()
                         bot.send_text_message(chat_id, result_text)
                     except Exception as exc:
                         logger.error("选品分析失败: %s", exc)

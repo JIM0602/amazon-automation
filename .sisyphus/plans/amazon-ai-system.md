@@ -1787,7 +1787,7 @@ Wave FINAL (所有任务完成后 — 4个并行审查，然后用户确认):
   - Files: `tests/integration/conftest.py`, `tests/integration/test_e2e_flow.py`, `tests/integration/test_error_recovery.py`, `tests/integration/test_concurrent.py`
   - Pre-commit: `pytest tests/integration/ --mock-external-apis -v`
 
-- [ ] 18. 云服务器部署与24/7运行配置
+- [x] 18. 云服务器部署与24/7运行配置
 
   **What to do**:
   - 创建 `deploy/` 目录结构：
@@ -2476,3 +2476,793 @@ pytest tests/ --mock-external-apis -v
 - [ ] 所有API密钥在.env中，非硬编码
 - [ ] dry-run模式所有Agent可用
 - [ ] 日志审计系统可用
+
+---
+
+# Phase 2：系统优化 + 新Agent开发（第2-3个月）
+
+## Phase 2 TL;DR
+
+> **目标**：基于Phase 1的基础，引入架构优化（Rate Limiter、RAG增强、LLM缓存）+ 开发新Agent（竞品调研、用户画像、Listing文案、广告监控）+ 接入亚马逊SP-API正式环境。
+>
+> **优化项来源**：参考多Agent全流程架构方案，取其精髓：
+> - Rate Limit Controller（防止API封禁）
+> - RAG元数据增强（提高检索精度）
+> - LLM响应缓存（降低Token成本）
+> - JSON Schema输出校验（降低解析错误）
+> - 决策状态机（可追溯、可回滚）
+> - Policy Engine规则引擎（业务硬约束）
+
+---
+
+## Phase 2 Work Objectives
+
+### 核心目标
+1. **架构优化**：引入限流、缓存、规则引擎，提升系统稳定性和成本效率
+2. **新Agent开发**：竞品调研、用户画像、Listing文案、广告监控
+3. **SP-API接入**：从Mock数据切换到真实亚马逊数据
+
+### 具体交付物
+1. **Rate Limit Controller**：统一API限流，支持优先级队列
+2. **RAG元数据增强**：文档按策略单元切分，支持版本和生效日期
+3. **LLM响应缓存**：相同输入哈希命中缓存，降低30%+ Token成本
+4. **JSON Schema校验**：LLM输出强制结构化，降低解析错误
+5. **决策状态机**：Draft→Approved→Executing→Succeeded/Failed→RolledBack
+6. **Policy Engine**：业务规则硬约束（预算上限、变动幅度等）
+7. **竞品调研Agent**：分析竞品价格、评分、Review关键词
+8. **用户画像Agent**：订单/评价/搜索词分析，输出人群标签
+9. **Listing文案Agent**：生成标题/五点描述/广告文案
+10. **广告监控Agent**：ACoS/ROAS监控，异常告警
+
+### Must Have（Phase 2）
+- Rate Limit Controller + 动态优先级
+- LLM响应缓存（Redis）
+- JSON Schema输出校验
+- 决策状态机 + decisions表
+- 竞品调研Agent基础版
+- SP-API正式环境读取（只读，不写入）
+
+### Must NOT Have（Phase 2护栏）
+- ❌ 不做SP-API写入操作（调价、上架、广告调整留到Phase 3）
+- ❌ 不引入Kubernetes（保持Docker Compose）
+- ❌ 不引入Celery（保持APScheduler）
+- ❌ 不引入Prometheus/Grafana（保持飞书告警）
+- ❌ 不引入Neo4j（保持pgvector）
+
+---
+
+## Phase 2 TODOs
+
+### Wave 1：架构优化基础设施（可并行）
+
+- [ ] 21. Rate Limit Controller 统一限流模块
+
+  **What to do**:
+  - 创建 `src/utils/rate_limiter.py`：
+    - 令牌桶算法实现
+    - 支持按API组、账号、优先级维度限流
+    - 优先级权重：critical=1.0, normal=0.6, batch=0.3
+  - 创建 `src/utils/api_priority.py`：
+    - 定义API调用优先级枚举
+    - 风控/紧急调价 > 广告执行 > 市场调研
+  - 集成到现有API调用点：
+    - `src/seller_sprite/client.py`
+    - `src/llm/client.py`
+    - 未来的SP-API客户端
+  - 添加限流指标到审计日志
+
+  **Must NOT do**:
+  - 不引入Redis（Phase 2用内存+数据库，Phase 3再考虑Redis）
+  - 不做分布式限流（单机足够）
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with 22, 23, 24)
+  - **Blocks**: 25, 26, 27
+  - **Blocked By**: None
+
+  **References**:
+  - `src/llm/client.py` - 现有LLM调用点
+  - `src/seller_sprite/client.py` - 现有卖家精灵调用点
+  - `src/utils/audit.py` - 审计日志模式
+
+  **Acceptance Criteria**:
+  - [ ] 令牌桶算法正确实现，支持burst
+  - [ ] 优先级队列正确排序
+  - [ ] 限流触发时返回429或排队等待
+  - [ ] 审计日志记录限流事件
+
+  **QA Scenarios**:
+  ```
+  Scenario: 限流触发验证
+    Tool: Bash (pytest)
+    Steps:
+      1. 连续发送100个低优先级请求
+      2. 验证部分请求被限流（429或延迟）
+      3. 发送1个高优先级请求
+      4. 验证高优先级请求优先处理
+    Expected Result: 高优先级请求在低优先级之前完成
+    Evidence: .sisyphus/evidence/task-21-rate-limit.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(infra): add rate limit controller with priority queue`
+
+- [ ] 22. LLM响应缓存模块
+
+  **What to do**:
+  - 创建 `src/llm/cache.py`：
+    - 输入哈希计算（prompt + context + model）
+    - 缓存存储（先用数据库，预留Redis接口）
+    - TTL过期策略（默认24小时）
+    - 缓存命中率统计
+  - 创建数据库表 `llm_cache`：
+    - cache_key (hash)
+    - prompt_hash
+    - response_json
+    - model
+    - created_at
+    - expires_at
+    - hit_count
+  - 修改 `src/llm/client.py`：
+    - 调用前检查缓存
+    - 调用后写入缓存
+    - 缓存命中时记录审计日志
+  - 添加缓存统计到日报
+
+  **Must NOT do**:
+  - 不缓存带有实时数据的查询（如"今日销量"）
+  - 不缓存超过1MB的响应
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with 21, 23, 24)
+  - **Blocks**: 25, 26
+  - **Blocked By**: None
+
+  **References**:
+  - `src/llm/client.py` - 现有LLM客户端
+  - `src/llm/cost_monitor.py` - 费用监控模式
+  - `alembic/` - 数据库迁移
+
+  **Acceptance Criteria**:
+  - [ ] 相同输入第二次调用命中缓存
+  - [ ] 缓存命中率可查询
+  - [ ] 过期缓存自动清理
+  - [ ] 缓存节省的Token数可统计
+
+  **QA Scenarios**:
+  ```
+  Scenario: 缓存命中验证
+    Tool: Bash (pytest)
+    Steps:
+      1. 发送查询A，记录耗时T1和Token数
+      2. 再次发送相同查询A，记录耗时T2和Token数
+      3. 验证T2 << T1（缓存命中无LLM调用）
+      4. 验证第二次Token数=0
+    Expected Result: 缓存命中，Token消耗为0
+    Evidence: .sisyphus/evidence/task-22-llm-cache.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(llm): add response caching with hash-based lookup`
+
+- [ ] 23. JSON Schema输出校验模块
+
+  **What to do**:
+  - 创建 `src/llm/schema_validator.py`：
+    - 定义常用输出Schema（选品结果、日报、广告策略等）
+    - Pydantic模型定义
+    - 校验失败时的重试逻辑（最多2次）
+  - 创建 `src/llm/schemas/`目录：
+    - `selection_result.py` - 选品结果Schema
+    - `daily_report.py` - 日报Schema
+    - `ad_strategy.py` - 广告策略Schema（预留）
+  - 修改现有Agent输出：
+    - `src/agents/selection_agent/` - 使用Schema校验
+    - `src/agents/core_agent/daily_report.py` - 使用Schema校验
+  - 校验失败时记录到审计日志
+
+  **Must NOT do**:
+  - 不强制所有LLM调用都用Schema（仅结构化输出场景）
+  - Schema校验失败不应阻塞整个流程（降级为原始输出）
+
+  **Recommended Agent Profile**:
+  - **Category**: `unspecified-high`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with 21, 22, 24)
+  - **Blocks**: 25, 26, 27
+  - **Blocked By**: None
+
+  **References**:
+  - `src/agents/selection_agent/prompts.py` - 现有Prompt
+  - `src/agents/core_agent/daily_report.py` - 日报输出
+
+  **Acceptance Criteria**:
+  - [ ] Pydantic Schema定义完整
+  - [ ] 校验成功时输出符合Schema
+  - [ ] 校验失败时自动重试
+  - [ ] 重试2次仍失败时降级处理
+
+  **QA Scenarios**:
+  ```
+  Scenario: Schema校验与重试
+    Tool: Bash (pytest)
+    Steps:
+      1. 模拟LLM返回不符合Schema的输出
+      2. 验证触发重试
+      3. 第二次返回正确格式
+      4. 验证最终输出符合Schema
+    Expected Result: 重试后输出符合Schema
+    Evidence: .sisyphus/evidence/task-23-schema-validation.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(llm): add JSON schema validation with Pydantic`
+
+- [ ] 24. RAG元数据增强
+
+  **What to do**:
+  - 修改 `src/knowledge_base/models.py`：
+    - 添加元数据字段：doc_type, category, version, effective_date, expires_date, priority
+  - 修改 `src/knowledge_base/preprocessor.py`：
+    - 支持从文档提取/推断元数据
+    - 支持按"策略单元"切分（不仅仅是固定长度）
+  - 修改 `src/knowledge_base/rag_engine.py`：
+    - search()方法支持元数据过滤
+    - 先按元数据过滤，再语义检索
+  - 创建Alembic迁移脚本
+  - 重新处理现有知识库文档（添加元数据）
+
+  **Must NOT do**:
+  - 不删除现有文档（增量更新元数据）
+  - 不改变向量维度
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with 21, 22, 23)
+  - **Blocks**: 25, 26, 27, 28
+  - **Blocked By**: None
+
+  **References**:
+  - `src/knowledge_base/rag_engine.py` - 现有RAG引擎
+  - `src/knowledge_base/models.py` - 现有数据模型
+  - `data/knowledge_base/` - 知识库文档
+
+  **Acceptance Criteria**:
+  - [ ] 元数据字段添加到数据库
+  - [ ] 文档处理时提取元数据
+  - [ ] 检索时支持元数据过滤
+  - [ ] 过滤后检索精度提升
+
+  **QA Scenarios**:
+  ```
+  Scenario: 元数据过滤检索
+    Tool: Bash (pytest)
+    Steps:
+      1. 插入两篇文档：A(category=广告), B(category=选品)
+      2. 查询"如何优化广告"，过滤category=广告
+      3. 验证只返回文档A
+    Expected Result: 元数据过滤生效
+    Evidence: .sisyphus/evidence/task-24-rag-metadata.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(rag): add metadata filtering and strategy-based chunking`
+
+### Wave 2：决策追踪与规则引擎（依赖Wave 1）
+
+- [ ] 25. 决策状态机与decisions表
+
+  **What to do**:
+  - 创建数据库表 `decisions`：
+    - id, decision_type, agent_name, input_summary
+    - status (draft/review_required/approved/executing/succeeded/failed/rolled_back)
+    - llm_response_json, validated_output_json
+    - created_at, approved_at, executed_at, completed_at
+    - approved_by, rollback_reason
+  - 创建数据库表 `decision_outcomes`：
+    - decision_id, outcome_type, metrics_json
+    - created_at
+  - 创建 `src/decisions/state_machine.py`：
+    - 状态转换逻辑
+    - 状态变更事件发布
+  - 创建 `src/decisions/manager.py`：
+    - 创建决策、更新状态、记录结果
+  - 集成到现有Agent：
+    - 选品Agent输出时创建decision记录
+    - 审批流程更新decision状态
+
+  **Must NOT do**:
+  - 不自动执行（Phase 2仍需人工审批）
+  - 不实现自动回滚（Phase 3）
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 2 (with 26)
+  - **Blocks**: 27, 28, 29, 30
+  - **Blocked By**: 21, 22, 23, 24
+
+  **References**:
+  - `src/feishu/approval.py` - 现有审批流程
+  - `src/utils/audit.py` - 审计日志模式
+  - `alembic/` - 数据库迁移
+
+  **Acceptance Criteria**:
+  - [ ] decisions表创建成功
+  - [ ] 状态机转换正确
+  - [ ] Agent输出自动创建decision
+  - [ ] 审批后状态更新
+
+  **QA Scenarios**:
+  ```
+  Scenario: 决策生命周期追踪
+    Tool: Bash (pytest)
+    Steps:
+      1. 触发选品Agent
+      2. 验证创建decision记录(status=draft)
+      3. 触发审批
+      4. 验证状态变为approved
+      5. 查询decision历史
+    Expected Result: 完整状态流转记录
+    Evidence: .sisyphus/evidence/task-25-decision-tracking.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(decisions): add decision state machine and tracking`
+
+- [ ] 26. Policy Engine规则引擎
+
+  **What to do**:
+  - 创建 `src/policy/engine.py`：
+    - 规则定义（预算上限、变动幅度、毛利下限等）
+    - 规则评估
+    - 违规时的处理（拒绝/告警/降级）
+  - 创建 `src/policy/rules/`目录：
+    - `budget_rules.py` - 预算相关规则
+    - `pricing_rules.py` - 调价相关规则（预留Phase 3）
+    - `ad_rules.py` - 广告相关规则（预留Phase 3）
+  - 创建数据库表 `policy_rules`：
+    - rule_name, rule_type, threshold_json
+    - enabled, priority
+    - created_at, updated_at
+  - 集成到决策流程：
+    - decision创建时评估规则
+    - 违规时阻止状态转换
+
+  **Must NOT do**:
+  - 规则不能硬编码（必须可配置）
+  - 不做复杂的规则DSL（简单JSON配置即可）
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 2 (with 25)
+  - **Blocks**: 27, 28, 29, 30
+  - **Blocked By**: 21, 22, 23, 24
+
+  **References**:
+  - `src/llm/cost_monitor.py` - 现有费用上限模式
+  - `src/decisions/` - 决策模块
+
+  **Acceptance Criteria**:
+  - [ ] 规则可通过数据库配置
+  - [ ] 规则评估正确
+  - [ ] 违规时阻止执行
+  - [ ] 违规记录到审计日志
+
+  **QA Scenarios**:
+  ```
+  Scenario: 规则引擎阻止违规决策
+    Tool: Bash (pytest)
+    Steps:
+      1. 配置规则：日预算上限=100
+      2. 创建决策：请求预算=150
+      3. 验证规则引擎拒绝
+      4. 查看审计日志
+    Expected Result: 决策被拒绝，记录违规原因
+    Evidence: .sisyphus/evidence/task-26-policy-engine.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(policy): add rule engine with configurable policies`
+
+### Wave 3：新Agent开发（依赖Wave 2）
+
+- [ ] 27. 竞品调研Agent
+
+  **What to do**:
+  - 创建 `src/agents/competitor_agent/`目录：
+    - `__init__.py`
+    - `analyzer.py` - 竞品分析核心逻辑
+    - `prompts.py` - LLM提示词
+    - `schemas.py` - 输出Schema
+  - 功能实现：
+    - 输入：目标ASIN
+    - 分析：竞品价格带、评分趋势、Review关键词
+    - 输出：竞品画像JSON（符合Schema）
+  - 数据源：
+    - 卖家精灵MCP（已有）
+    - 未来接入SP-API
+  - 集成：
+    - 飞书命令：`/competitor asin=B0...`
+    - 输出到飞书多维表格
+
+  **Must NOT do**:
+  - 不爬取亚马逊页面（只用API）
+  - 不存储竞品敏感数据超过30天
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 3 (with 28, 29)
+  - **Blocks**: 30, 31
+  - **Blocked By**: 25, 26
+
+  **References**:
+  - `src/agents/selection_agent/` - 现有Agent模式
+  - `src/seller_sprite/client.py` - 卖家精灵客户端
+  - `src/llm/schemas/` - Schema定义
+
+  **Acceptance Criteria**:
+  - [ ] 输入ASIN返回竞品分析
+  - [ ] 输出符合JSON Schema
+  - [ ] 集成飞书命令
+  - [ ] 结果写入多维表格
+
+  **QA Scenarios**:
+  ```
+  Scenario: 竞品分析完整流程
+    Tool: Bash (pytest + curl)
+    Steps:
+      1. 调用 /competitor asin=B0EXAMPLE
+      2. 验证返回竞品画像
+      3. 验证Schema符合
+      4. 验证写入Bitable
+    Expected Result: 完整竞品分析报告
+    Evidence: .sisyphus/evidence/task-27-competitor-agent.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(agents): add competitor research agent`
+
+- [ ] 28. 用户画像Agent
+
+  **What to do**:
+  - 创建 `src/agents/persona_agent/`目录：
+    - `__init__.py`
+    - `analyzer.py` - 画像分析核心逻辑
+    - `prompts.py` - LLM提示词
+    - `schemas.py` - 输出Schema
+  - 功能实现：
+    - 输入：ASIN或产品类目
+    - 分析：Review文本、Q&A、搜索词
+    - 输出：人群标签、痛点地图、购买触发词
+  - 数据源：
+    - 知识库（运营文档）
+    - 卖家精灵MCP
+  - 集成：
+    - 飞书命令：`/persona category=宠物玩具`
+
+  **Must NOT do**:
+  - 不存储个人可识别信息（PII）
+  - 不做实时画像（批处理即可）
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 3 (with 27, 29)
+  - **Blocks**: 30
+  - **Blocked By**: 25, 26, 24
+
+  **References**:
+  - `src/knowledge_base/rag_engine.py` - RAG检索
+  - `src/agents/selection_agent/` - Agent模式
+
+  **Acceptance Criteria**:
+  - [ ] 输出人群标签列表
+  - [ ] 输出痛点地图
+  - [ ] 输出购买触发词
+  - [ ] 结果可追溯到原始数据
+
+  **QA Scenarios**:
+  ```
+  Scenario: 用户画像生成
+    Tool: Bash (pytest)
+    Steps:
+      1. 调用 /persona category=宠物玩具
+      2. 验证返回人群标签
+      3. 验证痛点地图非空
+      4. 验证触发词列表
+    Expected Result: 完整用户画像
+    Evidence: .sisyphus/evidence/task-28-persona-agent.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(agents): add user persona analysis agent`
+
+- [ ] 29. Listing文案Agent
+
+  **What to do**:
+  - 创建 `src/agents/listing_agent/`目录：
+    - `__init__.py`
+    - `generator.py` - 文案生成核心逻辑
+    - `prompts.py` - LLM提示词
+    - `schemas.py` - 输出Schema
+    - `compliance.py` - 合规词检查
+  - 功能实现：
+    - 输入：产品信息 + 用户画像 + 竞品差异
+    - 输出：标题、五点描述、后台关键词、广告文案
+    - 合规检查：禁用词、敏感词过滤
+  - 集成：
+    - 飞书命令：`/listing generate asin=B0...`
+    - 输出到飞书文档（可编辑）
+
+  **Must NOT do**:
+  - 不自动上传到亚马逊（Phase 3）
+  - 不生成图片（Phase 3）
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 3 (with 27, 28)
+  - **Blocks**: 30
+  - **Blocked By**: 25, 26, 27, 28
+
+  **References**:
+  - `src/agents/persona_agent/` - 用户画像输入
+  - `src/agents/competitor_agent/` - 竞品差异输入
+  - `src/knowledge_base/` - 运营知识库
+
+  **Acceptance Criteria**:
+  - [ ] 生成完整Listing文案
+  - [ ] 合规词检查通过
+  - [ ] 输出符合Schema
+  - [ ] 可导出到飞书文档
+
+  **QA Scenarios**:
+  ```
+  Scenario: Listing文案生成
+    Tool: Bash (pytest)
+    Steps:
+      1. 准备产品信息+画像+竞品数据
+      2. 调用 /listing generate
+      3. 验证标题、五点、关键词非空
+      4. 验证合规检查通过
+    Expected Result: 完整Listing文案
+    Evidence: .sisyphus/evidence/task-29-listing-agent.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(agents): add listing copywriting agent`
+
+### Wave 4：广告与SP-API（依赖Wave 3）
+
+- [ ] 30. 广告监控Agent
+
+  **What to do**:
+  - 创建 `src/agents/ad_monitor_agent/`目录：
+    - `__init__.py`
+    - `monitor.py` - 广告指标监控
+    - `alerts.py` - 异常告警
+    - `prompts.py` - LLM提示词
+    - `schemas.py` - 输出Schema
+  - 功能实现：
+    - 监控指标：ACoS、ROAS、CTR、CVR、花费
+    - 异常检测：指标偏离阈值告警
+    - 建议生成：基于知识库RAG生成优化建议
+  - 集成：
+    - 定时任务：每小时检查一次
+    - 异常时飞书告警
+    - 日报中包含广告摘要
+
+  **Must NOT do**:
+  - 不自动调整广告（Phase 3）
+  - 不修改预算（Phase 3）
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: NO
+  - **Parallel Group**: Wave 4
+  - **Blocks**: 31
+  - **Blocked By**: 25, 26, 27, 24
+
+  **References**:
+  - `src/scheduler/jobs.py` - 定时任务
+  - `src/knowledge_base/rag_engine.py` - 知识库检索
+  - `src/feishu/bot_handler.py` - 飞书通知
+
+  **Acceptance Criteria**:
+  - [ ] 定时拉取广告指标
+  - [ ] 异常时触发告警
+  - [ ] 生成优化建议
+  - [ ] 建议基于知识库有据可查
+
+  **QA Scenarios**:
+  ```
+  Scenario: 广告异常告警
+    Tool: Bash (pytest)
+    Steps:
+      1. 模拟ACoS=50%（超过阈值30%）
+      2. 触发监控检查
+      3. 验证飞书收到告警
+      4. 验证告警包含优化建议
+    Expected Result: 告警触发且建议合理
+    Evidence: .sisyphus/evidence/task-30-ad-monitor.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(agents): add advertising monitoring agent`
+
+- [ ] 31. 亚马逊SP-API正式接入（只读）
+
+  **What to do**:
+  - 创建 `src/amazon_sp_api/`目录：
+    - `__init__.py`
+    - `client.py` - SP-API客户端封装
+    - `auth.py` - OAuth认证
+    - `reports.py` - 报告API
+    - `catalog.py` - 商品目录API
+    - `orders.py` - 订单API（只读）
+  - 功能实现：
+    - OAuth 2.0 认证流程
+    - 自动Token刷新
+    - 报告请求与下载
+    - 集成Rate Limit Controller
+  - 替换Mock数据：
+    - 选品Agent：真实销量数据
+    - 日报：真实订单数据
+    - 广告监控：真实广告数据
+
+  **Must NOT do**:
+  - 不调用写入API（createListing, updatePrice等）
+  - 不存储完整订单详情（只存储聚合数据）
+
+  **Recommended Agent Profile**:
+  - **Category**: `deep`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: NO
+  - **Parallel Group**: Wave 4 (after 30)
+  - **Blocks**: Phase 2 Final
+  - **Blocked By**: 21, 30
+
+  **References**:
+  - `src/seller_sprite/client.py` - 现有API客户端模式
+  - `src/utils/rate_limiter.py` - 限流控制器
+  - Amazon SP-API文档
+
+  **Acceptance Criteria**:
+  - [ ] OAuth认证成功
+  - [ ] 报告API可调用
+  - [ ] 订单数据可读取
+  - [ ] 限流控制生效
+
+  **QA Scenarios**:
+  ```
+  Scenario: SP-API数据拉取
+    Tool: Bash (pytest)
+    Steps:
+      1. 调用SP-API获取销售报告
+      2. 验证数据格式正确
+      3. 验证限流控制生效
+      4. 验证数据写入数据库
+    Expected Result: 真实数据成功获取
+    Evidence: .sisyphus/evidence/task-31-sp-api.txt
+  ```
+
+  **Commit**: YES
+  - Message: `feat(amazon): add SP-API client with read-only access`
+
+### Wave 5：集成测试与文档
+
+- [ ] 32. Phase 2 端到端集成测试
+
+  **What to do**:
+  - 创建 `tests/integration/test_phase2_e2e.py`：
+    - 测试Rate Limiter在高并发下的表现
+    - 测试LLM缓存命中率
+    - 测试决策状态机完整流程
+    - 测试新Agent链路
+  - 测试场景：
+    - 竞品→画像→文案 链路
+    - 广告监控→告警→建议 链路
+    - SP-API数据→日报 链路
+
+  **Recommended Agent Profile**:
+  - **Category**: `unspecified-high`
+  - **Skills**: []
+
+  **Parallelization**:
+  - **Can Run In Parallel**: NO
+  - **Parallel Group**: Wave 5
+  - **Blocks**: F5-F8
+  - **Blocked By**: 21-31
+
+  **Acceptance Criteria**:
+  - [ ] 所有集成测试通过
+  - [ ] 覆盖率≥80%
+
+  **Commit**: YES
+  - Message: `test(integration): add Phase 2 end-to-end tests`
+
+---
+
+## Phase 2 Final Verification Wave
+
+- [ ] F5. Phase 2 计划合规审计
+- [ ] F6. Phase 2 代码质量审查
+- [ ] F7. Phase 2 实际QA验证
+- [ ] F8. Phase 2 范围保真度检查
+
+---
+
+## Phase 2 Success Criteria
+
+### 验证命令
+```bash
+# Rate Limiter
+pytest tests/test_rate_limiter.py -v
+# Expected: 限流正确触发，优先级排序正确
+
+# LLM缓存
+pytest tests/test_llm_cache.py -v
+# Expected: 缓存命中率≥30%
+
+# 决策追踪
+pytest tests/test_decisions.py -v
+# Expected: 状态机转换正确
+
+# 新Agent
+pytest tests/test_competitor_agent.py tests/test_persona_agent.py tests/test_listing_agent.py -v
+# Expected: 全部通过
+
+# SP-API
+pytest tests/test_sp_api.py --live-api -v
+# Expected: 真实数据获取成功（需要正式API权限）
+```
+
+### 最终检查清单
+- [ ] Rate Limit Controller正常工作
+- [ ] LLM缓存命中率≥30%
+- [ ] 决策状态机可追踪所有Agent输出
+- [ ] 竞品调研Agent可用
+- [ ] 用户画像Agent可用
+- [ ] Listing文案Agent可用
+- [ ] 广告监控Agent可用
+- [ ] SP-API正式环境可读取数据
