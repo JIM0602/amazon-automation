@@ -92,6 +92,15 @@ async def feishu_webhook(request: Request) -> Response:
             if text:
                 result = route_command(text, sender_id)
                 logger.info("路由结果: %s (sender=%s)", result.get("action"), sender_id)
+                                # 将结果发送回飞书
+                reply = result.get("message", "")
+                if reply:
+                    chat_id = message_obj.get("chat_id", "")
+                    if chat_id:
+                        try:
+                            bot.send_text_message(chat_id, reply)
+                        except Exception as exc:
+                            logger.error("发送回复失败: %s", exc)
         else:
             logger.debug("忽略非文本消息类型: %s", msg_type)
 
