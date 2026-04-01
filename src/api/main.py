@@ -98,9 +98,13 @@ async def feishu_webhook(request: Request) -> Response:
                 if action == "daily_report" and chat_id:
                     try:
                         bot.send_text_message(chat_id, "⏳ 正在生成日报，请稍候...")
-                        from src.agents.core_agent.daily_report import generate_daily_report
+                        from src.agents.core_agent.daily_report import (
+                            generate_daily_report,
+                            generate_feishu_card,
+                        )
                         report = generate_daily_report(dry_run=True)
-                        bot.send_text_message(chat_id, report)
+                        card = generate_feishu_card(report)
+                        bot.send_card_message(chat_id, card)
                     except Exception as exc:
                         logger.error("日报生成失败: %s", exc)
                         bot.send_text_message(chat_id, f"❌ 日报生成失败: {exc}")
@@ -108,8 +112,8 @@ async def feishu_webhook(request: Request) -> Response:
                 elif action == "selection_analysis" and chat_id:
                     try:
                         bot.send_text_message(chat_id, "⏳ 正在进行选品分析，请稍候...")
-                        from src.agents.selection_agent import run_selection
-                        result_text = run_selection()
+                        from src.agents.selection_agent import run
+                        result_text = run()
                         bot.send_text_message(chat_id, result_text)
                     except Exception as exc:
                         logger.error("选品分析失败: %s", exc)
