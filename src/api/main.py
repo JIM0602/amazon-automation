@@ -91,12 +91,51 @@ async def feishu_webhook(request: Request) -> Response:
 
             if text:
                 result = route_command(text, sender_id)
-                logger.info("路由结果: %s (sender=%s)", result.get("action"), sender_id)
-                                # 将结果发送回飞书
-                reply = result.get("message", "")
-                if reply:
-                    chat_id = message_obj.get("chat_id", "")
-                    if chat_id:
+                action = result.get("action", "")
+                logger.info("路由结果: %s (sender=%s)", action, sender_id)
+                chat_id = message_obj.get("chat_id", "")
+
+                if action == "daily_report" and chat_id:
+                    try:
+                        bot.send_text_message(chat_id, "⏳ 正在生成日报，请稍候...")
+                        from src.agents.core_agent.daily_report import generate_daily_report
+                        report = generate_daily_report(dry_run=True)
+                        bot.send_text_message(chat_id, report)
+                    except Exception as exc:
+                        logger.error("日报生成失败: %s", exc)
+                        bot.send_text_message(chat_id, f"❌ 日报生成失败: {exc}")
+
+                elif action == "selection_analysis" and chat_id:
+                    try:
+                        bot.send_text_message(chat_id, "⏳ 正在进行选品分析，请稍候...")
+                        from src.agents.selection_agent import run_selection
+                        result_text = run_selection()
+                        bot.send_text_message(chat_id, result_text)
+                    except Exception as exc:
+                        logger.error("选品分析失败: %s", exc)
+                        bot.send_text_message(chat_id, f"❌ 选品分析失败: {exc}")
+
+                elif action == "knowledge_query" and chat_id:
+                    try:
+                        query = result.get("query", "")
+                        from src.feishu.bot_handler import handle_qa
+                        handle_qa(sender_id, chat_id, query)
+                    except Exception as exc:
+                        logger.error("知识库查询失败: %s", exc)
+                        bot.send_text_message(chat_id, f"❌ 查询失败: {exc}")
+
+                elif action == "emergency_stop" and chat_id:
+                    try:
+                        from src.utils.killswitch import activate_killswitch
+                        activate_killswitch(operator=sender_id, reason="飞书指令触发")
+                        bot.send_text_message(chat_id, "🛑 紧急停机已激活，所有自动化任务已暂停。")
+                    except Exception as exc:
+                        logger.error("紧急停机失败: %s", exc)
+                        bot.send_text_message(chat_id, f"❌ 紧急停机失败: {exc}")
+
+                else:
+                    reply = result.get("message", "")
+                    if reply and chat_id:
                         try:
                             bot.send_text_message(chat_id, reply)
                         except Exception as exc:
