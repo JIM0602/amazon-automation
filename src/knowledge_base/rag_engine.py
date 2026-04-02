@@ -4,8 +4,13 @@ RAG（检索增强生成）核心模块。
 功能：
     - embed_text: 调用 OpenAI text-embedding-3-small 生成1536维向量
     - ingest_chunks: 批量写入文档分块到 document_chunks 表
-    - search: pgvector 向量相似度搜索 + 可选关键词过滤
+    - search: pgvector 向量相似度搜索 + 可选关键词过滤 + 元数据过滤（T24）
     - answer: RAG问答主流程（检索 + LLM生成）
+
+T24 新增：
+    - search() 新增参数: doc_type, date_range
+    - 动态构建 WHERE 子句（先过滤元数据，再语义检索）
+    - ingest_chunks() 写入 doc_type 字段
 
 依赖：
     - openai / langchain-openai（可选，try/except降级处理）
@@ -17,7 +22,8 @@ RAG（检索增强生成）核心模块。
 
 import logging
 import uuid
-from typing import Optional
+from datetime import date
+from typing import Optional, Tuple
 
 from sqlalchemy import text  # noqa: F401 — re-exported for test patching
 
@@ -154,6 +160,7 @@ class RAGEngine:
                         "source": str,
                         "category": str,
                         "title": str,
+                        "doc_type": str,   # T24 新增
                     }
                 }
 
@@ -190,12 +197,16 @@ class RAGEngine:
                     source = metadata.get("source", "")
                     doc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, source) if source else uuid.uuid4()
 
+                    # T24: 从 metadata 中读取 doc_type
+                    doc_type = metadata.get("doc_type", "other")
+
                     db_chunk = DocumentChunk(
                         id=uuid.uuid4(),
                         document_id=doc_uuid,
                         chunk_text=chunk_text,
                         chunk_embedding=embedding,
                         chunk_index=chunk_index,
+                        doc_type=doc_type,  # T24 新增
                     )
                     # 把 metadata 作为扩展属性存储（通过修改 chunk_text 附带 JSON 不优雅，
                     # 此处用一个非 ORM 字段来保持兼容，实际应在 Document 表维护 metadata）
@@ -219,19 +230,28 @@ class RAGEngine:
     # ---------------------------------------------------------------------- #
 
     def search(
-        self, query: str, top_k: int = 5, category_filter: Optional[str] = None
+        self,
+        query: str,
+        top_k: int = 5,
+        category_filter: Optional[str] = None,
+        doc_type: Optional[str] = None,
+        date_range: Optional[Tuple[Optional[date], Optional[date]]] = None,
     ) -> list:
         """
-        混合搜索：向量相似度搜索 + 可选关键词过滤。
+        混合搜索：向量相似度搜索 + 可选关键词过滤 + 元数据过滤（T24）。
 
-        1. 生成 query 的 embedding 向量
-        2. pgvector 相似度搜索：ORDER BY chunk_embedding <=> query_vec
-        3. 如果有 category_filter，加 WHERE metadata->>'category' = category_filter
+        流程：
+          1. 生成 query 的 embedding 向量
+          2. 动态构建 WHERE 子句（元数据过滤先行）
+          3. pgvector 相似度搜索：ORDER BY chunk_embedding <=> query_vec
 
         Args:
             query: 查询文本
             top_k: 返回最相关的 top_k 条结果
             category_filter: 按分类过滤（可选）
+            doc_type: 按文档类型过滤，如 'tutorial', 'rule'（可选，T24 新增）
+            date_range: (start_date, end_date) 按文档生效日期范围过滤（可选，T24 新增）
+                        任一端可为 None 表示不限。
 
         Returns:
             [{chunk_text, chunk_index, metadata, similarity_score}]
@@ -250,62 +270,67 @@ class RAGEngine:
 
         try:
             with db_session() as session:
-                # 构建 pgvector 相似度查询
-                # 使用余弦距离（<=> 操作符）
-                query_vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
+                # ----------------------------------------------------------------
+                # 动态构建 WHERE 子句（元数据过滤）
+                # ----------------------------------------------------------------
+                where_clauses: list[str] = []
+                params: dict = {
+                    "query_vec": "[" + ",".join(str(v) for v in query_embedding) + "]",
+                    "top_k": top_k,
+                }
 
                 if category_filter:
-                    sql = text(
-                        """
-                        SELECT
-                            dc.id,
-                            dc.chunk_text,
-                            dc.chunk_index,
-                            dc.document_id,
-                            d.title,
-                            d.category,
-                            d.source,
-                            dc.chunk_embedding <=> CAST(:query_vec AS vector) AS distance
-                        FROM document_chunks dc
-                        JOIN documents d ON dc.document_id = d.id
-                        WHERE d.category = :category
-                        ORDER BY distance ASC
-                        LIMIT :top_k
-                        """
-                    )
-                    rows = session.execute(
-                        sql,
-                        {
-                            "query_vec": query_vec_str,
-                            "category": category_filter,
-                            "top_k": top_k,
-                        },
-                    ).fetchall()
-                else:
-                    sql = text(
-                        """
-                        SELECT
-                            dc.id,
-                            dc.chunk_text,
-                            dc.chunk_index,
-                            dc.document_id,
-                            d.title,
-                            d.category,
-                            d.source,
-                            dc.chunk_embedding <=> CAST(:query_vec AS vector) AS distance
-                        FROM document_chunks dc
-                        JOIN documents d ON dc.document_id = d.id
-                        ORDER BY distance ASC
-                        LIMIT :top_k
-                        """
-                    )
-                    rows = session.execute(
-                        sql,
-                        {"query_vec": query_vec_str, "top_k": top_k},
-                    ).fetchall()
+                    where_clauses.append("d.category = :category")
+                    params["category"] = category_filter
+
+                # T24: doc_type 过滤（优先查 document_chunks 冗余字段，避免 JOIN）
+                if doc_type:
+                    where_clauses.append("dc.doc_type = :doc_type")
+                    params["doc_type"] = doc_type
+
+                # T24: date_range 过滤（按 documents.effective_date）
+                if date_range:
+                    start_date, end_date = date_range
+                    if start_date is not None:
+                        where_clauses.append("d.effective_date >= :start_date")
+                        params["start_date"] = start_date
+                    if end_date is not None:
+                        where_clauses.append(
+                            "(d.expires_date IS NULL OR d.expires_date <= :end_date)"
+                        )
+                        params["end_date"] = end_date
+
+                where_sql = ""
+                if where_clauses:
+                    where_sql = "WHERE " + " AND ".join(where_clauses)
+
+                sql = text(
+                    f"""
+                    SELECT
+                        dc.id,
+                        dc.chunk_text,
+                        dc.chunk_index,
+                        dc.document_id,
+                        d.title,
+                        d.category,
+                        d.source,
+                        dc.chunk_embedding <=> CAST(:query_vec AS vector) AS distance,
+                        COALESCE(dc.doc_type, d.doc_type, 'other') AS doc_type,
+                        d.effective_date,
+                        d.expires_date,
+                        d.priority
+                    FROM document_chunks dc
+                    JOIN documents d ON dc.document_id = d.id
+                    {where_sql}
+                    ORDER BY distance ASC
+                    LIMIT :top_k
+                    """
+                )
+
+                rows = session.execute(sql, params).fetchall()
 
                 for row in rows:
-                    distance = row[-1] if row[-1] is not None else 1.0
+                    distance = row[7] if row[7] is not None else 1.0
                     similarity_score = max(0.0, 1.0 - float(distance))
                     results.append(
                         {
@@ -315,6 +340,10 @@ class RAGEngine:
                                 "title": row[4],
                                 "category": row[5],
                                 "source": row[6],
+                                "doc_type": row[8],
+                                "effective_date": str(row[9]) if row[9] else None,
+                                "expires_date": str(row[10]) if row[10] else None,
+                                "priority": row[11],
                             },
                             "similarity_score": similarity_score,
                         }
@@ -325,10 +354,11 @@ class RAGEngine:
             raise
 
         logger.info(
-            "search: 查询 '%s'，返回 %d 条结果 (category_filter=%s)",
+            "search: 查询 '%s'，返回 %d 条结果 (category=%s, doc_type=%s)",
             query[:50],
             len(results),
             category_filter,
+            doc_type,
         )
         return results
 

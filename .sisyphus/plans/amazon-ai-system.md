@@ -2535,7 +2535,7 @@ pytest tests/ --mock-external-apis -v
 
 ### Wave 1：架构优化基础设施（可并行）
 
-- [ ] 21. Rate Limit Controller 统一限流模块
+- [x] 21. Rate Limit Controller 统一限流模块
 
   **What to do**:
   - 创建 `src/utils/rate_limiter.py`：
@@ -2592,7 +2592,7 @@ pytest tests/ --mock-external-apis -v
   **Commit**: YES
   - Message: `feat(infra): add rate limit controller with priority queue`
 
-- [ ] 22. LLM响应缓存模块
+- [x] 22. LLM响应缓存模块
 
   **What to do**:
   - 创建 `src/llm/cache.py`：
@@ -2655,7 +2655,7 @@ pytest tests/ --mock-external-apis -v
   **Commit**: YES
   - Message: `feat(llm): add response caching with hash-based lookup`
 
-- [ ] 23. JSON Schema输出校验模块
+- [x] 23. JSON Schema输出校验模块
 
   **What to do**:
   - 创建 `src/llm/schema_validator.py`：
@@ -2711,7 +2711,7 @@ pytest tests/ --mock-external-apis -v
   **Commit**: YES
   - Message: `feat(llm): add JSON schema validation with Pydantic`
 
-- [ ] 24. RAG元数据增强
+- [x] 24. RAG元数据增强
 
   **What to do**:
   - 修改 `src/knowledge_base/models.py`：
@@ -2767,7 +2767,7 @@ pytest tests/ --mock-external-apis -v
 
 ### Wave 2：决策追踪与规则引擎（依赖Wave 1）
 
-- [ ] 25. 决策状态机与decisions表
+- [x] 25. 决策状态机与decisions表
 
   **What to do**:
   - 创建数据库表 `decisions`：
@@ -2830,7 +2830,7 @@ pytest tests/ --mock-external-apis -v
   **Commit**: YES
   - Message: `feat(decisions): add decision state machine and tracking`
 
-- [ ] 26. Policy Engine规则引擎
+- [x] 26. Policy Engine规则引擎
 
   **What to do**:
   - 创建 `src/policy/engine.py`：
@@ -2891,7 +2891,7 @@ pytest tests/ --mock-external-apis -v
 
 ### Wave 3：新Agent开发（依赖Wave 2）
 
-- [ ] 27. 竞品调研Agent
+- [x] 27. 竞品调研Agent
 
   **What to do**:
   - 创建 `src/agents/competitor_agent/`目录：
@@ -2951,7 +2951,7 @@ pytest tests/ --mock-external-apis -v
   **Commit**: YES
   - Message: `feat(agents): add competitor research agent`
 
-- [ ] 28. 用户画像Agent
+- [x] 28. 用户画像Agent
 
   **What to do**:
   - 创建 `src/agents/persona_agent/`目录：
@@ -3009,7 +3009,7 @@ pytest tests/ --mock-external-apis -v
   **Commit**: YES
   - Message: `feat(agents): add user persona analysis agent`
 
-- [ ] 29. Listing文案Agent
+- [x] 29. Listing文案Agent
 
   **What to do**:
   - 创建 `src/agents/listing_agent/`目录：
@@ -3069,7 +3069,7 @@ pytest tests/ --mock-external-apis -v
 
 ### Wave 4：广告与SP-API（依赖Wave 3）
 
-- [ ] 30. 广告监控Agent
+- [x] 30. 广告监控Agent
 
   **What to do**:
   - 创建 `src/agents/ad_monitor_agent/`目录：
@@ -3128,7 +3128,7 @@ pytest tests/ --mock-external-apis -v
   **Commit**: YES
   - Message: `feat(agents): add advertising monitoring agent`
 
-- [ ] 31. 亚马逊SP-API正式接入（只读）
+- [x] 31. 亚马逊SP-API正式接入（只读）
 
   **What to do**:
   - 创建 `src/amazon_sp_api/`目录：
@@ -3191,7 +3191,7 @@ pytest tests/ --mock-external-apis -v
 
 ### Wave 5：集成测试与文档
 
-- [ ] 32. Phase 2 端到端集成测试
+- [x] 32. Phase 2 端到端集成测试
 
   **What to do**:
   - 创建 `tests/integration/test_phase2_e2e.py`：
@@ -3225,10 +3225,10 @@ pytest tests/ --mock-external-apis -v
 
 ## Phase 2 Final Verification Wave
 
-- [ ] F5. Phase 2 计划合规审计
-- [ ] F6. Phase 2 代码质量审查
-- [ ] F7. Phase 2 实际QA验证
-- [ ] F8. Phase 2 范围保真度检查
+- [x] F5. Phase 2 计划合规审计
+- [x] F6. Phase 2 代码质量审查
+- [x] F7. Phase 2 实际QA验证
+- [x] F8. Phase 2 范围保真度检查
 
 ---
 

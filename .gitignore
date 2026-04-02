@@ -8,3 +8,5 @@ build/
 .ruff_cache/
 data/raw_docs/
 data/processed_docs/
+node_modules/
+frontend/node_modules/

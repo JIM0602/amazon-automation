@@ -1,0 +1,58 @@
+T22 - LLM响应缓存模块 完成证据
+========================================
+执行时间: 2026-04-01
+任务: T22 - LLM响应缓存模块
+
+## 测试结果
+pytest tests/test_llm_cache.py -v
+结果: 55 passed, 1 warning in 1.25s
+
+## 新建文件
+1. src/llm/cache.py — LLM响应缓存模块
+   - compute_cache_key(): SHA-256 哈希(prompt+model+temperature+max_tokens)
+   - compute_prompt_hash(): 仅消息内容哈希
+   - is_cacheable(): 实时数据关键词检测 + 响应大小检测(>1MB不缓存)
+   - get_cached_response(): 查询缓存（过期自动失效）
+   - set_cached_response(): 写入缓存（支持upsert，默认TTL=24h）
+   - record_cache_hit(): 更新命中计数
+   - get_cache_stats(): 统计命中率、节省Token数、节省费用
+   - cleanup_expired_cache(): 清理过期缓存条目
+
+2. alembic/versions/001_add_llm_cache_table.py — 数据库迁移
+   - llm_cache 表: cache_key(PK), prompt_hash, response_json, model,
+     created_at, expires_at, hit_count
+   - 三个索引: expires_at, model, prompt_hash
+
+3. tests/test_llm_cache.py — 测试文件 (55个测试)
+   - TestComputeCacheKey (6个测试)
+   - TestComputePromptHash (3个测试)
+   - TestIsCacheable (11个测试)
+   - TestGetCachedResponse (4个测试)
+   - TestSetCachedResponse (4个测试)
+   - TestRecordCacheHit (4个测试)
+   - TestGetCacheStats (4个测试)
+   - TestCleanupExpiredCache (3个测试)
+   - TestChatCacheIntegration (8个测试)
+   - TestLlmCacheModel (5个测试)
+   - TestAlembicMigration (3个测试)
+
+## 修改文件
+4. src/db/models.py — 新增 LlmCache ORM 模型 (Table 11)
+5. src/llm/client.py — 集成缓存逻辑
+   - 新增 use_cache=True 参数
+   - 调用前检查缓存
+   - 缓存命中时不调用LLM API，记录审计日志
+   - 调用后写入缓存（实时数据/超大响应自动排除）
+   - 返回值新增 cache_hit: bool 字段
+   - 新增 _record_cache_hit_audit() 函数
+
+## 验收标准确认
+[✓] 相同输入第二次调用命中缓存 — test_second_call_same_input_uses_cache
+[✓] 缓存命中率可查询 — get_cache_stats() 返回 hit_rate
+[✓] 过期缓存自动清理 — cleanup_expired_cache() + expires_at 过滤
+[✓] 缓存节省的Token数可统计 — estimated_saved_tokens/estimated_saved_cost_usd
+[✓] pytest tests/test_llm_cache.py 全部通过 — 55/55
+
+## 不缓存条件（已实现）
+- 含实时数据关键词: 今日销量, 实时, real-time, 当前库存等14个关键词
+- 响应超过1MB: is_cacheable() 检查 response_content 字节大小

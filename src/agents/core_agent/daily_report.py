@@ -84,6 +84,15 @@ except ImportError:  # pragma: no cover
             logging.getLogger(__name__).warning("[%s] %s", self.name, msg)
     _BASE_AGENT_AVAILABLE = False
 
+try:
+    from src.llm.schema_validator import validate_llm_output
+    from src.llm.schemas.daily_report import DailyReportSchema
+    _SCHEMA_VALIDATOR_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    validate_llm_output = None  # type: ignore[assignment]
+    DailyReportSchema = None  # type: ignore[assignment]
+    _SCHEMA_VALIDATOR_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # ——————————————————————————————————————————————————————
@@ -597,6 +606,23 @@ def generate_daily_report(dry_run: bool = True) -> Dict[str, Any]:
         "generated_at": now.isoformat(),
         "dry_run": dry_run,
     }
+
+    # Schema 校验（非阻塞：失败时降级为原始 report dict）
+    if _SCHEMA_VALIDATOR_AVAILABLE and validate_llm_output is not None and DailyReportSchema is not None:
+        validation_result = validate_llm_output(
+            raw_output=report,
+            schema_class=DailyReportSchema,
+            context="daily_report_agent.generate_daily_report",
+        )
+        if validation_result.success:
+            logger.info("generate_daily_report | Schema校验通过 date=%s", report_date)
+        else:
+            logger.warning(
+                "generate_daily_report | Schema校验失败（已降级）errors=%s",
+                validation_result.errors,
+            )
+    else:
+        logger.debug("generate_daily_report | Schema校验器不可用，跳过校验")
 
     # 写 audit 日志（函数内导入避免循环依赖）
     try:

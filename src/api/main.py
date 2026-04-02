@@ -16,6 +16,18 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="PUDIWIND AI System", version="0.1.0")
 
 # --------------------------------------------------------------------------- #
+#  JWT 认证中间件（必须在路由注册之前添加）
+# --------------------------------------------------------------------------- #
+from src.api.middleware import JWTAuthMiddleware  # noqa: E402
+app.add_middleware(JWTAuthMiddleware)
+
+# --------------------------------------------------------------------------- #
+#  认证路由（登录 / 刷新 Token / 当前用户）
+# --------------------------------------------------------------------------- #
+from src.api.auth import router as auth_router  # noqa: E402
+app.include_router(auth_router)
+
+# --------------------------------------------------------------------------- #
 #  系统管理路由（审计日志 + Kill Switch）
 # --------------------------------------------------------------------------- #
 from src.api.system import router as system_router  # noqa: E402
@@ -210,6 +222,13 @@ async def feishu_card_callback(request: Request) -> Response:
         content=json.dumps({"code": code, "data": result}),
         media_type="application/json",
     )
+
+
+# --------------------------------------------------------------------------- #
+#  Agent 管理路由（触发 + 状态查询）
+# --------------------------------------------------------------------------- #
+from src.api.agents import router as agents_router  # noqa: E402
+app.include_router(agents_router)
 
 
 # --------------------------------------------------------------------------- #

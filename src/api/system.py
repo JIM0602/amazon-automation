@@ -2,8 +2,8 @@
 
 提供：
 - GET  /api/system/status      — 返回当前停机状态
-- POST /api/system/stop        — 激活紧急停机
-- POST /api/system/resume      — 解除停机
+- POST /api/system/stop        — 激活紧急停机（仅限 boss 角色）
+- POST /api/system/resume      — 解除停机（仅限 boss 角色）
 - GET  /api/system/audit-logs  — 查询最近审计日志
 """
 from __future__ import annotations
@@ -11,9 +11,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from src.api.dependencies import require_role
 from src.utils.audit import get_recent_logs
 from src.utils.killswitch import activate_stop, deactivate_stop, is_stopped, _get_stop_info
 
@@ -72,8 +73,11 @@ async def get_system_status() -> Dict[str, Any]:
 
 
 @router.post("/stop")
-async def stop_system(body: StopRequest) -> Dict[str, Any]:
-    """激活紧急停机。
+async def stop_system(
+    body: StopRequest,
+    _current_user: Dict[str, Any] = Depends(require_role("boss")),
+) -> Dict[str, Any]:
+    """激活紧急停机。仅限 boss 角色。
 
     Request body::
 
@@ -100,8 +104,11 @@ async def stop_system(body: StopRequest) -> Dict[str, Any]:
 
 
 @router.post("/resume")
-async def resume_system(body: Optional[ResumeRequest] = None) -> Dict[str, Any]:
-    """解除紧急停机。
+async def resume_system(
+    body: Optional[ResumeRequest] = None,
+    _current_user: Dict[str, Any] = Depends(require_role("boss")),
+) -> Dict[str, Any]:
+    """解除紧急停机。仅限 boss 角色。
 
     Request body（可选）::
 

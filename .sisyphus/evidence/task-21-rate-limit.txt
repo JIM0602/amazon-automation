@@ -1,0 +1,83 @@
+T21 - Rate Limit Controller 统一限流模块 - 完成证据
+===============================================================
+日期: 2026-04-01
+任务: T21
+状态: COMPLETED
+
+## 测试结果
+
+pytest tests/test_rate_limiter.py -v
+========================= 44 passed, 2 warnings in 2.16s =========================
+
+所有 44 个测试全部通过，0 失败。
+
+## 创建/修改的文件
+
+### 新建文件
+
+1. src/utils/api_priority.py
+   - ApiPriority 枚举（CRITICAL/NORMAL/BATCH）
+   - 优先级权重：critical=1.0, normal=0.6, batch=0.3
+   - API_GROUP_PRIORITY 映射表
+   - get_priority() 工厂函数
+
+2. src/utils/rate_limiter.py
+   - TokenBucket 令牌桶实现（线程安全，支持 burst）
+   - RateLimiter 限流控制器（按 api_group + account_id 维度）
+   - RateLimitExceeded 异常（status_code=429）
+   - RateLimitResult 数据类
+   - BucketConfig 配置类
+   - get_rate_limiter() 全局单例
+   - reset_global_limiter() 测试工具函数
+   - 三种获取令牌接口：
+     * acquire() - 非阻塞，返回 RateLimitResult
+     * acquire_or_wait() - 阻塞排队等待
+     * acquire_or_raise() - 失败时抛出 RateLimitExceeded(429)
+
+3. tests/test_rate_limiter.py
+   - 44 个测试用例覆盖全部功能
+
+### 修改文件
+
+4. src/llm/client.py
+   - 新增 priority/account_id 参数
+   - chat() 调用前执行 acquire_or_raise() 限流检查
+   - 限流触发时抛出 RateLimitExceeded(429)
+
+5. src/seller_sprite/client.py
+   - 抽象基类 4 个方法新增 account_id 参数
+   - MockSellerSpriteClient 4 个方法新增限流检查
+   - API 组 "seller_sprite"，BATCH 优先级
+
+6. src/utils/audit.py
+   - 新增 log_rate_limit_event() 函数
+   - 记录限流事件（action=rate_limit_allowed/rate_limit_throttled）
+
+## 验收标准对照
+
+[x] 令牌桶算法正确实现，支持 burst
+    - TokenBucket: rate/capacity 独立配置，capacity 即 burst 上限
+    - 12 个 TokenBucket 测试全部通过
+
+[x] 优先级队列正确排序
+    - ApiPriority.CRITICAL(weight=1.0) > NORMAL(0.6) > BATCH(0.3)
+    - CRITICAL 消耗最少令牌，BATCH 消耗最多（反向权重机制）
+    - 7 个 ApiPriority 测试全部通过
+
+[x] 限流触发时返回 429 或排队等待
+    - acquire() → status_code=429, allowed=False
+    - acquire_or_wait() → 阻塞等待，超时返回 status_code=429
+    - acquire_or_raise() → 抛出 RateLimitExceeded(status_code=429)
+
+[x] 审计日志记录限流事件
+    - log_rate_limit_event() 写入 audit_logs 表
+    - action="rate_limit_throttled" 或 "rate_limit_allowed"
+    - 包含 api_group/account_id/priority/tokens_left/retry_after
+
+[x] pytest tests/test_rate_limiter.py 全部通过
+    - 44 passed, 0 failed
+
+## 设计约束满足
+
+[x] 不引入 Redis（纯内存 dict + threading.Lock）
+[x] 不做分布式限流（单机 TokenBucket）

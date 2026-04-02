@@ -76,6 +76,15 @@ from src.agents.selection_agent.schema import (
     RESTRICTED_CATEGORIES,
 )
 
+try:
+    from src.llm.schema_validator import validate_llm_output, SchemaValidationResult
+    from src.llm.schemas.selection_result import SelectionResultSchema
+    _SCHEMA_VALIDATOR_AVAILABLE = True
+except ImportError:
+    validate_llm_output = None  # type: ignore[assignment]
+    SelectionResultSchema = None  # type: ignore[assignment]
+    _SCHEMA_VALIDATOR_AVAILABLE = False
+
 # ---------------------------------------------------------------------------
 # Mock 数据（dry_run=True 时使用）
 # ---------------------------------------------------------------------------
@@ -582,6 +591,30 @@ def generate_report(state: SelectionState) -> SelectionState:
 
     state["candidates"] = candidates
     state["report"] = report
+
+    # Schema 校验（非阻塞：失败时降级为原始 report dict）
+    if _SCHEMA_VALIDATOR_AVAILABLE and validate_llm_output is not None and SelectionResultSchema is not None:
+        validation_result = validate_llm_output(
+            raw_output=report,
+            schema_class=SelectionResultSchema,
+            context="selection_agent.generate_report",
+        )
+        if validation_result.success:
+            # 校验成功：使用校验后的规范化数据
+            state["report"] = validation_result.data.to_dict()
+            logger.info(
+                "selection_agent generate_report | Schema校验通过 candidate_count=%d",
+                len(candidates),
+            )
+        else:
+            # 校验失败：使用降级数据（原始 report dict）
+            logger.warning(
+                "selection_agent generate_report | Schema校验失败（已降级）errors=%s",
+                validation_result.errors,
+            )
+    else:
+        logger.debug("selection_agent generate_report | Schema校验器不可用，跳过校验")
+
     logger.info(
         "selection_agent generate_report | candidate_count=%d",
         len(candidates),

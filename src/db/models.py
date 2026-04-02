@@ -11,6 +11,7 @@ Tables:
     daily_reports       — daily digest reports sent via Feishu
     system_config       — key-value store for runtime configuration
     audit_logs          — immutable audit trail for all state changes
+    decisions           — T25 可追踪、可回滚的决策状态机记录
 """
 
 import uuid
@@ -85,6 +86,13 @@ class Document(Base):
     embedding = Column(Vector(EMBEDDING_DIM), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
 
+    # --- T24: RAG 元数据增强新增列 ---
+    doc_type = Column(String(64), nullable=True, server_default="other", index=True)
+    version = Column(String(64), nullable=True)
+    effective_date = Column(Date, nullable=True)
+    expires_date = Column(Date, nullable=True)
+    priority = Column(Integer, nullable=False, server_default="5")
+
     # Relationships
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
 
@@ -111,6 +119,9 @@ class DocumentChunk(Base):
     chunk_embedding = Column(Vector(EMBEDDING_DIM), nullable=True)
     chunk_index = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+    # --- T24: RAG 元数据增强新增列（冗余字段，加速过滤，避免每次 JOIN）---
+    doc_type = Column(String(64), nullable=True, server_default="other", index=True)
 
     # Relationships
     document = relationship("Document", back_populates="chunks")
@@ -293,3 +304,69 @@ class AuditLog(Base):
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id!s} action={self.action!r} actor={self.actor!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Table 11: llm_cache
+# ---------------------------------------------------------------------------
+class LlmCache(Base):
+    """LLM 响应缓存，用于降低重复请求的 Token 成本。
+
+    缓存键基于 prompt + model + 参数的 SHA-256 哈希计算。
+    默认 TTL 为 24 小时，过期后自动失效（通过 expires_at 字段控制）。
+    """
+
+    __tablename__ = "llm_cache"
+
+    cache_key = Column(String(64), primary_key=True)       # SHA-256 hex（64位）
+    prompt_hash = Column(String(64), nullable=False, index=True)  # 仅消息内容哈希
+    response_json = Column(JSON, nullable=False)           # 缓存的响应数据
+    model = Column(String(128), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    hit_count = Column(Integer, nullable=False, default=0)  # 命中次数
+
+    def __repr__(self) -> str:
+        return (
+            f"<LlmCache key={self.cache_key[:16]!r}... model={self.model!r} "
+            f"hits={self.hit_count} expires={self.expires_at!s}>"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Table 12: decisions  (T25 决策状态机)
+# ---------------------------------------------------------------------------
+class Decision(Base):
+    """可追踪、可回滚的决策记录。
+
+    状态流转：
+        DRAFT → PENDING_APPROVAL → APPROVED → EXECUTING → SUCCEEDED
+                                                        ↘ FAILED → ROLLED_BACK
+                                ↘ REJECTED
+    """
+
+    __tablename__ = "decisions"
+
+    id = _uuid_pk()
+    decision_type = Column(String(128), nullable=False, index=True)   # pricing / advertising / listing 等
+    agent_id = Column(String(256), nullable=False, index=True)         # 发起决策的 Agent
+    payload = Column(JSON, nullable=False)                              # 决策内容
+    status = Column(String(64), nullable=False, default="DRAFT", index=True)  # 当前状态
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=_now_utc(),
+        nullable=False,
+    )
+    approved_by = Column(String(256), nullable=True)                   # 审批人
+    approved_at = Column(DateTime(timezone=True), nullable=True)       # 审批时间
+    executed_at = Column(DateTime(timezone=True), nullable=True)       # 执行时间
+    result = Column(JSON, nullable=True)                               # 执行结果
+    error_message = Column(Text, nullable=True)                        # 错误信息
+    rollback_payload = Column(JSON, nullable=True)                     # 回滚数据
+
+    def __repr__(self) -> str:
+        return (
+            f"<Decision id={self.id!s} type={self.decision_type!r} "
+            f"status={self.status!r} agent={self.agent_id!r}>"
+        )

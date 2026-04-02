@@ -1,0 +1,34 @@
+Task: T29 - Listing文案Agent
+Date: 2026-04-01
+Status: COMPLETED
+
+## Test Results
+71 passed, 1 warning in 1.35s
+
+## Files Created
+- src/agents/listing_agent/__init__.py        — 模块入口，导出 run() 和 execute()
+- src/agents/listing_agent/schemas.py         — ListingCopySchema / ListingState / ProductInfo
+- src/agents/listing_agent/compliance.py      — 禁用词/敏感词过滤、字符长度验证
+- src/agents/listing_agent/prompts.py         — LLM提示词模板
+- src/agents/listing_agent/generator.py       — 文案生成核心逻辑（含Mock数据）
+- src/agents/listing_agent/nodes.py           — 5个LangGraph节点
+- src/agents/listing_agent/agent.py           — LangGraph工作流编排（含顺序降级）
+- tests/test_listing_agent.py                 — 71个测试用例
+
+## Files Modified
+- src/feishu/command_router.py                — 新增 /listing generate asin=B0XXX 命令路由
+
+## Acceptance Criteria
+[x] 输入：产品信息 + 用户画像(T28) + 竞品差异(T27)（均为可选）
+[x] 输出：标题(≤200字符)、五点描述(5条)、后台关键词(≤250字符)、A+文案建议(可选)
+[x] 合规检查：禁用词(best/#1/guarantee等)过滤、敏感词检测、字符长度验证
+[x] 飞书集成：/listing generate asin=B0XXX 命令，输出格式化结果
+[x] dry_run=True 使用Mock数据，不调用真实API
+[x] 不自动上传到亚马逊（Phase 3）
+[x] 不生成图片（Phase 3）
+
+## Key Design Notes
+- #1 禁用词使用 (?<!\w)#1(?!\w) 正则（# 不是词边界字符）
+- persona_agent/competitor_agent 不存在时使用通用策略（optional inputs）
+- LangGraph 优先，不可用时顺序执行降级
+- finalize_run 节点写审计日志（src.utils.audit.log_action）

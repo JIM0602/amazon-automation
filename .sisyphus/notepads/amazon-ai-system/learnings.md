@@ -727,3 +727,24 @@ tests/integration/
 - deploy/nginx/: nginx.conf（HTTP→HTTPS + WebSocket）
 - deploy/systemd/: amazon-ai.service（开机自启）
 - docs/deployment-guide.md: 全中文大白话9章节指南
+
+## Phase 2 代码质量审查（F6）— 2026-04-01
+
+### 审查结论：APPROVE
+
+### 各模块质量状态
+- **竞品/画像/广告 Agent**：与基准 listing_agent 完全一致，错误处理/降级/dry_run/审计日志均到位
+- **amazon_sp_api（client.py + auth.py）**：使用 loguru 日志风格（{} 占位符），与项目其他模块的 %s 风格不同，但有完整 fallback，功能正常
+- **utils/rate_limiter.py（T21）**：令牌桶算法，线程安全，全局单例，测试覆盖完整
+- **llm/cache.py（T22）**：DB 存储，TTL 过期，实时词排除，缓存命中统计，所有异常均有 fallback
+- **llm/schema_validator.py（T23）**：最多2次重试，降级为原始输出，校验失败写审计日志
+- **decisions/state_machine.py（T25）**：状态转换验证，每次变更写审计日志，executor 模式分离
+- **policy/engine.py（T26）**：单条规则异常不阻塞，线程安全，全局单例，内置规则懒加载
+
+### Phase 2 专项测试
+- 3 Agent 模块：238 passed
+- 6 基础设施模块：371 passed
+- 总计 Phase 2 新增测试：609 passed，0 failed
+
+### 轻微问题（不阻断 APPROVE）
+- amazon_sp_api 使用 loguru {} 风格日志，而非 logging %s 风格，整体项目风格不一致

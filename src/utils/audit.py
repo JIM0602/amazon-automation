@@ -83,6 +83,40 @@ def get_recent_logs(limit: int = 50) -> list[dict]:
         return []
 
 
+def log_rate_limit_event(
+    api_group: str,
+    account_id: str,
+    priority: str,
+    allowed: bool,
+    tokens_left: float,
+    retry_after: float = 0.0,
+    actor: str = "system",
+) -> None:
+    """记录限流事件到审计日志。
+
+    非阻塞：任何异常只记录日志，不向上抛出。
+
+    Args:
+        api_group:   API 分组，如 "llm"、"seller_sprite"
+        account_id:  账号 ID
+        priority:    优先级名称，如 "critical"、"normal"、"batch"
+        allowed:     是否允许通过
+        tokens_left: 剩余令牌数
+        retry_after: 建议重试等待时间（秒），仅在限流时有意义
+        actor:       操作者标识
+    """
+    action = "rate_limit_allowed" if allowed else "rate_limit_throttled"
+    post_state = {
+        "api_group": api_group,
+        "account_id": account_id,
+        "priority": priority,
+        "allowed": allowed,
+        "tokens_left": round(tokens_left, 3),
+        "retry_after": round(retry_after, 3),
+    }
+    log_action(action=action, actor=actor, post_state=post_state)
+
+
 def audit_decorator(action: str, actor: str = "system") -> Callable:
     """装饰器：在函数执行前后自动记录审计日志。
 

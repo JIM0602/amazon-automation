@@ -1,0 +1,104 @@
+T24 - RAG元数据增强 实施完成证据
+==================================================
+完成时间: 2026-04-01
+执行者: Sisyphus-Junior
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+测试结果: 37 passed, 1 warning in 1.03s
+命令: python -m pytest tests/test_rag_metadata.py -v
+结果: PASS ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+== 验收标准核查 ==
+
+[✓] 元数据字段添加到数据库
+    - src/db/models.py: Document 新增 doc_type, version, effective_date, expires_date, priority
+    - src/db/models.py: DocumentChunk 新增 doc_type（冗余，加速过滤）
+    - alembic/versions/001_add_metadata_columns.py: 迁移脚本包含 upgrade()/downgrade()
+
+[✓] 文档处理时可提取元数据
+    - src/knowledge_base/document_processor.py: 新增 detect_doc_type() 方法
+    - 关键词映射支持 tutorial/case_study/rule/guide/faq/report/other 7种类型
+    - chunk_document() 传递 doc_type/version/effective_date/expires_date/priority/chunk_strategy
+
+[✓] search() 支持元数据过滤
+    - src/knowledge_base/rag_engine.py: search() 新增 doc_type 参数
+    - search() 新增 date_range 参数（Tuple[Optional[date], Optional[date]]）
+    - 动态 WHERE 子句构建，支持 category_filter + doc_type + date_range 组合
+    - 返回结果 metadata 中包含 doc_type, effective_date, expires_date, priority
+
+[✓] 现有文档数据不丢失
+    - 所有新列使用 nullable=True 或 server_default
+    - 未删除任何现有列（ORM 向后兼容测试通过）
+    - 向量维度保持 1536 不变
+
+[✓] pytest tests/test_rag_metadata.py 全部通过
+    - 37/37 测试通过
+
+== 文件变更清单 ==
+
+新建文件:
+  src/knowledge_base/models.py           — Pydantic 元数据模型
+  alembic/versions/001_add_metadata_columns.py — Alembic 迁移脚本
+  tests/test_rag_metadata.py             — 37 个单元测试
+
+修改文件:
+  src/db/models.py                       — Document/DocumentChunk ORM 新增列
+  src/knowledge_base/document_processor.py — 新增 detect_doc_type(); chunk_document() 传递元数据
+  src/knowledge_base/rag_engine.py       — search() 新增参数; ingest_chunks() 写入 doc_type
+
+== 测试覆盖分组 ==
+
+TestDocumentMetadata        (6 tests) — Pydantic 模型字段验证
+TestChunkMetadata           (3 tests) — 继承与新增字段
+TestDetectDocType           (7 tests) — 文档类型推断（tutorial/rule/faq/report/guide/other/title权重）
+TestChunkDocumentMetadata   (6 tests) — chunk_document() 元数据传递
+TestIngestChunksDocType     (2 tests) — ingest_chunks() 写入 doc_type
+TestSearchMetadataFilter    (6 tests) — search() 元数据过滤
+TestORMModels               (7 tests) — ORM 列存在验证 + 向后兼容
+
+== pytest 原始输出 ==
+
+============================= test session starts =============================
+platform win32 -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0
+collected 37 items
+
+tests/test_rag_metadata.py::TestDocumentMetadata::test_required_fields PASSED
+tests/test_rag_metadata.py::TestDocumentMetadata::test_default_values PASSED
+tests/test_rag_metadata.py::TestDocumentMetadata::test_doc_type_valid_values PASSED
+tests/test_rag_metadata.py::TestDocumentMetadata::test_doc_type_invalid_raises PASSED
+tests/test_rag_metadata.py::TestDocumentMetadata::test_priority_range PASSED
+tests/test_rag_metadata.py::TestDocumentMetadata::test_effective_date_field PASSED
+tests/test_rag_metadata.py::TestChunkMetadata::test_inherits_document_metadata PASSED
+tests/test_rag_metadata.py::TestChunkMetadata::test_chunk_index_default PASSED
+tests/test_rag_metadata.py::TestChunkMetadata::test_chunk_strategy_values PASSED
+tests/test_rag_metadata.py::TestDetectDocType::test_detect_tutorial_from_content PASSED
+tests/test_rag_metadata.py::TestDetectDocType::test_detect_rule_from_content PASSED
+tests/test_rag_metadata.py::TestDetectDocType::test_detect_faq_from_content PASSED
+tests/test_rag_metadata.py::TestDetectDocType::test_detect_report_from_content PASSED
+tests/test_rag_metadata.py::TestDetectDocType::test_detect_guide_from_title PASSED
+tests/test_rag_metadata.py::TestDetectDocType::test_detect_other_when_no_match PASSED
+tests/test_rag_metadata.py::TestDetectDocType::test_title_weighted_higher PASSED
+tests/test_rag_metadata.py::TestChunkDocumentMetadata::test_metadata_includes_doc_type PASSED
+tests/test_rag_metadata.py::TestChunkDocumentMetadata::test_metadata_doc_type_explicit PASSED
+tests/test_rag_metadata.py::TestChunkDocumentMetadata::test_metadata_priority_default PASSED
+tests/test_rag_metadata.py::TestChunkDocumentMetadata::test_metadata_priority_custom PASSED
+tests/test_rag_metadata.py::TestChunkDocumentMetadata::test_metadata_version_effective_expires PASSED
+tests/test_rag_metadata.py::TestChunkDocumentMetadata::test_chunk_strategy_default_paragraph PASSED
+tests/test_rag_metadata.py::TestIngestChunksDocType::test_ingest_chunks_passes_doc_type PASSED
+tests/test_rag_metadata.py::TestIngestChunksDocType::test_ingest_chunks_defaults_doc_type_to_other PASSED
+tests/test_rag_metadata.py::TestSearchMetadataFilter::test_search_doc_type_filter_adds_where_clause PASSED
+tests/test_rag_metadata.py::TestSearchMetadataFilter::test_search_date_range_adds_where_clause PASSED
+tests/test_rag_metadata.py::TestSearchMetadataFilter::test_search_no_filter_no_where_clause PASSED
+tests/test_rag_metadata.py::TestSearchMetadataFilter::test_search_returns_doc_type_in_metadata PASSED
+tests/test_rag_metadata.py::TestSearchMetadataFilter::test_search_combined_category_and_doc_type_filter PASSED
+tests/test_rag_metadata.py::TestSearchMetadataFilter::test_search_date_range_partial_start_only PASSED
+tests/test_rag_metadata.py::TestORMModels::test_document_has_doc_type_column PASSED
+tests/test_rag_metadata.py::TestORMModels::test_document_has_version_column PASSED
+tests/test_rag_metadata.py::TestORMModels::test_document_has_effective_date_column PASSED
+tests/test_rag_metadata.py::TestORMModels::test_document_has_expires_date_column PASSED
+tests/test_rag_metadata.py::TestORMModels::test_document_has_priority_column PASSED
+tests/test_rag_metadata.py::TestORMModels::test_document_chunk_has_doc_type_column PASSED
+tests/test_rag_metadata.py::TestORMModels::test_existing_columns_unchanged PASSED
+
+======================== 37 passed, 1 warning in 1.03s ========================

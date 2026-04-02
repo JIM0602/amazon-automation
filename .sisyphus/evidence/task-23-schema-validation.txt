@@ -1,0 +1,65 @@
+T23 - JSON Schema输出校验模块 - 验收证据
+========================================
+生成时间: 2026-04-01
+任务状态: COMPLETED
+
+## 测试结果
+
+命令: python -m pytest tests/test_schema_validator.py -v
+结果: 55 passed, 0 failed, 1 warning
+
+### 测试覆盖范围
+- TestBaseOutputSchema (8 tests): Pydantic基类 from_dict/from_json/to_dict/to_json/extra_fields
+- TestSelectionResultSchema (8 tests): 选品结果Schema校验（有效、缺字段、空候选、日期格式、评分精度、ASIN大写、嵌套校验）
+- TestDailyReportSchema (5 tests): 日报Schema校验（有效、非法状态、非法日期、嵌套agent状态、负销售额）
+- TestExtractJsonFromText (8 tests): JSON提取工具（纯JSON、代码块、嵌入文本、无JSON、空字符串、None）
+- TestValidateLlmOutput (12 tests): 核心校验函数（成功-dict、成功-JSON字符串、成功-文本内嵌、失败-无retry_fn降级、失败-retry成功、失败-retry2次降级、retry_fn异常、不可解析输入、context传递、审计日志写入/不写入、fallback数据、DailyReport）
+- TestSchemaValidator (7 tests): 有状态校验器（统计初始、成功统计、失败统计、累计统计、reset_stats、retry_fn、context透传）
+- TestAuditLogIntegration (2 tests): 审计日志集成（schema名称正确、errors包含信息）
+- TestSchemaValidationResult (4 tests): 结果容器（repr成功/失败、fallback默认、errors默认）
+
+## 创建/修改文件清单
+
+### 新建文件
+- src/llm/schemas/__init__.py          - 包公共接口
+- src/llm/schemas/base.py              - Pydantic通用基类 BaseOutputSchema
+- src/llm/schemas/selection_result.py  - 选品结果Schema (SelectionResultSchema)
+- src/llm/schemas/daily_report.py      - 日报Schema (DailyReportSchema)
+- src/llm/schemas/ad_strategy.py       - 广告策略Schema（预留，Phase 3）
+- src/llm/schema_validator.py          - 核心校验模块（重试逻辑+降级+审计日志）
+- tests/test_schema_validator.py       - 单元测试（55个测试用例）
+
+### 修改文件
+- src/agents/selection_agent/nodes.py  - generate_report节点集成Schema校验（非阻塞）
+- src/agents/core_agent/daily_report.py - generate_daily_report函数集成Schema校验（非阻塞）
+
+## 验收标准确认
+
+[✓] Pydantic Schema定义完整
+    - BaseOutputSchema基类 + SelectionResultSchema + DailyReportSchema + AdStrategySchema（预留）
+    - 字段验证、嵌套结构、自定义validator均已实现
+
+[✓] 校验成功时输出符合Schema
+    - validate_llm_output() 成功返回 SchemaValidationResult(success=True, data=<SchemaInstance>)
+    - 支持 dict/JSON字符串/含JSON文本 多种输入格式
+
+[✓] 校验失败时自动重试
+    - MAX_RETRIES=2，通过 retry_fn 参数触发重试
+    - 重试成功时返回校验结果（attempts=2）
+
+[✓] 重试2次仍失败时降级处理
+    - success=False，fallback包含原始输出dict
+    - 流程不被阻断，调用方可使用 result.fallback
+
+[✓] pytest tests/test_schema_validator.py 全部通过
+    - 55 passed, 0 failed
+
+## 设计决策说明
+
+1. 不强制：仅在 selection_agent.generate_report 和 daily_report_agent.generate_daily_report 
+   中使用，不改动其他 LLM 调用路径
+   
+2. 非阻塞：schema_validator 不可用时（ImportError）自动跳过校验，
+   校验失败时使用原始数据继续执行
+
+3. 审计可追溯：校验失败事件写入 audit_logs 表，包含 schema名称、错误信息、fallback键列表

@@ -8,7 +8,8 @@
 
 主要接口:
   chat(model, messages, temperature, max_tokens) -> dict
-    返回: {"content": str, "model": str, "input_tokens": int, "output_tokens": int, "cost_usd": float}
+    返回: {"content": str, "model": str, "input_tokens": int, "output_tokens": int, "cost_usd": float,
+           "cache_hit": bool}
 
 异常:
   DailyCostLimitExceeded — 当日费用超过上限时抛出
@@ -25,6 +26,28 @@ except ImportError:  # pragma: no cover
 
 # 模块级懒加载：check_daily_limit / send_feishu_warning（便于测试 patch）
 from src.llm.cost_monitor import check_daily_limit, send_feishu_warning
+
+# 限流模块（便于测试 patch）
+from src.utils.rate_limiter import get_rate_limiter, RateLimitExceeded
+from src.utils.api_priority import ApiPriority
+
+# 缓存模块（便于测试 patch）
+try:
+    from src.llm.cache import (
+        compute_cache_key,
+        get_cached_response,
+        set_cached_response,
+        record_cache_hit,
+        is_cacheable,
+    )
+    _cache_available = True
+except Exception:  # pragma: no cover
+    _cache_available = False
+    compute_cache_key = None  # type: ignore[assignment]
+    get_cached_response = None  # type: ignore[assignment]
+    set_cached_response = None  # type: ignore[assignment]
+    record_cache_hit = None  # type: ignore[assignment]
+    is_cacheable = None  # type: ignore[assignment]
 
 # 模块级懒加载：db 相关（便于测试 patch）
 try:
@@ -213,6 +236,38 @@ def _record_agent_run(
 
 
 # ---------------------------------------------------------------------------
+# 内部：缓存命中时写入审计日志
+# ---------------------------------------------------------------------------
+def _record_cache_hit_audit(model: str, cache_key: str) -> None:
+    """缓存命中时写入审计日志（agent_runs）。
+
+    非阻塞：即使数据库写入失败也不影响调用结果。
+
+    Args:
+        model: 模型名称
+        cache_key: 命中的缓存键
+    """
+    try:
+        from datetime import datetime, timezone
+        now = datetime.now(tz=timezone.utc)
+        run = AgentRun(
+            agent_type="llm_cache_hit",
+            status="completed",
+            input_summary=f"{model}:{cache_key[:16]}",
+            output_summary="cache_hit",
+            cost_usd=0.0,
+            started_at=now,
+            finished_at=now,
+        )
+        with db_session() as session:
+            session.add(run)
+            session.commit()
+        logger.debug(f"缓存命中审计日志已写入: model={model!r}")
+    except Exception as e:
+        logger.warning(f"写入缓存命中审计日志失败（非阻塞）: {e}")
+
+
+# ---------------------------------------------------------------------------
 # 主接口
 # ---------------------------------------------------------------------------
 def chat(
@@ -220,22 +275,32 @@ def chat(
     messages: List[Dict[str, Any]],
     temperature: float = 0.7,
     max_tokens: int = 2000,
+    priority: ApiPriority = ApiPriority.NORMAL,
+    account_id: str = "default",
+    use_cache: bool = True,
 ) -> Dict[str, Any]:
     """统一 LLM 调用接口。
 
     流程:
-      1. 对 messages 进行 PII 过滤
-      2. 检查每日费用上限（超限则抛出 DailyCostLimitExceeded）
-      3. 调用 LLM API
-      4. 计算本次调用费用
-      5. 非阻塞写入 agent_runs
-      6. 返回结果字典
+      1. 限流检查（令牌桶）
+      2. 对 messages 进行 PII 过滤
+      3. 检查缓存（若 use_cache=True 且请求可缓存）
+      4. 缓存命中时直接返回（记录审计日志）
+      5. 检查每日费用上限（超限则抛出 DailyCostLimitExceeded）
+      6. 调用 LLM API
+      7. 计算本次调用费用
+      8. 写入缓存
+      9. 非阻塞写入 agent_runs
+      10. 返回结果字典
 
     Args:
         model: 模型名称（gpt-4o-mini / gpt-4o / claude-3-5-sonnet / claude-3-haiku）
         messages: OpenAI 格式消息列表，如 [{"role": "user", "content": "..."}]
         temperature: 温度参数，默认 0.7
         max_tokens: 最大输出 token 数，默认 2000
+        priority: 调用优先级，影响限流权重，默认 NORMAL
+        account_id: 账号 ID，用于按账号维度限流，默认 "default"
+        use_cache: 是否启用缓存，默认 True
 
     Returns:
         {
@@ -244,18 +309,50 @@ def chat(
             "input_tokens": int,
             "output_tokens": int,
             "cost_usd": float,
+            "cache_hit": bool,
         }
 
     Raises:
         DailyCostLimitExceeded: 当日费用已超出上限
+        RateLimitExceeded: 请求被限流（status_code=429）
     """
     from datetime import datetime, timezone
 
-    # 1. PII 过滤
+    # 1. 限流检查
+    limiter = get_rate_limiter()
+    limiter.acquire_or_raise(
+        api_group="llm",
+        account_id=account_id,
+        priority=priority,
+    )
+
+    # 2. PII 过滤
     filtered_messages = _filter_messages_pii(messages)
     logger.debug(f"PII 过滤完成，准备调用模型 {model!r}")
 
-    # 2. 检查每日费用上限
+    # 3. 检查缓存
+    if use_cache and _cache_available and is_cacheable(filtered_messages):
+        cache_key = compute_cache_key(
+            messages=filtered_messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        cached = get_cached_response(cache_key)
+        if cached is not None:
+            # 4. 缓存命中：更新命中计数并记录审计日志
+            record_cache_hit(cache_key)
+            _record_cache_hit_audit(model=model, cache_key=cache_key)
+            logger.info(
+                f"LLM 缓存命中 model={model!r} key={cache_key[:16]}..."
+            )
+            result = dict(cached)
+            result["cache_hit"] = True
+            return result
+    else:
+        cache_key = None
+
+    # 5. 检查每日费用上限
     status = check_daily_limit()
     if status["exceeded"]:
         logger.error(
@@ -274,7 +371,7 @@ def chat(
         except Exception as e:
             logger.warning(f"预警发送失败（继续执行）: {e}")
 
-    # 3. 调用 LLM API
+    # 6. 调用 LLM API
     started_at = datetime.now(tz=timezone.utc)
     api_result = _call_llm_api(
         model=model,
@@ -289,14 +386,34 @@ def chat(
     input_tokens = api_result["input_tokens"]
     output_tokens = api_result["output_tokens"]
 
-    # 4. 计算费用
+    # 7. 计算费用
     cost_usd = _calculate_cost(model, input_tokens, output_tokens)
     logger.info(
         f"LLM 调用完成 model={actual_model!r} "
         f"in={input_tokens} out={output_tokens} cost=${cost_usd:.6f}"
     )
 
-    # 5. 非阻塞写入 agent_runs
+    # 8. 写入缓存（若 use_cache=True，请求可缓存，且有 cache_key）
+    if use_cache and _cache_available and cache_key is not None:
+        if is_cacheable(filtered_messages, response_content=content):
+            response_to_cache = {
+                "content": content,
+                "model": actual_model,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost_usd": cost_usd,
+            }
+            try:
+                set_cached_response(
+                    cache_key=cache_key,
+                    messages=filtered_messages,
+                    model=actual_model,
+                    response=response_to_cache,
+                )
+            except Exception as e:
+                logger.warning(f"写入缓存失败（非阻塞）: {e}")
+
+    # 9. 非阻塞写入 agent_runs
     try:
         _record_agent_run(
             model=actual_model,
@@ -308,11 +425,12 @@ def chat(
     except Exception as e:
         logger.warning(f"记录 agent_runs 失败（非阻塞，来自 chat）: {e}")
 
-    # 6. 返回结果
+    # 10. 返回结果
     return {
         "content": content,
         "model": actual_model,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cost_usd": cost_usd,
+        "cache_hit": False,
     }

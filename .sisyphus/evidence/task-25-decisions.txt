@@ -1,0 +1,208 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\zhjim\AppData\Local\Programs\Python\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: E:\amazon-automation
+configfile: pyproject.toml
+plugins: anyio-4.12.1, mock-3.15.1
+collecting ... collected 57 items
+
+tests/test_decisions.py::TestDecisionStatus::test_all_statuses_defined PASSED [  1%]
+tests/test_decisions.py::TestDecisionStatus::test_status_is_string_enum PASSED [  3%]
+tests/test_decisions.py::TestValidTransitions::test_draft_can_submit PASSED [  5%]
+tests/test_decisions.py::TestValidTransitions::test_pending_can_approve_or_reject PASSED [  7%]
+tests/test_decisions.py::TestValidTransitions::test_approved_can_execute PASSED [  8%]
+tests/test_decisions.py::TestValidTransitions::test_executing_can_succeed_or_fail PASSED [ 10%]
+tests/test_decisions.py::TestValidTransitions::test_failed_can_rollback PASSED [ 12%]
+tests/test_decisions.py::TestValidTransitions::test_terminal_states_have_no_transitions PASSED [ 14%]
+tests/test_decisions.py::TestDecisionCreateModel::test_valid_creation PASSED [ 15%]
+tests/test_decisions.py::TestDecisionCreateModel::test_rollback_payload_optional PASSED [ 17%]
+tests/test_decisions.py::TestDecisionCreateModel::test_missing_required_fields_raises PASSED [ 19%]
+tests/test_decisions.py::TestDecisionReadModel::test_model_from_orm PASSED [ 21%]
+tests/test_decisions.py::TestDecisionORMModel::test_tablename PASSED     [ 22%]
+tests/test_decisions.py::TestDecisionORMModel::test_required_columns_present PASSED [ 24%]
+tests/test_decisions.py::TestDecisionORMModel::test_nullable_columns PASSED [ 26%]
+tests/test_decisions.py::TestDecisionORMModel::test_repr PASSED          [ 28%]
+tests/test_decisions.py::TestDecisionORMModel::test_decisions_in_base_metadata PASSED [ 29%]
+tests/test_decisions.py::TestDecisionRepository::test_create_returns_decision PASSED [ 31%]
+tests/test_decisions.py::TestDecisionRepository::test_get_by_id_found PASSED [ 33%]
+tests/test_decisions.py::TestDecisionRepository::test_get_by_id_not_found PASSED [ 35%]
+tests/test_decisions.py::TestDecisionRepository::test_get_history_returns_list PASSED [ 36%]
+tests/test_decisions.py::TestDecisionRepository::test_get_history_filter_by_type PASSED [ 38%]
+tests/test_decisions.py::TestDecisionRepository::test_get_history_limit PASSED [ 40%]
+tests/test_decisions.py::TestCreateDecision::test_create_returns_draft PASSED [ 42%]
+tests/test_decisions.py::TestCreateDecision::test_create_logs_audit PASSED [ 43%]
+tests/test_decisions.py::TestSubmitForApproval::test_draft_to_pending PASSED [ 45%]
+tests/test_decisions.py::TestSubmitForApproval::test_logs_audit_on_submit PASSED [ 47%]
+tests/test_decisions.py::TestSubmitForApproval::test_invalid_transition_raises PASSED [ 49%]
+tests/test_decisions.py::TestSubmitForApproval::test_not_found_raises PASSED [ 50%]
+tests/test_decisions.py::TestApprove::test_pending_to_approved PASSED    [ 52%]
+tests/test_decisions.py::TestApprove::test_logs_audit_on_approve PASSED  [ 54%]
+tests/test_decisions.py::TestReject::test_pending_to_rejected PASSED     [ 56%]
+tests/test_decisions.py::TestReject::test_logs_audit_on_reject PASSED    [ 57%]
+tests/test_decisions.py::TestReject::test_rejected_is_terminal PASSED    [ 59%]
+tests/test_decisions.py::TestExecute::test_execute_success PASSED        [ 61%]
+tests/test_decisions.py::TestExecute::test_execute_failure PASSED        [ 63%]
+tests/test_decisions.py::TestExecute::test_execute_logs_audit_on_success PASSED [ 64%]
+tests/test_decisions.py::TestExecute::test_execute_logs_audit_on_failure PASSED [ 66%]
+tests/test_decisions.py::TestExecute::test_cannot_execute_without_approval PASSED [ 68%]
+tests/test_decisions.py::TestExecute::test_cannot_execute_draft PASSED   [ 70%]
+tests/test_decisions.py::TestRollback::test_failed_to_rolled_back PASSED [ 71%]
+tests/test_decisions.py::TestRollback::test_rollback_logs_audit PASSED   [ 73%]
+tests/test_decisions.py::TestRollback::test_cannot_rollback_succeeded PASSED [ 75%]
+tests/test_decisions.py::TestRollback::test_rolled_back_is_terminal PASSED [ 77%]
+tests/test_decisions.py::TestGetDecisionHistory::test_returns_empty_initially PASSED [ 78%]
+tests/test_decisions.py::TestGetDecisionHistory::test_returns_all_decisions PASSED [ 80%]
+tests/test_decisions.py::TestGetDecisionHistory::test_filter_by_type PASSED [ 82%]
+tests/test_decisions.py::TestGetDecisionHistory::test_filter_by_status PASSED [ 84%]
+tests/test_decisions.py::TestGetDecisionHistory::test_limit_respected PASSED [ 85%]
+tests/test_decisions.py::TestGetDecisionHistory::test_ordered_by_created_at_desc PASSED [ 87%]
+tests/test_decisions.py::TestFullWorkflow::test_happy_path_draft_to_succeeded PASSED [ 89%]
+tests/test_decisions.py::TestFullWorkflow::test_rejection_path PASSED    [ 91%]
+tests/test_decisions.py::TestFullWorkflow::test_failure_and_rollback_path PASSED [ 92%]
+tests/test_decisions.py::TestFullWorkflow::test_audit_log_called_for_each_transition PASSED [ 94%]
+tests/test_decisions.py::TestModuleImports::test_decisions_module_importable PASSED [ 96%]
+tests/test_decisions.py::TestModuleImports::test_decision_orm_importable PASSED [ 98%]
+tests/test_decisions.py::TestModuleImports::test_error_classes_importable PASSED [100%]
+
+============================== warnings summary ===============================
+C:\Users\zhjim\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\config\__init__.py:1428
+  C:\Users\zhjim\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\config\__init__.py:1428: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 57 passed, 1 warning in 2.10s ========================
+T25 - 决策状态机 实现完成报告
+生成时间: 2026-04-01 17:21:21
+========================================
+
+## 实现概况
+
+### 文件清单
+
+1. src/decisions/__init__.py
+   - 模块入口，导出所有公共接口
+
+2. src/decisions/models.py
+   - DecisionStatus 枚举（8种状态）
+   - VALID_TRANSITIONS 状态转换映射
+   - DecisionCreate Pydantic 模型（创建请求）
+   - DecisionRead Pydantic 模型（读取响应）
+   - DecisionStatusTransitionError 异常
+   - DecisionNotFoundError 异常
+
+3. src/decisions/state_machine.py
+   - DecisionStateMachine 核心状态机类
+   - create_decision()     — DRAFT 状态初始化
+   - submit_for_approval() — DRAFT → PENDING_APPROVAL
+   - approve()             — PENDING_APPROVAL → APPROVED
+   - reject()              — PENDING_APPROVAL → REJECTED
+   - execute()             — APPROVED → EXECUTING → SUCCEEDED/FAILED
+   - rollback()            — FAILED → ROLLED_BACK
+   - get_decision_history() — 查询历史，支持多维度过滤
+
+4. src/decisions/repository.py
+   - DecisionRepository 数据库操作层
+   - create() / get_by_id() / get_history()
+
+5. src/db/models.py (已更新)
+   - 新增 Decision ORM 模型（Table 12: decisions）
+   - 13个字段含所有必要索引
+
+6. alembic/versions/002_add_decisions_table.py
+   - upgrade(): 创建 decisions 表 + 4个索引
+   - downgrade(): 清理所有索引和表
+
+7. tests/test_decisions.py
+   - 57 个测试用例，100% 通过
+
+## 状态流转图
+
+DRAFT → PENDING_APPROVAL → APPROVED → EXECUTING → SUCCEEDED
+                                                ↘ FAILED → ROLLED_BACK
+                        ↘ REJECTED
+
+## 验收标准检查
+
+[✓] 决策状态机完整实现（所有状态转换）
+[✓] 数据库表创建成功（ORM + Alembic迁移）
+[✓] 状态变更记录到审计日志（每次转换调用 log_action）
+[✓] 支持查询决策历史（多维度过滤：类型/Agent/状态/数量）
+[✓] pytest tests/test_decisions.py 全部通过（57/57）
+
+## 测试结果
+
+============================= test session starts =============================
+platform win32 -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\zhjim\AppData\Local\Programs\Python\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: E:\amazon-automation
+configfile: pyproject.toml
+plugins: anyio-4.12.1, mock-3.15.1
+collecting ... collected 57 items
+
+tests/test_decisions.py::TestDecisionStatus::test_all_statuses_defined PASSED [  1%]
+tests/test_decisions.py::TestDecisionStatus::test_status_is_string_enum PASSED [  3%]
+tests/test_decisions.py::TestValidTransitions::test_draft_can_submit PASSED [  5%]
+tests/test_decisions.py::TestValidTransitions::test_pending_can_approve_or_reject PASSED [  7%]
+tests/test_decisions.py::TestValidTransitions::test_approved_can_execute PASSED [  8%]
+tests/test_decisions.py::TestValidTransitions::test_executing_can_succeed_or_fail PASSED [ 10%]
+tests/test_decisions.py::TestValidTransitions::test_failed_can_rollback PASSED [ 12%]
+tests/test_decisions.py::TestValidTransitions::test_terminal_states_have_no_transitions PASSED [ 14%]
+tests/test_decisions.py::TestDecisionCreateModel::test_valid_creation PASSED [ 15%]
+tests/test_decisions.py::TestDecisionCreateModel::test_rollback_payload_optional PASSED [ 17%]
+tests/test_decisions.py::TestDecisionCreateModel::test_missing_required_fields_raises PASSED [ 19%]
+tests/test_decisions.py::TestDecisionReadModel::test_model_from_orm PASSED [ 21%]
+tests/test_decisions.py::TestDecisionORMModel::test_tablename PASSED     [ 22%]
+tests/test_decisions.py::TestDecisionORMModel::test_required_columns_present PASSED [ 24%]
+tests/test_decisions.py::TestDecisionORMModel::test_nullable_columns PASSED [ 26%]
+tests/test_decisions.py::TestDecisionORMModel::test_repr PASSED          [ 28%]
+tests/test_decisions.py::TestDecisionORMModel::test_decisions_in_base_metadata PASSED [ 29%]
+tests/test_decisions.py::TestDecisionRepository::test_create_returns_decision PASSED [ 31%]
+tests/test_decisions.py::TestDecisionRepository::test_get_by_id_found PASSED [ 33%]
+tests/test_decisions.py::TestDecisionRepository::test_get_by_id_not_found PASSED [ 35%]
+tests/test_decisions.py::TestDecisionRepository::test_get_history_returns_list PASSED [ 36%]
+tests/test_decisions.py::TestDecisionRepository::test_get_history_filter_by_type PASSED [ 38%]
+tests/test_decisions.py::TestDecisionRepository::test_get_history_limit PASSED [ 40%]
+tests/test_decisions.py::TestCreateDecision::test_create_returns_draft PASSED [ 42%]
+tests/test_decisions.py::TestCreateDecision::test_create_logs_audit PASSED [ 43%]
+tests/test_decisions.py::TestSubmitForApproval::test_draft_to_pending PASSED [ 45%]
+tests/test_decisions.py::TestSubmitForApproval::test_logs_audit_on_submit PASSED [ 47%]
+tests/test_decisions.py::TestSubmitForApproval::test_invalid_transition_raises PASSED [ 49%]
+tests/test_decisions.py::TestSubmitForApproval::test_not_found_raises PASSED [ 50%]
+tests/test_decisions.py::TestApprove::test_pending_to_approved PASSED    [ 52%]
+tests/test_decisions.py::TestApprove::test_logs_audit_on_approve PASSED  [ 54%]
+tests/test_decisions.py::TestReject::test_pending_to_rejected PASSED     [ 56%]
+tests/test_decisions.py::TestReject::test_logs_audit_on_reject PASSED    [ 57%]
+tests/test_decisions.py::TestReject::test_rejected_is_terminal PASSED    [ 59%]
+tests/test_decisions.py::TestExecute::test_execute_success PASSED        [ 61%]
+tests/test_decisions.py::TestExecute::test_execute_failure PASSED        [ 63%]
+tests/test_decisions.py::TestExecute::test_execute_logs_audit_on_success PASSED [ 64%]
+tests/test_decisions.py::TestExecute::test_execute_logs_audit_on_failure PASSED [ 66%]
+tests/test_decisions.py::TestExecute::test_cannot_execute_without_approval PASSED [ 68%]
+tests/test_decisions.py::TestExecute::test_cannot_execute_draft PASSED   [ 70%]
+tests/test_decisions.py::TestRollback::test_failed_to_rolled_back PASSED [ 71%]
+tests/test_decisions.py::TestRollback::test_rollback_logs_audit PASSED   [ 73%]
+tests/test_decisions.py::TestRollback::test_cannot_rollback_succeeded PASSED [ 75%]
+tests/test_decisions.py::TestRollback::test_rolled_back_is_terminal PASSED [ 77%]
+tests/test_decisions.py::TestGetDecisionHistory::test_returns_empty_initially PASSED [ 78%]
+tests/test_decisions.py::TestGetDecisionHistory::test_returns_all_decisions PASSED [ 80%]
+tests/test_decisions.py::TestGetDecisionHistory::test_filter_by_type PASSED [ 82%]
+tests/test_decisions.py::TestGetDecisionHistory::test_filter_by_status PASSED [ 84%]
+tests/test_decisions.py::TestGetDecisionHistory::test_limit_respected PASSED [ 85%]
+tests/test_decisions.py::TestGetDecisionHistory::test_ordered_by_created_at_desc PASSED [ 87%]
+tests/test_decisions.py::TestFullWorkflow::test_happy_path_draft_to_succeeded PASSED [ 89%]
+tests/test_decisions.py::TestFullWorkflow::test_rejection_path PASSED    [ 91%]
+tests/test_decisions.py::TestFullWorkflow::test_failure_and_rollback_path PASSED [ 92%]
+tests/test_decisions.py::TestFullWorkflow::test_audit_log_called_for_each_transition PASSED [ 94%]
+tests/test_decisions.py::TestModuleImports::test_decisions_module_importable PASSED [ 96%]
+tests/test_decisions.py::TestModuleImports::test_decision_orm_importable PASSED [ 98%]
+tests/test_decisions.py::TestModuleImports::test_error_classes_importable PASSED [100%]
+
+============================== warnings summary ===============================
+C:\Users\zhjim\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\config\__init__.py:1428
+  C:\Users\zhjim\AppData\Local\Programs\Python\Python314\Lib\site-packages\_pytest\config\__init__.py:1428: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 57 passed, 1 warning in 2.09s ========================

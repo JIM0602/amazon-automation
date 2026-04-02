@@ -43,6 +43,10 @@ except ImportError:  # pragma: no cover — 无 loguru 时降级
         def debug(msg, *args, **kwargs):
             _logging.debug(msg.format(*args) if args else msg)
 
+# 限流模块（便于测试 patch）
+from src.utils.rate_limiter import get_rate_limiter, RateLimitExceeded
+from src.utils.api_priority import ApiPriority
+
 
 # ---------------------------------------------------------------------------
 # 缓存层：模块级字典，键 (method_name, args_tuple)，值 (result, timestamp)
@@ -132,7 +136,7 @@ class SellerSpriteBase(ABC):
     """卖家精灵客户端抽象基类，定义4个数据采集方法。"""
 
     @abstractmethod
-    def search_keyword(self, keyword: str) -> dict:
+    def search_keyword(self, keyword: str, account_id: str = "default") -> dict:
         """搜索关键词数据.
 
         Args:
@@ -146,7 +150,7 @@ class SellerSpriteBase(ABC):
         """
 
     @abstractmethod
-    def get_asin_data(self, asin: str) -> dict:
+    def get_asin_data(self, asin: str, account_id: str = "default") -> dict:
         """获取ASIN商品数据.
 
         Args:
@@ -160,7 +164,7 @@ class SellerSpriteBase(ABC):
         """
 
     @abstractmethod
-    def get_category_data(self, category: str) -> dict:
+    def get_category_data(self, category: str, account_id: str = "default") -> dict:
         """获取类目市场数据.
 
         Args:
@@ -174,7 +178,7 @@ class SellerSpriteBase(ABC):
         """
 
     @abstractmethod
-    def reverse_lookup(self, asin: str) -> dict:
+    def reverse_lookup(self, asin: str, account_id: str = "default") -> dict:
         """反查ASIN的关键词列表.
 
         Args:
@@ -384,8 +388,16 @@ class MockSellerSpriteClient(SellerSpriteBase):
         if os.environ.get("SELLER_SPRITE_MOCK_ERROR", "").lower() == "true":
             raise SellerSpriteApiError("Mock error injected via SELLER_SPRITE_MOCK_ERROR=true")
 
-    def search_keyword(self, keyword: str) -> dict:
-        """返回关键词搜索数据（含缓存 & 错误注入）。"""
+    def search_keyword(self, keyword: str, account_id: str = "default") -> dict:
+        """返回关键词搜索数据（含缓存 & 错误注入 & 限流）。"""
+        # 限流检查
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(
+            api_group="seller_sprite",
+            account_id=account_id,
+            priority=ApiPriority.BATCH,
+        )
+
         cache_key = ("search_keyword", keyword.lower())
         cached = _cache_get(cache_key)
         if cached is not None:
@@ -406,8 +418,16 @@ class MockSellerSpriteClient(SellerSpriteBase):
         _cache_set(cache_key, result)
         return result
 
-    def get_asin_data(self, asin: str) -> dict:
-        """返回ASIN商品数据（含缓存 & 错误注入）。"""
+    def get_asin_data(self, asin: str, account_id: str = "default") -> dict:
+        """返回ASIN商品数据（含缓存 & 错误注入 & 限流）。"""
+        # 限流检查
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(
+            api_group="seller_sprite",
+            account_id=account_id,
+            priority=ApiPriority.BATCH,
+        )
+
         cache_key = ("get_asin_data", asin.upper())
         cached = _cache_get(cache_key)
         if cached is not None:
@@ -433,8 +453,16 @@ class MockSellerSpriteClient(SellerSpriteBase):
         _cache_set(cache_key, result)
         return result
 
-    def get_category_data(self, category: str) -> dict:
-        """返回类目市场数据（含缓存 & 错误注入）。"""
+    def get_category_data(self, category: str, account_id: str = "default") -> dict:
+        """返回类目市场数据（含缓存 & 错误注入 & 限流）。"""
+        # 限流检查
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(
+            api_group="seller_sprite",
+            account_id=account_id,
+            priority=ApiPriority.BATCH,
+        )
+
         cache_key = ("get_category_data", category.lower())
         cached = _cache_get(cache_key)
         if cached is not None:
@@ -459,8 +487,16 @@ class MockSellerSpriteClient(SellerSpriteBase):
         _cache_set(cache_key, result)
         return result
 
-    def reverse_lookup(self, asin: str) -> dict:
-        """反查ASIN关键词列表（含缓存 & 错误注入）。"""
+    def reverse_lookup(self, asin: str, account_id: str = "default") -> dict:
+        """反查ASIN关键词列表（含缓存 & 错误注入 & 限流）。"""
+        # 限流检查
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(
+            api_group="seller_sprite",
+            account_id=account_id,
+            priority=ApiPriority.BATCH,
+        )
+
         cache_key = ("reverse_lookup", asin.upper())
         cached = _cache_get(cache_key)
         if cached is not None:

@@ -1,0 +1,142 @@
+T26 - Policy Engine 规则引擎 — 验收证据
+生成时间: 2026-04-01
+======================================================
+
+## 1. 测试执行结果
+
+命令: python -m pytest tests/test_policy_engine.py -v --tb=short
+结果: 80 passed, 0 failed, 1 warning in 1.36s
+
+```
+============================= test session starts =============================
+platform win32 -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0
+collected 80 items
+
+tests/test_policy_engine.py::TestViolation::test_violation_creation PASSED
+tests/test_policy_engine.py::TestViolation::test_violation_to_dict PASSED
+tests/test_policy_engine.py::TestWarning::test_warning_creation PASSED
+tests/test_policy_engine.py::TestWarning::test_warning_to_dict PASSED
+tests/test_policy_engine.py::TestPolicyResult::test_allowed_when_no_violations PASSED
+tests/test_policy_engine.py::TestPolicyResult::test_not_allowed_when_violations PASSED
+tests/test_policy_engine.py::TestPolicyResult::test_to_dict PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_engine_initializes_with_builtin_rules PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_check_returns_policy_result PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_register_custom_rule PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_register_rule_without_id_raises PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_unregister_rule PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_disable_and_enable_rule PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_get_violations_returns_list PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_rule_only_applies_to_matching_decision_type PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_rule_exception_does_not_crash_engine PASSED
+tests/test_policy_engine.py::TestPolicyEngineCore::test_get_policy_engine_singleton PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_violation_when_over_threshold PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_no_violation_when_within_threshold PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_no_violation_when_exactly_at_threshold PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_skip_when_missing_fields PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_skip_when_price_zero PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_price_decrease_also_checked PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_custom_threshold_via_env PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_sku_in_message PASSED
+tests/test_policy_engine.py::TestPriceMaxChangePctRule::test_disabled_via_env PASSED
+tests/test_policy_engine.py::TestPriceMinCostRule::test_violation_below_cost PASSED
+tests/test_policy_engine.py::TestPriceMinCostRule::test_no_violation_at_cost PASSED
+tests/test_policy_engine.py::TestPriceMinCostRule::test_no_violation_above_cost PASSED
+tests/test_policy_engine.py::TestPriceMinCostRule::test_skip_when_missing_fields PASSED
+tests/test_policy_engine.py::TestPriceMinCostRule::test_custom_margin_via_env PASSED
+tests/test_policy_engine.py::TestPriceMaxDailyChangesRule::test_violation_when_over_limit PASSED
+tests/test_policy_engine.py::TestPriceMaxDailyChangesRule::test_warning_when_at_limit PASSED
+tests/test_policy_engine.py::TestPriceMaxDailyChangesRule::test_no_violation_when_under_limit PASSED
+tests/test_policy_engine.py::TestPriceMaxDailyChangesRule::test_skip_when_missing_field PASSED
+tests/test_policy_engine.py::TestAdMaxDailyBudgetRule::test_violation_over_budget PASSED
+tests/test_policy_engine.py::TestAdMaxDailyBudgetRule::test_warning_near_budget PASSED
+tests/test_policy_engine.py::TestAdMaxDailyBudgetRule::test_no_issue_under_budget PASSED
+tests/test_policy_engine.py::TestAdMaxDailyBudgetRule::test_skip_when_missing_field PASSED
+tests/test_policy_engine.py::TestAdMaxDailyBudgetRule::test_custom_limit_via_env PASSED
+tests/test_policy_engine.py::TestAdAcosThresholdRule::test_violation_acos_over_threshold_with_increase PASSED
+tests/test_policy_engine.py::TestAdAcosThresholdRule::test_no_violation_acos_over_threshold_but_no_increase PASSED
+tests/test_policy_engine.py::TestAdAcosThresholdRule::test_no_violation_acos_under_threshold PASSED
+tests/test_policy_engine.py::TestAdAcosThresholdRule::test_warning_acos_near_threshold PASSED
+tests/test_policy_engine.py::TestAdAcosThresholdRule::test_violation_via_bid_increase PASSED
+tests/test_policy_engine.py::TestAdAcosThresholdRule::test_skip_when_missing_acos PASSED
+tests/test_policy_engine.py::TestAdAcosThresholdRule::test_custom_threshold_via_env PASSED
+tests/test_policy_engine.py::TestAdMaxKeywordBidRule::test_violation_over_bid_limit PASSED
+tests/test_policy_engine.py::TestAdMaxKeywordBidRule::test_no_violation_under_bid_limit PASSED
+tests/test_policy_engine.py::TestAdMaxKeywordBidRule::test_no_violation_at_bid_limit PASSED
+tests/test_policy_engine.py::TestAdMaxKeywordBidRule::test_skip_when_missing_field PASSED
+tests/test_policy_engine.py::TestAdMaxKeywordBidRule::test_keyword_in_message PASSED
+tests/test_policy_engine.py::TestInvMaxReplenishUnitsRule::test_violation_over_limit PASSED
+tests/test_policy_engine.py::TestInvMaxReplenishUnitsRule::test_no_violation_under_limit PASSED
+tests/test_policy_engine.py::TestInvMaxReplenishUnitsRule::test_violation_when_zero_units PASSED
+tests/test_policy_engine.py::TestInvMaxReplenishUnitsRule::test_violation_when_negative_units PASSED
+tests/test_policy_engine.py::TestInvMaxReplenishUnitsRule::test_skip_when_missing_field PASSED
+tests/test_policy_engine.py::TestInvMaxReplenishUnitsRule::test_custom_limit_via_env PASSED
+tests/test_policy_engine.py::TestInvSafetyStockWarningRule::test_warning_when_below_safety_stock PASSED
+tests/test_policy_engine.py::TestInvSafetyStockWarningRule::test_no_warning_when_above_safety_stock PASSED
+tests/test_policy_engine.py::TestInvSafetyStockWarningRule::test_skip_when_daily_sales_zero PASSED
+tests/test_policy_engine.py::TestInvSafetyStockWarningRule::test_skip_when_missing_fields PASSED
+tests/test_policy_engine.py::TestInvSafetyStockWarningRule::test_custom_threshold_via_env PASSED
+tests/test_policy_engine.py::TestPolicyConfig::test_default_values PASSED
+tests/test_policy_engine.py::TestPolicyConfig::test_override_via_env PASSED
+tests/test_policy_engine.py::TestPolicyConfig::test_invalid_env_uses_default PASSED
+tests/test_policy_engine.py::TestPolicyConfig::test_rule_enabled_check PASSED
+tests/test_policy_engine.py::TestPolicyConfig::test_rule_enabled_by_default PASSED
+tests/test_policy_engine.py::TestSubmitForApproval::test_violation_blocks_submission PASSED
+tests/test_policy_engine.py::TestSubmitForApproval::test_compliant_decision_proceeds PASSED
+tests/test_policy_engine.py::TestSubmitForApproval::test_skip_policy_check_proceeds PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_price_adjustment_compliant PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_price_adjustment_violates_change_pct PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_price_adjustment_violates_cost PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_ad_budget_compliant PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_ad_budget_violates_acos PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_inventory_replenishment_compliant PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_inventory_replenishment_violates_max_units PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_inventory_safety_stock_warning PASSED
+tests/test_policy_engine.py::TestBuiltinRulesEndToEnd::test_unknown_decision_type_all_pass PASSED
+
+======================== 80 passed, 1 warning in 1.36s ========================
+```
+
+## 2. 创建的文件列表
+
+src/policy/__init__.py          — 模块入口，导出核心接口
+src/policy/models.py            — Pydantic 数据模型 (Violation/Warning/PolicyResult/Rule)
+src/policy/config.py            — 规则阈值配置 (PolicyConfig，环境变量驱动)
+src/policy/engine.py            — 规则引擎核心 (PolicyEngine)
+src/policy/rules.py             — 内置规则定义 (8条规则)
+src/policy/integration.py       — 与决策流程集成 (submit_for_approval)
+tests/test_policy_engine.py     — 80个单元测试
+
+## 3. 验收标准检查
+
+[x] 规则引擎核心实现 (PolicyEngine.check / register_rule / get_violations)
+[x] 价格规则完整:
+    - PriceMaxChangePctRule: 单次调价幅度 ≤ 20%
+    - PriceMinCostRule: 最低价格不低于成本价
+    - PriceMaxDailyChangesRule: 日调价次数 ≤ 3次
+[x] 广告规则完整:
+    - AdMaxDailyBudgetRule: 单日预算上限 (默认 $500)
+    - AdAcosThresholdRule: ACoS 超 50% 时停止加投
+    - AdMaxKeywordBidRule: 关键词出价上限 (默认 $5)
+[x] 库存规则完整:
+    - InvMaxReplenishUnitsRule: 补货数量合理性检查 (默认 ≤10000)
+    - InvSafetyStockWarningRule: 安全库存预警 (默认 14天)
+[x] 规则阈值可配置 (POLICY_* 环境变量)
+[x] 规则可启用/禁用 (POLICY_RULE_*_ENABLED 环境变量)
+[x] 违规时返回详细信息 (rule_id/rule_name/message/field/actual/threshold)
+[x] 集成到决策流程 (submit_for_approval 违规时阻止提交)
+[x] pytest tests/test_policy_engine.py 全部通过 (80/80)
+
+## 4. 配置示例
+
+环境变量配置规则阈值:
+  POLICY_PRICE_MAX_CHANGE_PCT=0.20      # 单次调价最大 20%
+  POLICY_PRICE_MIN_MARGIN=0.0           # 最低利润率
+  POLICY_PRICE_MAX_DAILY_CHANGES=3      # 每日最多调价 3 次
+  POLICY_AD_MAX_DAILY_BUDGET_USD=500.0  # 单日广告预算上限 $500
+  POLICY_AD_ACOS_THRESHOLD_PCT=0.50     # ACoS 阈值 50%
+  POLICY_AD_MAX_KEYWORD_BID_USD=5.0     # 关键词出价上限 $5
+  POLICY_INV_MAX_REPLENISH_UNITS=10000  # 单次补货上限 10000件
+  POLICY_INV_SAFETY_STOCK_DAYS=14       # 安全库存预警 14天
+
+禁用特定规则:
+  POLICY_RULE_PRICE_MAX_CHANGE_PCT_ENABLED=false
