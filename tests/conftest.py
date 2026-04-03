@@ -1,4 +1,18 @@
-import pytest
+import os
+
+# ---- Environment defaults — MUST run before any application module import ----
+# These are set at module level (not inside a hook/fixture) so they take effect
+# before ``src.config.Settings()`` is instantiated during conftest collection.
+_TEST_ENV_DEFAULTS = {
+    "DATABASE_URL": "sqlite:///./test_amazon_ai.db",
+    "OPENAI_API_KEY": "sk-test-placeholder",
+    "FEISHU_APP_ID": "cli_test",
+    "FEISHU_APP_SECRET": "test_secret",
+}
+for _key, _value in _TEST_ENV_DEFAULTS.items():
+    os.environ.setdefault(_key, _value)
+
+import pytest  # noqa: E402 — must come after env setup
 
 
 def pytest_addoption(parser):

@@ -13,6 +13,23 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.main import app
+from src.db import Base
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _init_db() -> None:
+    """Create all DB tables once before the test session starts."""
+    import src.config as _cfg
+    from src.db import connection as _conn
+
+    # Re-instantiate settings so it picks up test env vars
+    _cfg.settings = _cfg.Settings()
+
+    # Reset cached engine/session to use the new (test) DATABASE_URL
+    _conn._engine = None
+    _conn._SessionLocal = None
+    engine = _conn.get_engine()
+    Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture(scope="session")

@@ -2,12 +2,11 @@ version: "3.9"
 
 # ================================
 # PUDIWIND AI System — Docker Compose 生产配置
-# 包含服务：app（FastAPI）+ postgres（pgvector）
-# 注意：postgres 仅通过内部网络访问，不映射宿主机端口
+# 包含服务：app（FastAPI）+ postgres（pgvector）+ frontend（Next.js）+ nginx（反向代理）
 # ================================
 
 services:
-  # ---- 主应用服务 ----
+  # ---- FastAPI 后端服务 ----
   app:
     build:
       context: ../..  # 项目根目录
@@ -16,25 +15,20 @@ services:
     container_name: amazon-ai-app
     restart: unless-stopped
 
-    # 端口映射：宿主机 8000 → 容器 8000（nginx 反向代理到此）
     ports:
-      - "127.0.0.1:8000:8000"  # 仅绑定本地回环，不直接对外暴露
+      - "127.0.0.1:8000:8000"
 
-    # 挂载 .env 文件（敏感配置不写入镜像）
     env_file:
       - ../../.env
 
-    # 覆盖 .env 中的数据库连接（使用 Docker 内部网络域名 postgres）
     environment:
       - DATABASE_URL=postgresql://app_user:${POSTGRES_PASSWORD:-changeme}@postgres:5432/amazon_ai
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
 
-    # 等待 postgres 健康后再启动 app
     depends_on:
       postgres:
         condition: service_healthy
 
-    # 资源限制：最大 2GB 内存，防止 OOM 影响宿主机
     deploy:
       resources:
         limits:
@@ -42,7 +36,6 @@ services:
         reservations:
           memory: 512m
 
-    # 日志配置：限制日志文件大小，避免磁盘撑爆
     logging:
       driver: "json-file"
       options:
@@ -55,40 +48,31 @@ services:
     volumes:
       - app_logs:/app/logs
 
-  # ---- 数据库服务（带 pgvector 扩展）----
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: amazon-ai-postgres
+  # ---- Next.js 前端服务 ----
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    image: amazon-ai-frontend:latest
+    container_name: amazon-ai-frontend
     restart: unless-stopped
 
-    # ⚠️ 重要安全设计：不映射宿主机端口！
-    # postgres 5432 端口仅在 Docker 内部网络对 app 可见
-    # 宿主机无法直接连接数据库，防止数据库暴露到公网
-    # ports:  ← 故意注释掉，不暴露宿主机端口
+    ports:
+      - "127.0.0.1:3000:3000"
 
     environment:
-      - POSTGRES_DB=amazon_ai
-      - POSTGRES_USER=app_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
-      - PGDATA=/var/lib/postgresql/data/pgdata
+      - NEXT_PUBLIC_API_URL=
 
-    # 健康检查：确保 postgres 真正可接受连接后才启动 app
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app_user -d amazon_ai"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+    depends_on:
+      - app
 
-    # 资源限制：最大 1GB 内存
     deploy:
       resources:
         limits:
-          memory: 1g
+          memory: 512m
         reservations:
-          memory: 256m
+          memory: 128m
 
-    # 日志配置
     logging:
       driver: "json-file"
       options:
@@ -98,7 +82,70 @@ services:
     networks:
       - internal
 
-    # 持久化数据库数据
+  # ---- Nginx 反向代理 ----
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: amazon-ai-nginx
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+
+    depends_on:
+      - app
+      - frontend
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+    networks:
+      - internal
+
+  # ---- 数据库服务（带 pgvector 扩展）----
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: amazon-ai-postgres
+    restart: unless-stopped
+
+    # 不映射宿主机端口 — 仅通过内部网络访问
+    environment:
+      - POSTGRES_DB=amazon_ai
+      - POSTGRES_USER=app_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d amazon_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 256m
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+    networks:
+      - internal
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -106,7 +153,6 @@ services:
 networks:
   internal:
     driver: bridge
-    # internal: true  # 若需完全隔断外网，取消注释（会导致 app 无法访问外部 API）
 
 # ---- 数据卷配置 ----
 volumes:
@@ -117,3 +163,11 @@ volumes:
   app_logs:
     driver: local
     name: amazon-ai-app-logs
+
+  certbot_conf:
+    driver: local
+    name: amazon-ai-certbot-conf
+
+  certbot_www:
+    driver: local
+    name: amazon-ai-certbot-www

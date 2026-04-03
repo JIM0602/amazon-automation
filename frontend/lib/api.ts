@@ -1,7 +1,7 @@
 import { getAuthHeaders, clearTokens } from "./auth";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export class ApiError extends Error {
   constructor(
@@ -40,7 +40,11 @@ export async function apiFetch<T>(
   // Handle 401 Unauthorized — token expired or invalid
   if (response.status === 401) {
     clearTokens();
-    if (typeof window !== "undefined") {
+    // Only redirect if we're NOT already on /login (prevents infinite loop)
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/login"
+    ) {
       window.location.href = "/login";
     }
     throw new ApiError(401, "Unauthorized — please log in again");

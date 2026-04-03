@@ -45,13 +45,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /**
    * Fetch current user info from /api/auth/me.
    * Called on mount to validate the stored token.
+   *
+   * Uses raw fetch instead of apiFetch to avoid the global 401 redirect
+   * handler — on /login page we just want to know the user is not
+   * authenticated, not trigger a page reload loop.
    */
   const fetchCurrentUser = useCallback(async () => {
     try {
-      const me = await apiFetch<User>("/api/auth/me");
-      setUser(me);
+      const token =
+        typeof document !== "undefined"
+          ? document.cookie
+              .split(";")
+              .find((c) => c.trim().startsWith("token="))
+              ?.split("=")
+              .slice(1)
+              .join("=")
+          : undefined;
+
+      if (!token) {
+        setUser(null);
+        return;
+      }
+
+      const res = await fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${decodeURIComponent(token.trim())}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const me = (await res.json()) as User;
+        setUser(me);
+      } else {
+        setUser(null);
+      }
     } catch {
-      // Token missing or invalid — user stays null
+      // Network error or similar — user stays null
       setUser(null);
     } finally {
       setLoading(false);
