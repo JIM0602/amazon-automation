@@ -30,8 +30,8 @@ function LoginForm() {
       setLoading(true);
       setErrorMsg("");
       await login(username, password);
-    } catch (err: any) {
-      setErrorMsg(err.message || "登录失败，请检查用户名和密码");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "登录失败，请检查用户名和密码");
       setLoading(false);
     }
   };

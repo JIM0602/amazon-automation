@@ -130,13 +130,13 @@ function AgentCard({ agent }: { agent: AgentDef }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const processedParams = { ...formData };
+    const processedParams: Record<string, string | string[]> = { ...formData };
     
-    if (agent.type === "competitor" && processedParams.competitor_asins) {
+    if (agent.type === "competitor" && typeof processedParams.competitor_asins === "string") {
       processedParams.competitor_asins = processedParams.competitor_asins
         .split(",")
         .map((s) => s.trim())
-        .filter(Boolean) as any;
+        .filter(Boolean);
     }
 
     mutation.mutate({ dry_run: dryRun, params: processedParams });
