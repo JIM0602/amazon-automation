@@ -193,6 +193,7 @@ class AgentRun(Base):
     cost_usd = Column(Float, nullable=True)
     started_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
     finished_at = Column(DateTime(timezone=True), nullable=True)
+    result_json = Column(JSON, nullable=True)  # structured result dict (added T4)
 
     # Relationships
     product_selections = relationship("ProductSelection", back_populates="agent_run")

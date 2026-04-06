@@ -22,6 +22,7 @@ from src.api.schemas.agents import (
     AgentRunResponse,
     AgentRunStatus,
     AgentType,
+    AGENT_PARAM_SCHEMAS,
 )
 from src.db import AgentRun, get_db
 
@@ -51,6 +52,15 @@ def _now_iso() -> str:
 
 def _run_to_status(run: AgentRun) -> AgentRunStatus:
     """Convert an ORM AgentRun object to the AgentRunStatus schema."""
+    result_value: Optional[dict] = None
+    if hasattr(run, "result_json") and run.result_json is not None:
+        result_value = run.result_json
+    elif run.output_summary:
+        try:
+            result_value = json.loads(run.output_summary)
+        except (json.JSONDecodeError, TypeError):
+            result_value = None
+
     return AgentRunStatus(
         run_id=str(run.id),
         agent_type=run.agent_type,
@@ -60,6 +70,7 @@ def _run_to_status(run: AgentRun) -> AgentRunStatus:
         cost_usd=run.cost_usd,
         started_at=run.started_at.isoformat() if run.started_at else _now_iso(),
         finished_at=run.finished_at.isoformat() if run.finished_at else None,
+        result=result_value,
     )
 
 
@@ -126,6 +137,24 @@ def _run_agent_background(
                 dry_run=dry_run,
             )
 
+        elif agent_type == "brand_planning":
+            result_data = {"status": "not_yet_implemented", "agent_type": "brand_planning", "message": "Brand planning agent is under development"}
+
+        elif agent_type == "whitepaper":
+            result_data = {"status": "not_yet_implemented", "agent_type": "whitepaper", "message": "Whitepaper agent is under development"}
+
+        elif agent_type == "image_generation":
+            result_data = {"status": "not_yet_implemented", "agent_type": "image_generation", "message": "Image generation agent is under development"}
+
+        elif agent_type == "product_listing":
+            result_data = {"status": "not_yet_implemented", "agent_type": "product_listing", "message": "Product listing agent is under development"}
+
+        elif agent_type == "inventory":
+            result_data = {"status": "not_yet_implemented", "agent_type": "inventory", "message": "Inventory monitoring agent is under development"}
+
+        elif agent_type == "core_management":
+            result_data = {"status": "not_yet_implemented", "agent_type": "core_management", "message": "Core management agent is under development"}
+
         else:
             raise ValueError(f"Unknown agent_type: {agent_type!r}")
 
@@ -138,6 +167,8 @@ def _run_agent_background(
             run_record.status = "success"
             run_record.output_summary = summary
             run_record.finished_at = datetime.now(timezone.utc)
+            if hasattr(run_record, "result_json"):
+                run_record.result_json = result_data
             db.commit()
 
     except Exception as exc:  # noqa: BLE001 — intentional broad catch in background task
@@ -159,6 +190,35 @@ def _run_agent_background(
             )
     finally:
         db.close()
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 0: GET /api/agents/types
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/types",
+    summary="List all registered agent types and their parameter schemas",
+)
+async def list_agent_types() -> dict:
+    """Return all registered agent types with their parameter schemas.
+
+    This endpoint is used by the frontend to dynamically render agent cards
+    and parameter forms. No authentication required (public metadata).
+    """
+    types = []
+    for agent_type_value in AgentType:
+        schema = AGENT_PARAM_SCHEMAS.get(agent_type_value.value, {})
+        types.append(
+            {
+                "type": agent_type_value.value,
+                "name": schema.get("name", agent_type_value.value),
+                "description": schema.get("description", ""),
+                "params": schema.get("params", {}),
+            }
+        )
+    return {"types": types}
 
 
 # ---------------------------------------------------------------------------
