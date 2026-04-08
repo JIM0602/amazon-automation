@@ -28,6 +28,7 @@ from .auth import SpApiAuth, SpApiAuthError
 from .client import SpApiClient, SpApiClientError, SpApiHttpError
 from .reports import ReportsApi, ReportsApiError
 from .catalog import CatalogApi, CatalogApiError
+from .listings import ListingsApi, ListingsApiError
 from .orders import OrdersApi, OrdersApiError
 
 __all__ = [
@@ -44,6 +45,9 @@ __all__ = [
     # 目录 API
     "CatalogApi",
     "CatalogApiError",
+    # Listings API
+    "ListingsApi",
+    "ListingsApiError",
     # 订单 API
     "OrdersApi",
     "OrdersApiError",

@@ -69,6 +69,66 @@ const AGENTS: AgentDef[] = [
     icon: "📢",
     params: [],
   },
+  {
+    type: "brand_planning",
+    name: "品牌规划 Agent",
+    description: "制定品牌发展战略和路径规划",
+    icon: "🎯",
+    params: [
+      { key: "brand_name", label: "品牌名称", placeholder: "您的品牌名称", required: true },
+      { key: "target_market", label: "目标市场", placeholder: "US", required: false },
+    ],
+  },
+  {
+    type: "whitepaper",
+    name: "产品白皮书 Agent",
+    description: "生成专业的产品白皮书文档",
+    icon: "📄",
+    params: [
+      { key: "product_name", label: "产品名称", placeholder: "产品名称", required: true },
+      { key: "asin", label: "关联ASIN", placeholder: "B0XXXXXXXXX", required: false },
+    ],
+  },
+  {
+    type: "image_generation",
+    name: "图片生成 Agent",
+    description: "使用 DALL-E 3 生成产品营销图片",
+    icon: "🖼️",
+    params: [
+      { key: "prompt", label: "图片描述", placeholder: "描述您想要的产品图片", required: true },
+      { key: "product_name", label: "产品名称", placeholder: "产品名称", required: false },
+      { key: "style", label: "风格", placeholder: "professional / lifestyle / minimal / artistic", required: false },
+    ],
+  },
+  {
+    type: "product_listing",
+    name: "产品上架 Agent",
+    description: "通过 SP-API 将产品上架到亚马逊",
+    icon: "🚀",
+    params: [
+      { key: "product_name", label: "产品名称", placeholder: "产品名称", required: true },
+      { key: "marketplace", label: "目标市场", placeholder: "ATVPDKIKX0DER", required: false },
+    ],
+  },
+  {
+    type: "inventory",
+    name: "库存监控 Agent",
+    description: "监控库存水位，发送补货预警",
+    icon: "📦",
+    params: [
+      { key: "sku_list", label: "SKU列表(逗号分隔)", placeholder: "SKU-001,SKU-002", required: false },
+      { key: "threshold_days", label: "预警天数", placeholder: "30", required: false },
+    ],
+  },
+  {
+    type: "core_management",
+    name: "核心管理 Agent",
+    description: "系统核心管理，生成日报并协调其他Agent",
+    icon: "⚙️",
+    params: [
+      { key: "action", label: "操作类型", placeholder: "daily_report / status_check", required: false },
+    ],
+  },
 ];
 
 interface AgentRunStatus {
@@ -134,6 +194,13 @@ function AgentCard({ agent }: { agent: AgentDef }) {
     
     if (agent.type === "competitor" && typeof processedParams.competitor_asins === "string") {
       processedParams.competitor_asins = processedParams.competitor_asins
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    
+    if (agent.type === "inventory" && typeof processedParams.sku_list === "string") {
+      processedParams.sku_list = processedParams.sku_list
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);

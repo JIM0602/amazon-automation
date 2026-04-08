@@ -4,6 +4,8 @@
     pytest tests/test_seller_sprite.py --mock-external-apis -v
 """
 
+# pyright: reportAbstractUsage=false, reportMissingTypeArgument=false, reportGeneralTypeIssues=false, reportArgumentType=false, reportPrivateUsage=false
+
 from __future__ import annotations
 
 import os
@@ -48,6 +50,21 @@ def ensure_mock_mode():
         os.environ["SELLER_SPRITE_USE_MOCK"] = original
     else:
         os.environ.pop("SELLER_SPRITE_USE_MOCK", None)
+
+
+@pytest.fixture(autouse=True)
+def disable_seller_sprite_rate_limit():
+    """Seller Sprite 测试中禁用限流，避免用例之间互相影响。"""
+    from src.seller_sprite import client as ss_client
+
+    class _DummyLimiter:
+        def acquire_or_raise(self, **kwargs):
+            return None
+
+    original = ss_client.get_rate_limiter
+    ss_client.get_rate_limiter = lambda: _DummyLimiter()
+    yield
+    ss_client.get_rate_limiter = original
 
 
 # ---------------------------------------------------------------------------
@@ -106,11 +123,11 @@ class TestGetClient:
         client = get_client()
         assert isinstance(client, MockSellerSpriteClient)
 
-    def test_get_client_raises_not_implemented_when_real(self):
+    def test_get_client_returns_real_when_real(self):
         os.environ["SELLER_SPRITE_USE_MOCK"] = "false"
-        from src.seller_sprite.client import get_client
-        with pytest.raises(NotImplementedError):
-            get_client()
+        from src.seller_sprite.client import get_client, RealSellerSpriteClient
+        client = get_client()
+        assert isinstance(client, RealSellerSpriteClient)
 
     def test_get_client_from_package_init(self):
         from src.seller_sprite import get_client, MockSellerSpriteClient

@@ -24,21 +24,43 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 模块顶部导入所有需要被 patch 的依赖
 # ---------------------------------------------------------------------------
+_db_available = False
 try:
     from src.db.connection import db_session
     from src.db.models import AgentRun
-    _DB_AVAILABLE = True
+    _db_available = True
 except ImportError:
     db_session = None  # type: ignore[assignment]
     AgentRun = None  # type: ignore[assignment]
-    _DB_AVAILABLE = False
 
+_DB_AVAILABLE = _db_available
+
+_ss_available = False
+try:
+    from src.seller_sprite.client import get_client as get_ss_client
+    _ss_available = True
+except ImportError:
+    get_ss_client = None  # type: ignore[assignment]
+
+_SS_AVAILABLE = _ss_available
+
+_llm_available = False
+try:
+    from src.llm.client import chat
+    _llm_available = True
+except ImportError:
+    chat = None  # type: ignore[assignment]
+
+_LLM_AVAILABLE = _llm_available
+
+_kb_available = False
 try:
     from src.knowledge_base.rag_engine import query as kb_query
-    _KB_AVAILABLE = True
+    _kb_available = True
 except ImportError:
     kb_query = None  # type: ignore[assignment]
-    _KB_AVAILABLE = False
+
+_KB_AVAILABLE = _kb_available
 
 from src.agents.persona_agent.schemas import PersonaState
 from src.agents.persona_agent.analyzer import (
@@ -175,10 +197,100 @@ def collect_data(state: PersonaState) -> PersonaState:
         )
         return state
 
-    # 非 dry_run 模式：预留真实 API 调用逻辑
-    logger.warning(
-        "persona_agent collect_data | 非dry_run模式，真实API未实现，使用Mock数据兜底"
-    )
+    # 非 dry_run 模式：使用 Seller Sprite 市场数据 + LLM 合成伪评论
+    if _SS_AVAILABLE and get_ss_client is not None:
+        try:
+            client = get_ss_client()
+            market_data: Dict[str, Any] = {"keywords": [], "category": {}, "asin": {}}
+
+            if category:
+                try:
+                    category_data = client.get_category_data(category)
+                    market_data["category"] = category_data if isinstance(category_data, dict) else {}
+                except Exception as exc:
+                    logger.warning(
+                        "persona_agent collect_data | 类目数据获取失败，继续使用关键词数据: %s",
+                        exc,
+                    )
+                try:
+                    keyword_result = client.search_keyword(category)
+                    if isinstance(keyword_result, dict):
+                        market_data["keywords"] = [keyword_result]
+                except Exception as exc:
+                    logger.warning(
+                        "persona_agent collect_data | 关键词数据获取失败: %s",
+                        exc,
+                    )
+
+            if asin:
+                try:
+                    asin_data = client.get_asin_data(asin)
+                    market_data["asin"] = asin_data if isinstance(asin_data, dict) else {}
+                except Exception as exc:
+                    logger.warning(
+                        "persona_agent collect_data | ASIN数据获取失败，继续合成评论: %s",
+                        exc,
+                    )
+
+            if _LLM_AVAILABLE and chat is not None:
+                try:
+                    prompt = (
+                        "你是电商用户画像分析助手。请根据以下市场信息，生成5条代表性伪评论，"
+                        "每条评论都应反映用户痛点、购买动机和可能的人群特征。"
+                        "请严格输出 JSON 数组，每个元素包含 text, rating, helpful_votes, verified。\n\n"
+                        f"类目: {category}\n"
+                        f"ASIN: {asin}\n"
+                        f"类目数据: {json.dumps(market_data.get('category', {}), ensure_ascii=False)}\n"
+                        f"关键词数据: {json.dumps(market_data.get('keywords', []), ensure_ascii=False)}\n"
+                        f"ASIN数据: {json.dumps(market_data.get('asin', {}), ensure_ascii=False)}\n"
+                        "重点推断：用户痛点、购买动机、人口统计特征。"
+                    )
+                    response = chat(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "你负责把市场信号转成结构化伪评论。"},
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=0.3,
+                        max_tokens=800,
+                    )
+                    content = response.get("content", "") if isinstance(response, dict) else ""
+                    parsed: Any = json.loads(content)
+                    if isinstance(parsed, list):
+                        state["raw_reviews"] = [
+                            {
+                                "text": str(item.get("text", "")),
+                                "rating": int(item.get("rating", 4)),
+                                "helpful_votes": int(item.get("helpful_votes", 0)),
+                                "verified": bool(item.get("verified", True)),
+                            }
+                            for item in parsed
+                            if isinstance(item, dict)
+                        ]
+                    else:
+                        raise ValueError("LLM response is not a JSON array")
+                    logger.info(
+                        "persona_agent collect_data | 使用Seller Sprite+LLM合成伪评论 count=%d",
+                        len(state["raw_reviews"]),
+                    )
+                    if state.get("raw_reviews"):
+                        return state
+                except Exception as exc:
+                    logger.warning(
+                        "persona_agent collect_data | LLM合成伪评论失败，使用Mock数据兜底: %s",
+                        exc,
+                    )
+
+            logger.warning("persona_agent collect_data | 使用Mock评论数据兜底")
+            state["raw_reviews"] = list(_MOCK_REVIEWS)
+            return state
+        except Exception as exc:
+            logger.warning(
+                "persona_agent collect_data | 真实API不可用，使用Mock数据兜底: %s",
+                exc,
+            )
+
+    logger.warning("persona_agent collect_data | 使用Mock评论数据兜底")
     state["raw_reviews"] = list(_MOCK_REVIEWS)
     return state
 
@@ -208,7 +320,7 @@ def retrieve_kb(state: PersonaState) -> PersonaState:
 
     if _KB_AVAILABLE and kb_query is not None:
         try:
-            query_text = f"宠物{category}用户画像" if category else "用户画像分析"
+            query_text = f"{category} 用户画像 购买决策 用户痛点" if category else "用户画像分析"
             result = kb_query(query_text)
             state["kb_context"] = [result] if result else list(_MOCK_KB_CONTEXT)
             logger.info("persona_agent retrieve_kb | KB查询成功 results=%d", len(state["kb_context"]))
@@ -349,9 +461,9 @@ def finalize_run(state: PersonaState) -> PersonaState:
             with db_session() as session:
                 run = session.get(AgentRun, run_uuid)
                 if run:
-                    run.status = final_status
-                    run.finished_at = datetime.now(timezone.utc)
-                    run.output_summary = output_summary[:200]
+                    setattr(run, "status", final_status)
+                    setattr(run, "finished_at", datetime.now(timezone.utc))
+                    setattr(run, "output_summary", output_summary[:200])
                     session.commit()
 
             logger.info(

@@ -1,0 +1,16 @@
+QA 1: AgentType enum count
+Output: ['selection', 'listing', 'competitor', 'persona', 'ad_monitor', 'brand_planning', 'whitepaper', 'image_generation', 'product_listing', 'inventory', 'core_management']
+Result: PASS (11 types)
+
+QA 2: GET /api/agents/types
+Output: 11 types
+Result: PASS
+
+QA 3: result_json column exists
+Output: ['id', 'agent_type', 'status', 'input_summary', 'output_summary', 'cost_usd', 'started_at', 'finished_at', 'result_json']
+Result: PASS
+
+QA 4: brand_planning run trigger
+HTTP: 202
+Output: {"run_id":"74a99eaf-2100-4006-b358-877a26114815","agent_type":"brand_planning","status":"running","message":"Agent brand_planning started (dry_run=True). Poll /api/agents/runs/74a99eaf-2100-4006-b358-877a26114815 for status."}
+Result: PASS

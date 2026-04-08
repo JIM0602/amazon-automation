@@ -17,7 +17,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +28,11 @@ logger = logging.getLogger(__name__)
 try:
     from src.db.connection import db_session
     from src.db.models import AgentRun
-    _DB_AVAILABLE = True
+    db_available = True
 except ImportError:
     db_session = None  # type: ignore[assignment]
     AgentRun = None  # type: ignore[assignment]
-    _DB_AVAILABLE = False
+    db_available = False
 
 from src.agents.ad_monitor_agent.schemas import AdMonitorState
 from src.agents.ad_monitor_agent.monitor import (
@@ -45,6 +45,7 @@ from src.agents.ad_monitor_agent.alerts import (
     generate_optimization_suggestions,
     send_feishu_alert,
 )
+from src.config import settings
 
 # ---------------------------------------------------------------------------
 # Mock 数据（dry_run=True 时使用）
@@ -105,7 +106,7 @@ def init_run(state: AdMonitorState) -> AdMonitorState:
 
     run_id = str(uuid.uuid4())
 
-    if not dry_run and _DB_AVAILABLE and db_session is not None and AgentRun is not None:
+    if not dry_run and db_available and db_session is not None and AgentRun is not None:
         try:
             with db_session() as session:
                 run = AgentRun(
@@ -187,11 +188,55 @@ def fetch_ad_data(state: AdMonitorState) -> AdMonitorState:
         )
         return state
 
-    # 非 dry_run 模式：此处预留真实 API 调用逻辑
-    logger.warning(
-        "ad_monitor_agent fetch_ad_data | 非dry_run模式，真实API未实现，使用Mock数据兜底"
-    )
-    state["ad_metrics"] = list(_MOCK_AD_METRICS)
+    try:
+        from src.amazon_ads_api import AmazonAdsClient, CampaignsApi
+
+        ads_client = AmazonAdsClient(
+            client_id=settings.AMAZON_ADS_CLIENT_ID or "",
+            client_secret=settings.AMAZON_ADS_CLIENT_SECRET or "",
+            refresh_token=settings.AMAZON_ADS_REFRESH_TOKEN or "",
+            profile_id=settings.AMAZON_ADS_PROFILE_ID or "",
+            region=settings.AMAZON_ADS_REGION or "NA",
+            dry_run=False,
+        )
+        campaigns_api = CampaignsApi(ads_client)
+
+        metrics = campaigns_api.get_campaign_metrics(
+            campaign_ids=campaigns or None,
+            start_date=state.get("start_date"),
+            end_date=state.get("end_date"),
+        )
+
+        if not metrics and campaigns:
+            metrics = [
+                {
+                    "campaign_id": cid,
+                    "campaign_name": f"Campaign {cid}",
+                    "acos": 0.0,
+                    "roas": 0.0,
+                    "ctr": 0.0,
+                    "cvr": 0.0,
+                    "spend": 0.0,
+                    "sales": 0.0,
+                    "impressions": 0,
+                    "clicks": 0,
+                    "date": state.get("end_date") or state.get("start_date") or datetime.now(timezone.utc).date().isoformat(),
+                }
+                for cid in campaigns
+            ]
+
+        state["ad_metrics"] = metrics
+        logger.info(
+            "ad_monitor_agent fetch_ad_data | dry_run=False, 使用真实Ads API数据 count=%d",
+            len(metrics),
+        )
+        return state
+    except Exception as exc:
+        logger.warning(
+            "ad_monitor_agent fetch_ad_data | 真实Ads API调用失败，回退Mock数据 | error=%s",
+            exc,
+        )
+        state["ad_metrics"] = list(_MOCK_AD_METRICS)
     return state
 
 
@@ -205,7 +250,7 @@ def check_thresholds(state: AdMonitorState) -> AdMonitorState:
         return state
 
     ad_metrics = state.get("ad_metrics", [])
-    thresholds = state.get("thresholds")  # 可选自定义阈值
+    thresholds = cast(dict[str, float], state.get("thresholds") or {})
 
     logger.info(
         "ad_monitor_agent check_thresholds | metrics_count=%d",
@@ -326,7 +371,7 @@ def finalize_run(state: AdMonitorState) -> AdMonitorState:
         len(alerts),
     )
 
-    if not dry_run and _DB_AVAILABLE and db_session is not None and AgentRun is not None and agent_run_id:
+    if not dry_run and db_available and db_session is not None and AgentRun is not None and agent_run_id:
         try:
             run_uuid = uuid.UUID(agent_run_id)
             output_summary = json.dumps({
@@ -339,9 +384,15 @@ def finalize_run(state: AdMonitorState) -> AdMonitorState:
             with db_session() as session:
                 run = session.get(AgentRun, run_uuid)
                 if run:
-                    run.status = final_status
-                    run.finished_at = datetime.now(timezone.utc)
-                    run.output_summary = output_summary[:200]
+                    session.execute(
+                        AgentRun.__table__.update()
+                        .where(AgentRun.__table__.c.id == run_uuid)
+                        .values(
+                            status=final_status,
+                            finished_at=datetime.now(timezone.utc),
+                            output_summary=output_summary[:200],
+                        )
+                    )
                     session.commit()
 
             logger.info(

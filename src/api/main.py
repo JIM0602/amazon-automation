@@ -33,13 +33,19 @@ app.include_router(auth_router)
 from src.api.system import router as system_router  # noqa: E402
 app.include_router(system_router)
 
+# --------------------------------------------------------------------------- #
+#  健康检查路由
+# --------------------------------------------------------------------------- #
+from src.api.health import router as health_router  # noqa: E402
+app.include_router(health_router)
+
 
 # --------------------------------------------------------------------------- #
 #  健康检查
 # --------------------------------------------------------------------------- #
 
 @app.get("/health")
-async def health_check() -> dict:
+async def health_check() -> dict[str, str]:
     """服务健康检查端点。"""
     return {"status": "ok"}
 
@@ -163,8 +169,8 @@ async def feishu_webhook(request: Request) -> Response:
 
                 elif action == "emergency_stop" and chat_id:
                     try:
-                        from src.utils.killswitch import activate_killswitch
-                        activate_killswitch(operator=sender_id, reason="飞书指令触发")
+                        from src.utils import killswitch as killswitch_module
+                        killswitch_module.activate_stop(reason="飞书指令触发", triggered_by=sender_id)
                         bot.send_text_message(chat_id, "🛑 紧急停机已激活，所有自动化任务已暂停。")
                     except Exception as exc:
                         logger.error("紧急停机失败: %s", exc)
@@ -230,12 +236,24 @@ async def feishu_card_callback(request: Request) -> Response:
 from src.api.agents import router as agents_router  # noqa: E402
 app.include_router(agents_router)
 
+# --------------------------------------------------------------------------- #
+#  知识库路由（文档导入 + RAG 查询）
+# --------------------------------------------------------------------------- #
+from src.api.knowledge_base import router as kb_router  # noqa: E402
+app.include_router(kb_router)
+
+# --------------------------------------------------------------------------- #
+#  Amazon Ads OAuth 回调（获取 refresh_token 的临时工具）
+# --------------------------------------------------------------------------- #
+from src.api.ads_oauth import router as ads_oauth_router  # noqa: E402
+app.include_router(ads_oauth_router)
+
 
 # --------------------------------------------------------------------------- #
 #  调度器 API
 # --------------------------------------------------------------------------- #
 
-def _get_scheduler_or_error():
+def _get_scheduler_or_error() -> Any:
     """获取调度器实例，未安装时抛出 503。"""
     from src.scheduler import get_scheduler
     scheduler = get_scheduler()
@@ -252,7 +270,7 @@ def _get_job_description(job_id: str) -> str:
     from src.scheduler.config import SCHEDULED_JOBS
     for job_conf in SCHEDULED_JOBS:
         if job_conf.get("id") == job_id:
-            return job_conf.get("description", "")
+            return str(job_conf.get("description", ""))
     return ""
 
 

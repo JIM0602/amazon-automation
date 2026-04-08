@@ -38,6 +38,7 @@ PUBLIC_PATHS_EXACT: frozenset[str] = frozenset({
 # 前缀匹配路径（不需要认证）
 PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     "/feishu/",
+    "/api/ads-oauth/",
 )
 
 
@@ -49,6 +50,16 @@ def _is_public_path(path: str) -> bool:
         if path.startswith(prefix):
             return True
     return False
+
+
+def _is_local_health_request(request: Request) -> bool:
+    """仅允许本机或 Docker 内网访问 health 接口免 JWT。"""
+    path = request.url.path
+    client = request.client
+    host = client.host if client is not None else ""
+    if not path.startswith("/api/health/"):
+        return False
+    return host in {"127.0.0.1", "::1"} or host.startswith("172.")
 
 
 # --------------------------------------------------------------------------- #
@@ -76,6 +87,9 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         path = request.url.path
 
         if _is_public_path(path):
+            return await call_next(request)
+
+        if _is_local_health_request(request):
             return await call_next(request)
 
         # 提取 token

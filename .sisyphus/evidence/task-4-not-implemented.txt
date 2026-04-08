@@ -1,0 +1,2 @@
+Deployment note:
+The running app container does not mount the source tree from the host. Updating /opt/amazon-ai on the server was not enough; I had to copy the patched files into the container's /app path and restart the app. This is important for future code deploys and QA.

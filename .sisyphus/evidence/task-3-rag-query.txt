@@ -1,0 +1,32 @@
+========================================
+Task 3 QA - RAG Query API Test
+Date: 2026-04-06
+========================================
+
+Endpoint: POST /api/kb/query
+Auth: Bearer token (user=boss)
+Request: {"question": "亚马逊选品原则", "top_k": 3}
+
+Response:
+{
+    "answer": "亚马逊选品原则包括市场规模、竞争程度、利润空间等关键维度。通过这些原则，可以更好地评估产品的市场潜力和竞争力。BSR排名是评估产品竞争力的重要指标，通过分析细分市场可以找到蓝海产品机会。此外，PPC广告策略需要优化ACoS和ROAS，通过精准的关键词竞价实现高效投放。【来源：test_1】",
+    "sources": [
+        {
+            "title": "test_1",
+            "source": "/tmp/test-docs/test_1.docx",
+            "chunk_text": "测试文档1\n\n这是亚马逊选品方法论第1个文档。选品原则包括：市场规模、竞争程度、利润空间等关键维度。\n\nBSR排名是评估产品竞争力的重要指标，通过分析细分市场可以找到蓝海产品机会。\n\nPPC广告策略需要优化ACoS和ROAS，通过精准的关键词竞价实现高效投放。"
+        },
+        {
+            "title": "test_3",
+            "source": "/tmp/test-docs/test_3.docx",
+            "chunk_text": "测试文档3..."
+        },
+        {
+            "title": "test_2",
+            "source": "/tmp/test-docs/test_2.docx",
+            "chunk_text": "测试文档2..."
+        }
+    ]
+}
+
+RESULT: PASS

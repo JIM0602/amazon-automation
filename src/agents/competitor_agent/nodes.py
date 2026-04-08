@@ -26,14 +26,25 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 模块顶部导入所有需要被 patch 的依赖
 # ---------------------------------------------------------------------------
+_db_available = False
 try:
     from src.db.connection import db_session
     from src.db.models import AgentRun
-    _DB_AVAILABLE = True
+    _db_available = True
 except ImportError:
     db_session = None  # type: ignore[assignment]
     AgentRun = None  # type: ignore[assignment]
-    _DB_AVAILABLE = False
+
+_DB_AVAILABLE = _db_available
+
+_ss_available = False
+try:
+    from src.seller_sprite.client import get_client as get_ss_client
+    _ss_available = True
+except ImportError:
+    get_ss_client = None  # type: ignore[assignment]
+
+_SS_AVAILABLE = _ss_available
 
 from src.agents.competitor_agent.schemas import CompetitorState, CompetitorProfile, CompetitorAnalysis
 from src.agents.competitor_agent.analyzer import (
@@ -173,11 +184,81 @@ def fetch_asin_data(state: CompetitorState) -> CompetitorState:
         )
         return state
 
-    # 非 dry_run 模式：此处预留真实 API 调用逻辑
-    # 当前仅使用 Mock 数据兜底（避免爬取亚马逊页面）
-    logger.warning(
-        "competitor_agent fetch_asin_data | 非dry_run模式，真实API未实现，使用Mock数据兜底"
-    )
+    # 非 dry_run 模式：优先使用 Seller Sprite 真实 API
+    if _SS_AVAILABLE and get_ss_client is not None:
+        try:
+            client = get_ss_client()
+
+            discovered_asins = list(competitor_asins)
+            if not discovered_asins:
+                try:
+                    keyword_result = client.search_keyword(target_asin)
+                    if isinstance(keyword_result, dict):
+                        discovered_asins = [
+                            str(asin)
+                            for asin in (keyword_result.get("top_asins") or [])
+                            if asin
+                        ]
+                except Exception as exc:
+                    logger.warning(
+                        "competitor_agent fetch_asin_data | 竞品发现失败，回退到已有ASIN或Mock数据: %s",
+                        exc,
+                    )
+
+            if not discovered_asins:
+                logger.warning(
+                    "competitor_agent fetch_asin_data | 未发现竞品ASIN，使用Mock数据兜底"
+                )
+                state["competitor_data"] = dict(_MOCK_COMPETITOR_DATA)
+                return state
+
+            competitor_data: Dict[str, Dict[str, Any]] = {}
+            for asin in discovered_asins:
+                try:
+                    result = client.get_asin_data(asin)
+                    competitor_data[asin] = {
+                        "asin": result.get("asin", asin),
+                        "title": result.get("title") or result.get("name") or f"Product {asin}",
+                        "brand": result.get("brand") or result.get("brand_name") or "Unknown",
+                        "price": result.get("price") or 0.0,
+                        "bsr_rank": result.get("bsr_rank") or result.get("bsrRank") or 0,
+                        "rating": result.get("rating") or 0.0,
+                        "review_count": result.get("review_count") or result.get("reviewCount") or 0,
+                        "bullet_points": result.get("bullet_points") or result.get("bullets") or result.get("features") or [],
+                    }
+                except Exception as exc:
+                    logger.warning(
+                        "competitor_agent fetch_asin_data | ASIN %s 真实API失败，使用Mock兜底: %s",
+                        asin,
+                        exc,
+                    )
+                    competitor_data[asin] = _MOCK_COMPETITOR_DATA.get(
+                        asin,
+                        {
+                            "asin": asin,
+                            "title": f"Mock Product for {asin}",
+                            "brand": "MockBrand",
+                            "price": 24.99,
+                            "bsr_rank": 300,
+                            "rating": 4.0,
+                            "review_count": 200,
+                            "bullet_points": ["Mock Feature 1", "Mock Feature 2"],
+                        },
+                    )
+
+            state["competitor_data"] = competitor_data or dict(_MOCK_COMPETITOR_DATA)
+            logger.info(
+                "competitor_agent fetch_asin_data | 使用Seller Sprite数据 count=%d",
+                len(state["competitor_data"]),
+            )
+            return state
+        except Exception as exc:
+            logger.warning(
+                "competitor_agent fetch_asin_data | 真实API不可用，使用Mock数据兜底: %s",
+                exc,
+            )
+
+    logger.warning("competitor_agent fetch_asin_data | 使用Mock数据兜底")
     state["competitor_data"] = dict(_MOCK_COMPETITOR_DATA)
     return state
 
@@ -334,9 +415,9 @@ def finalize_run(state: CompetitorState) -> CompetitorState:
             with db_session() as session:
                 run = session.get(AgentRun, run_uuid)
                 if run:
-                    run.status = final_status
-                    run.finished_at = datetime.now(timezone.utc)
-                    run.output_summary = output_summary[:200]
+                    setattr(run, "status", final_status)
+                    setattr(run, "finished_at", datetime.now(timezone.utc))
+                    setattr(run, "output_summary", output_summary[:200])
                     session.commit()
 
             logger.info(
@@ -373,7 +454,7 @@ def finalize_run(state: CompetitorState) -> CompetitorState:
 # 私有辅助函数
 # ---------------------------------------------------------------------------
 
-def _calculate_market_avg(competitor_data: dict) -> dict:
+def _calculate_market_avg(competitor_data: dict[str, Dict[str, Any]]) -> dict[str, float]:
     """计算市场均值。"""
     if not competitor_data:
         return {"avg_price": 0.0, "avg_rating": 0.0, "avg_reviews": 0.0}

@@ -13,6 +13,8 @@
     - 所有操作写入 loguru 日志
 """
 
+# pyright: reportMissingImports=false, reportMissingTypeArgument=false, reportGeneralTypeIssues=false, reportArgumentType=false
+
 from __future__ import annotations
 
 import os
@@ -20,6 +22,8 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any, Optional
+
+import httpx
 
 try:
     from loguru import logger
@@ -46,6 +50,7 @@ except ImportError:  # pragma: no cover — 无 loguru 时降级
 # 限流模块（便于测试 patch）
 from src.utils.rate_limiter import get_rate_limiter, RateLimitExceeded
 from src.utils.api_priority import ApiPriority
+from src.config import settings
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +131,8 @@ def _with_retry(func, *args, **kwargs):
             )
             time.sleep(wait)
     logger.error("seller_sprite call failed after {} retries", _MAX_RETRIES)
-    raise last_exc  # type: ignore[misc]
+    assert last_exc is not None
+    raise last_exc
 
 
 # ---------------------------------------------------------------------------
@@ -523,6 +529,296 @@ class MockSellerSpriteClient(SellerSpriteBase):
 
 
 # ---------------------------------------------------------------------------
+# 真实客户端实现
+# ---------------------------------------------------------------------------
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        if value is None or value == "":
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _first_non_empty(*values: Any, default: str = "") -> str:
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, str):
+            if value.strip():
+                return value
+        else:
+            text = str(value)
+            if text:
+                return text
+    return default
+
+
+def _normalize_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
+
+def _extract_record(data: Any) -> dict[str, Any]:
+    if isinstance(data, dict):
+        for key in ("items", "keywords", "rows", "results", "list", "data"):
+            value = data.get(key)
+            if isinstance(value, list) and value:
+                first = value[0]
+                if isinstance(first, dict):
+                    return first
+            if isinstance(value, dict) and value:
+                return value
+        return data
+    if isinstance(data, list) and data:
+        first = data[0]
+        if isinstance(first, dict):
+            return first
+    return {}
+
+
+def _extract_items(data: Any) -> list[Any]:
+    if isinstance(data, dict):
+        for key in ("items", "keywords", "rows", "results", "list", "data"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return value
+        return []
+    if isinstance(data, list):
+        return data
+    return []
+
+
+class RealSellerSpriteClient(SellerSpriteBase):
+    """Seller Sprite MCP (Streamable HTTP) 真实客户端。
+
+    通过 MCP 协议调用卖家精灵数据服务，而非 REST API。
+    MCP 端点: https://mcp.sellersprite.com/mcp
+    认证方式: secret-key 请求头
+    """
+
+    def __init__(self) -> None:
+        from src.seller_sprite.mcp_client import MCPToolClient
+
+        self.api_key = os.environ.get("SELLER_SPRITE_API_KEY") or settings.SELLER_SPRITE_API_KEY
+        self.mcp_endpoint = settings.SELLER_SPRITE_MCP_ENDPOINT
+        self._mcp = MCPToolClient(
+            endpoint=self.mcp_endpoint,
+            secret_key=self.api_key,
+            timeout=120.0,
+        )
+
+    def _call_mcp_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
+        """调用 MCP 工具并提取 data 字段。
+
+        MCP 工具返回格式: {"code": "OK", "message": "...", "data": {...}}
+        与 REST API 响应格式一致。
+        """
+        from src.seller_sprite.mcp_client import MCPError
+
+        def _do_call() -> Any:
+            try:
+                result = self._mcp.call_tool_safe(tool_name, arguments)
+            except MCPError as exc:
+                raise SellerSpriteApiError(f"MCP error: {exc}") from exc
+            except httpx.HTTPError as exc:
+                raise SellerSpriteApiError(f"MCP HTTP error: {exc}") from exc
+
+            # MCP 工具返回 {code, message, data} — 与 REST 一致
+            if isinstance(result, dict):
+                code = result.get("code")
+                message = result.get("message", "")
+                if code == "ERROR_VISIT_MAX":
+                    raise SellerSpriteRateLimitError(f"MCP rate limit: {code} - {message}")
+                if code and code != "OK":
+                    raise SellerSpriteApiError(f"MCP tool error: {code} - {message}")
+                return result.get("data", result)
+            return result
+
+        return _with_retry(_do_call)
+
+    def _map_keyword_result(self, keyword: str, data: Any) -> dict:
+        item = _extract_record(data)
+        search_volume = _safe_int(item.get("searches") or item.get("searchVolume") or item.get("search_volume"))
+        trend = _normalize_list(
+            item.get("trend")
+            or item.get("monthlyTrend")
+            or item.get("trendList")
+            or item.get("history")
+        )
+        if not trend:
+            trend = [search_volume] * 12
+        top_asins_source = _normalize_list(item.get("relationAsinList") or item.get("araAsinList") or item.get("topAsins"))
+        top_asins: list[str] = []
+        for entry in top_asins_source:
+            if isinstance(entry, dict):
+                asin_value = _first_non_empty(entry.get("asin"), entry.get("ASIN"), entry.get("id"))
+            else:
+                asin_value = _first_non_empty(entry)
+            if asin_value:
+                top_asins.append(asin_value)
+        return {
+            "keyword": _first_non_empty(item.get("keywords"), item.get("keyword"), keyword, default=keyword),
+            "search_volume": search_volume,
+            "competition": _safe_float(item.get("competition") or item.get("purchaseRate") or item.get("supplyDemandRatio")),
+            "trend": [int(x) if isinstance(x, (int, float, str)) and str(x).strip() else 0 for x in trend][:12],
+            "top_asins": top_asins,
+            "avg_price": _safe_float(item.get("avgPrice") or item.get("avg_price") or item.get("price")),
+            "click_share": _safe_float(item.get("araClickRate") or item.get("clickShare") or item.get("araShareRate")),
+        }
+
+    def _map_asin_result(self, asin: str, data: Any) -> dict:
+        item = _extract_record(data)
+        keywords_source = _normalize_list(item.get("keywords") or item.get("keywordList") or item.get("relatedKeywords"))
+        keywords: list[str] = []
+        for entry in keywords_source:
+            if isinstance(entry, dict):
+                keyword_value = _first_non_empty(entry.get("keyword"), entry.get("words"), entry.get("text"))
+            else:
+                keyword_value = _first_non_empty(entry)
+            if keyword_value:
+                keywords.append(keyword_value)
+        return {
+            "asin": _first_non_empty(item.get("asin"), asin, default=asin),
+            "title": _first_non_empty(item.get("title"), item.get("name"), item.get("productTitle")),
+            "rating": _safe_float(item.get("rating") or item.get("avgRating") or item.get("reviewRating")),
+            "review_count": _safe_int(item.get("reviewCount") or item.get("ratings") or item.get("review_count")),
+            "price": _safe_float(item.get("price") or item.get("avgPrice") or item.get("currentPrice")),
+            "bsr_rank": _safe_int(item.get("bsrRank") or item.get("bsr") or item.get("rank")),
+            "monthly_sales": _safe_int(item.get("monthlySales") or item.get("sales") or item.get("predictedSales")),
+            "category": _first_non_empty(item.get("category"), item.get("categoryName"), item.get("nodeName")),
+            "keywords": keywords,
+        }
+
+    def _map_category_result(self, category: str, data: Any) -> dict:
+        item = _extract_record(data)
+        top_sellers_source = _normalize_list(item.get("topSellers") or item.get("sellerList") or item.get("brandList"))
+        top_sellers: list[dict[str, Any]] = []
+        for entry in top_sellers_source:
+            if not isinstance(entry, dict):
+                continue
+            top_sellers.append(
+                {
+                    "seller_name": _first_non_empty(entry.get("seller_name"), entry.get("sellerName"), entry.get("name"), entry.get("brandName")),
+                    "market_share": _safe_float(entry.get("market_share") or entry.get("marketShare") or entry.get("ratio") or entry.get("share")),
+                    "asin_count": _safe_int(entry.get("asin_count") or entry.get("asinCount") or entry.get("productCount")),
+                }
+            )
+
+        price_distribution = item.get("priceDistribution") or item.get("price_distribution") or {}
+        if isinstance(price_distribution, list):
+            mapped_distribution: dict[str, float] = {}
+            for idx, entry in enumerate(price_distribution):
+                if isinstance(entry, dict):
+                    key = _first_non_empty(entry.get("range"), entry.get("name"), entry.get("label"), default=f"bucket_{idx}")
+                    mapped_distribution[key] = _safe_float(entry.get("ratio") or entry.get("value") or entry.get("percent"))
+            price_distribution = mapped_distribution
+        elif not isinstance(price_distribution, dict):
+            price_distribution = {}
+
+        return {
+            "category": _first_non_empty(item.get("category"), item.get("nodeName"), item.get("name"), item.get("label"), category, default=category),
+            "market_size_usd": _safe_float(item.get("marketSizeUsd") or item.get("marketSize") or item.get("marketValue") or item.get("totalValue")),
+            "top_sellers": top_sellers,
+            "price_distribution": price_distribution,
+            "avg_review_count": _safe_int(item.get("avgReviewCount") or item.get("reviewCountAvg") or item.get("avgReviews")),
+            "growth_rate": _safe_float(item.get("growthRate") or item.get("marketGrowthRate") or item.get("growth")),
+        }
+
+    def _map_reverse_lookup_result(self, asin: str, data: Any) -> dict:
+        items = _extract_items(data)
+        keywords: list[dict[str, Any]] = []
+        for entry in items:
+            if not isinstance(entry, dict):
+                continue
+            keywords.append(
+                {
+                    "keyword": _first_non_empty(entry.get("keyword"), entry.get("keywords"), entry.get("text")),
+                    "search_volume": _safe_int(entry.get("searchVolume") or entry.get("searches") or entry.get("volume") or entry.get("search_volume")),
+                    "rank": _safe_int(entry.get("rank") or entry.get("position") or entry.get("keywordRank")),
+                }
+            )
+        return {
+            "asin": _first_non_empty(asin, default=asin),
+            "keywords": keywords,
+        }
+
+    def search_keyword(self, keyword: str, account_id: str = "default") -> dict:
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(api_group="seller_sprite", account_id=account_id, priority=ApiPriority.BATCH)
+
+        cache_key = ("search_keyword", keyword.lower())
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        data = self._call_mcp_tool("keyword_research", {"marketplace": "US", "keywords": keyword})
+        result = self._map_keyword_result(keyword, data)
+        logger.info("seller_sprite search_keyword | keyword={} search_volume={}", keyword, result["search_volume"])
+        _cache_set(cache_key, result)
+        return result
+
+    def get_asin_data(self, asin: str, account_id: str = "default") -> dict:
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(api_group="seller_sprite", account_id=account_id, priority=ApiPriority.BATCH)
+
+        cache_key = ("get_asin_data", asin.upper())
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        data = self._call_mcp_tool("asin_detail", {"marketplace": "US", "asin": asin})
+        result = self._map_asin_result(asin, data)
+        logger.info("seller_sprite get_asin_data | asin={} bsr_rank={} monthly_sales={}", asin, result["bsr_rank"], result["monthly_sales"])
+        _cache_set(cache_key, result)
+        return result
+
+    def get_category_data(self, category: str, account_id: str = "default") -> dict:
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(api_group="seller_sprite", account_id=account_id, priority=ApiPriority.BATCH)
+
+        cache_key = ("get_category_data", category.lower())
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        data = self._call_mcp_tool("product_node", {"marketplace": "US", "keyword": category})
+        result = self._map_category_result(category, data)
+        logger.info("seller_sprite get_category_data | category={} market_size_usd={}", category, result["market_size_usd"])
+        _cache_set(cache_key, result)
+        return result
+
+    def reverse_lookup(self, asin: str, account_id: str = "default") -> dict:
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(api_group="seller_sprite", account_id=account_id, priority=ApiPriority.BATCH)
+
+        cache_key = ("reverse_lookup", asin.upper())
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        data = self._call_mcp_tool("traffic_keyword", {"marketplace": "US", "asin": asin})
+        result = self._map_reverse_lookup_result(asin, data)
+        logger.info("seller_sprite reverse_lookup | asin={} keyword_count={}", asin, len(result["keywords"]))
+        _cache_set(cache_key, result)
+        return result
+
+
+# ---------------------------------------------------------------------------
 # 工厂函数
 # ---------------------------------------------------------------------------
 def get_client() -> SellerSpriteBase:
@@ -553,9 +849,5 @@ def get_client() -> SellerSpriteBase:
         logger.info("seller_sprite get_client | mode=mock")
         return MockSellerSpriteClient()
 
-    # 阶段B：真实API客户端（尚未实现）
-    logger.warning("seller_sprite get_client | mode=real — RealSellerSpriteClient not implemented in Phase A")
-    raise NotImplementedError(
-        "Real SellerSprite API client not implemented yet (Phase B). "
-        "Set SELLER_SPRITE_USE_MOCK=true to use mock client."
-    )
+    logger.info("seller_sprite get_client | mode=real")
+    return RealSellerSpriteClient()

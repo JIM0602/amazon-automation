@@ -5,39 +5,45 @@
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
+import importlib
+import logging as _logging
 
 try:
-    from loguru import logger
-except ImportError:  # pragma: no cover
-    import logging as _logging
+    logger = importlib.import_module("loguru").logger
+except Exception:  # pragma: no cover
+    def _fmt(msg: object, *args: object) -> str:
+        text = str(msg)
+        return text.format(*args) if args else text
 
-    class logger:  # type: ignore[no-redef]
+    class _LoggerFallback:
         @staticmethod
-        def info(msg, *args, **kwargs):
-            _logging.info(msg.format(*args) if args else msg)
-
-        @staticmethod
-        def warning(msg, *args, **kwargs):
-            _logging.warning(msg.format(*args) if args else msg)
+        def info(msg: object, *args: object, **kwargs: object) -> None:
+            _logging.info(_fmt(msg, *args))
 
         @staticmethod
-        def error(msg, *args, **kwargs):
-            _logging.error(msg.format(*args) if args else msg)
+        def warning(msg: object, *args: object, **kwargs: object) -> None:
+            _logging.warning(_fmt(msg, *args))
 
         @staticmethod
-        def debug(msg, *args, **kwargs):
-            _logging.debug(msg.format(*args) if args else msg)
+        def error(msg: object, *args: object, **kwargs: object) -> None:
+            _logging.error(_fmt(msg, *args))
+
+        @staticmethod
+        def debug(msg: object, *args: object, **kwargs: object) -> None:
+            _logging.debug(_fmt(msg, *args))
+
+    logger = _LoggerFallback()
 
 
 # 限流模块（可选导入，便于测试 patch）
 try:
     from src.utils.rate_limiter import RateLimiter, get_rate_limiter
-    _RATE_LIMITER_AVAILABLE = True
+    _rate_limiter_available = True
 except ImportError:  # pragma: no cover
     RateLimiter = None  # type: ignore[assignment,misc]
     get_rate_limiter = None  # type: ignore[assignment]
-    _RATE_LIMITER_AVAILABLE = False
+    _rate_limiter_available = False
 
 from src.amazon_sp_api.auth import SpApiAuth
 
@@ -96,7 +102,7 @@ class SpApiClient:
             dry_run,
         )
 
-    def get(self, path: str, params: Optional[dict] = None) -> dict:
+    def get(self, path: str, params: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """发送 GET 请求（只读操作）。
 
         dry_run=True 时返回包含 _mock=True 的模拟响应。
@@ -115,10 +121,53 @@ class SpApiClient:
 
         return self._make_request("GET", path, params=params)
 
-    def _make_request(self, method: str, path: str, **kwargs) -> dict:
+    def put(
+        self,
+        path: str,
+        data: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
+        approved: bool = False,
+    ) -> dict[str, Any]:
+        """发送 PUT 请求（写操作）。
+
+        写操作必须显式批准：approved=True。
+        dry_run=True 时返回模拟响应，但仍要求 approved=True。
+
+        Args:
+            path:     API 路径
+            data:     请求体 JSON
+            params:   查询参数
+            approved: 是否已审批写操作（必须为 True）
+
+        Returns:
+            dict: API 响应数据或模拟响应
+        """
+        logger.warning(
+            "SpApiClient.put | WRITE OPERATION path={} approved={}",
+            path,
+            approved,
+        )
+
+        if not approved:
+            raise SpApiClientError("PUT write operation requires approved=True")
+
+        if self.dry_run:
+            logger.debug("SpApiClient.put | dry_run=True path={}", path)
+            return {
+                "_mock": True,
+                "path": path,
+                "params": params or {},
+                "data": data or {},
+                "method": "PUT",
+                "approved": True,
+            }
+
+        return self._make_request("PUT", path, params=params, data=data)
+
+    def _make_request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         """实际发送 HTTP 请求，处理限流和重试。
 
-        仅允许 GET 方法（只读约束）。
+        仅允许 GET/PUT 方法。
 
         Args:
             method: HTTP 方法（只允许 GET）
@@ -132,13 +181,12 @@ class SpApiClient:
             SpApiClientError: 请求失败
             SpApiHttpError: HTTP 错误状态码
         """
-        if method.upper() != "GET":
-            raise SpApiClientError(
-                f"Only GET requests are allowed (read-only client), got {method}"
-            )
+        method = method.upper()
+        if method not in {"GET", "PUT"}:
+            raise SpApiClientError(f"Only GET/PUT requests are allowed, got {method}")
 
         # 限流检查
-        if _RATE_LIMITER_AVAILABLE and get_rate_limiter is not None:
+        if _rate_limiter_available and get_rate_limiter is not None:
             try:
                 from src.utils.api_priority import ApiPriority
                 limiter = get_rate_limiter()
@@ -169,19 +217,23 @@ class SpApiClient:
             import json
 
             params = kwargs.get("params") or {}
+            data = kwargs.get("data")
             if params:
                 url = url + "?" + urllib.parse.urlencode(params)
 
-            req = urllib.request.Request(url, headers=headers, method="GET")
+            body = None
+            if method == "PUT":
+                body = json.dumps(data or {}).encode("utf-8")
+            req = urllib.request.Request(url, headers=headers, data=body, method=method)
 
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
-            logger.info("SpApiClient.get | path={} status=200", path)
+            logger.info("SpApiClient.%s | path=%s status=200", method.lower(), path)
             return data
 
         except Exception as exc:
-            logger.error("SpApiClient.get failed | path={} error={}", path, exc)
+            logger.error("SpApiClient.%s failed | path=%s error=%s", method.lower(), path, exc)
             raise SpApiClientError(f"Request failed: {exc}") from exc
 
     @staticmethod
