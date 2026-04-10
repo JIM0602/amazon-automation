@@ -124,7 +124,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
 
         username: str = payload.get("sub", "")
         role: str = payload.get("role", "")
-        if not username or not role:
+        if not username:
             return None
 
         return {"username": username, "role": role}

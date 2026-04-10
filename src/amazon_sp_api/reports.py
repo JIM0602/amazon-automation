@@ -63,6 +63,7 @@ class ReportsApi:
         "advertising_performance": "GET_ADVERTISED_PRODUCT_REPORT",
         "inventory": "GET_MERCHANT_LISTINGS_ALL_DATA",
         "order_report": "GET_FLAT_FILE_ALL_ORDERS_DATA_BY_ORDER_DATE_GENERAL",
+        "brand_analytics_search_terms": "GET_BRAND_ANALYTICS_SEARCH_TERMS",
     }
 
     _REPORTS_PATH = "/reports/2021-06-30/reports"

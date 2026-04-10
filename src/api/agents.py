@@ -16,6 +16,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from src.api.dependencies import require_role
 from src.api.schemas.agents import (
     AgentRunList,
     AgentRunRequest,
@@ -34,7 +35,8 @@ router = APIRouter(prefix="/api/agents", tags=["agents"])
 # Helpers
 # ---------------------------------------------------------------------------
 
-_VALID_AGENT_TYPES = {e.value for e in AgentType}
+_VALID_AGENT_TYPES = {e.value for e in AgentType} | {"auditor"}
+_BOSS_ONLY_AGENT_TYPES = {"auditor", "brand_planning"}
 
 _OUTPUT_SUMMARY_MAX_LEN = 2000  # characters
 
@@ -48,6 +50,13 @@ def _truncate(text: str, max_len: int = _OUTPUT_SUMMARY_MAX_LEN) -> str:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _required_roles_for_agent_type(agent_type: str) -> tuple[str, ...]:
+    """返回指定 agent_type 允许的角色集合。"""
+    if agent_type in _BOSS_ONLY_AGENT_TYPES:
+        return ("boss",)
+    return ("boss", "operator")
 
 
 def _run_to_status(run: AgentRun) -> AgentRunStatus:
@@ -207,6 +216,14 @@ def _run_agent_background(
                 dry_run=dry_run,
             )
 
+        elif agent_type == "auditor":
+            logger.warning("Auditor agent requested but not implemented yet; returning placeholder result")
+            result_data = {
+                "agent_type": "auditor",
+                "status": "not_implemented",
+                "dry_run": dry_run,
+            }
+
         else:
             raise ValueError(f"Unknown agent_type: {agent_type!r}")
 
@@ -254,11 +271,13 @@ def _run_agent_background(
     "/types",
     summary="List all registered agent types and their parameter schemas",
 )
-async def list_agent_types() -> dict[str, Any]:
+async def list_agent_types(
+    _current_user: dict[str, Any] = Depends(require_role("boss", "operator")),
+) -> dict[str, Any]:
     """Return all registered agent types with their parameter schemas.
 
     This endpoint is used by the frontend to dynamically render agent cards
-    and parameter forms. No authentication required (public metadata).
+    and parameter forms.
     """
     types = []
     for agent_type_value in AgentType:
@@ -288,6 +307,7 @@ async def trigger_agent_run(
     agent_type: str,
     body: AgentRunRequest,
     background_tasks: BackgroundTasks,
+    _current_user: dict[str, Any] = Depends(require_role("boss", "operator")),
     db: Session = Depends(get_db),
 ) -> AgentRunResponse:
     """Trigger an async agent run.
@@ -302,6 +322,13 @@ async def trigger_agent_run(
                 f"Invalid agent_type {agent_type!r}. "
                 f"Must be one of: {sorted(_VALID_AGENT_TYPES)}"
             ),
+        )
+
+    allowed_roles = _required_roles_for_agent_type(agent_type)
+    if _current_user.get("role") not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"权限不足，需要角色: {', '.join(allowed_roles)}",
         )
 
     # --- concurrency check: reject if the same agent is already running ---
@@ -361,6 +388,7 @@ async def trigger_agent_run(
 )
 async def get_agent_run(
     run_id: str,
+    _current_user: dict[str, Any] = Depends(require_role("boss", "operator")),
     db: Session = Depends(get_db),
 ) -> AgentRunStatus:
     """Return the current status of a single agent run by its UUID."""
@@ -392,10 +420,14 @@ async def list_agent_runs(
     status: Optional[str] = Query(default=None, description="Filter by status (running/success/failed)"),
     limit: int = Query(default=20, ge=1, le=100, description="Max results to return"),
     offset: int = Query(default=0, ge=0, description="Number of results to skip"),
+    _current_user: dict[str, Any] = Depends(require_role("boss", "operator")),
     db: Session = Depends(get_db),
 ) -> AgentRunList:
     """Return a paginated, optionally filtered list of agent runs ordered by start time (desc)."""
     query = db.query(AgentRun)
+
+    if _current_user.get("role") == "operator":
+        query = query.filter(AgentRun.agent_type != "auditor")
 
     if agent_type is not None:
         query = query.filter(AgentRun.agent_type == agent_type)

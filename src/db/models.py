@@ -16,6 +16,8 @@ Tables:
 
 import uuid
 from datetime import datetime, date
+from importlib import import_module
+from typing import Any
 
 from sqlalchemy import (
     Column,
@@ -33,23 +35,32 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
 
-# pgvector type — imported lazily so tests can mock it
-try:
-    from pgvector.sqlalchemy import Vector
-except ImportError:  # pragma: no cover — pgvector not installed in test env
-    from sqlalchemy.types import UserDefinedType
+from sqlalchemy.types import UserDefinedType
 
-    class Vector(UserDefinedType):  # type: ignore[no-redef]
-        """Fallback stub when pgvector is not installed."""
+# pyright: reportMissingImports=false, reportUnknownVariableType=false, reportUnknownMemberType=false, reportUnknownArgumentType=false
 
-        def __init__(self, dim: int):
-            self.dim = dim
 
-        def get_col_spec(self, **kw):
-            return f"vector({self.dim})"
+def _load_vector_type() -> Any:
+    """Load pgvector if available, otherwise use a local fallback type."""
+    try:
+        return import_module("pgvector.sqlalchemy").Vector
+    except Exception:  # pragma: no cover — pgvector may not be installed locally
+        class Vector(UserDefinedType[Any]):
+            """Fallback stub when pgvector is not installed."""
 
-        class comparator_factory(UserDefinedType.Comparator):
-            pass
+            def __init__(self, dim: int):
+                self.dim = dim
+
+            def get_col_spec(self, **kw: Any):
+                return f"vector({self.dim})"
+
+            class comparator_factory(UserDefinedType.Comparator[Any]):
+                pass
+
+        return Vector
+
+
+Vector = _load_vector_type()
 
 
 Base = declarative_base()
@@ -143,6 +154,7 @@ class Product(Base):
     name = Column(String(512), nullable=False)
     asin = Column(String(16), nullable=True, index=True)
     keywords = Column(JSON, nullable=True)  # list[str]
+    brand_analytics_keywords = Column(JSON, nullable=True)
     status = Column(String(64), nullable=False, default="active")
     created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
 
@@ -187,6 +199,12 @@ class AgentRun(Base):
 
     id = _uuid_pk()
     agent_type = Column(String(128), nullable=False, index=True)
+    conversation_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id"),
+        nullable=True,
+    )
+    is_chat_mode = Column(Boolean, default=False)
     status = Column(String(64), nullable=False, default="running")  # running/success/failed
     input_summary = Column(Text, nullable=True)
     output_summary = Column(Text, nullable=True)
@@ -371,3 +389,164 @@ class Decision(Base):
             f"<Decision id={self.id!s} type={self.decision_type!r} "
             f"status={self.status!r} agent={self.agent_id!r}>"
         )
+
+
+# ---------------------------------------------------------------------------
+# Table 13: conversations
+# ---------------------------------------------------------------------------
+class Conversation(Base):
+    """Chat conversations grouped by user and agent type."""
+
+    __tablename__ = "conversations"
+
+    id = _uuid_pk()
+    user_id = Column(String(256), nullable=False)
+    agent_type = Column(String(128), nullable=False)
+    title = Column(String(512), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=_now_utc())
+    metadata_json = Column(JSON, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<Conversation id={self.id!s} user_id={self.user_id!r} agent_type={self.agent_type!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Table 14: chat_messages
+# ---------------------------------------------------------------------------
+class ChatMessage(Base):
+    """Messages belonging to a conversation."""
+
+    __tablename__ = "chat_messages"
+
+    id = _uuid_pk()
+    conversation_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id"),
+        nullable=False,
+        index=True,
+    )
+    role = Column(String(32), nullable=False)
+    content = Column(Text, nullable=False)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+    conversation = relationship("Conversation", backref="messages")
+
+    def __repr__(self) -> str:
+        return f"<ChatMessage id={self.id!s} conversation_id={self.conversation_id!s} role={self.role!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Table 15: keyword_libraries
+# ---------------------------------------------------------------------------
+class KeywordLibrary(Base):
+    """Keyword research and categorization library."""
+
+    __tablename__ = "keyword_libraries"
+
+    id = _uuid_pk()
+    product_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("products.id"),
+        nullable=True,
+    )
+    keyword = Column(String(512), nullable=False, index=True)
+    search_volume = Column(Integer, nullable=True)
+    relevance_tier = Column(String(32), nullable=True)
+    source = Column(String(64), nullable=False)
+    category = Column(String(128), nullable=True)
+    monthly_rank = Column(Integer, nullable=True)
+    last_updated = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<KeywordLibrary id={self.id!s} keyword={self.keyword!r} source={self.source!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Table 16: ad_simulations
+# ---------------------------------------------------------------------------
+class AdSimulation(Base):
+    """Stored ad campaign simulation results."""
+
+    __tablename__ = "ad_simulations"
+
+    id = _uuid_pk()
+    campaign_id = Column(String(256), nullable=True)
+    simulation_params = Column(JSON, nullable=True)
+    results = Column(JSON, nullable=True)
+    created_by = Column(String(256), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<AdSimulation id={self.id!s} campaign_id={self.campaign_id!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Table 17: ad_optimization_logs
+# ---------------------------------------------------------------------------
+class AdOptimizationLog(Base):
+    """Change log for ad optimization actions."""
+
+    __tablename__ = "ad_optimization_logs"
+
+    id = _uuid_pk()
+    campaign_id = Column(String(256), nullable=True)
+    action_type = Column(String(128), nullable=False)
+    old_value = Column(JSON, nullable=True)
+    new_value = Column(JSON, nullable=True)
+    reason = Column(Text, nullable=True)
+    applied = Column(Boolean, nullable=False, default=False)
+    approved_by = Column(String(256), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<AdOptimizationLog id={self.id!s} campaign_id={self.campaign_id!r} action={self.action_type!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Table 18: kb_review_queue
+# ---------------------------------------------------------------------------
+class KBReviewQueue(Base):
+    """Queue for content requiring knowledge-base review."""
+
+    __tablename__ = "kb_review_queue"
+
+    id = _uuid_pk()
+    content = Column(Text, nullable=False)
+    source = Column(String(256), nullable=True)
+    agent_type = Column(String(128), nullable=True)
+    summary = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="pending")
+    reviewer_id = Column(String(256), nullable=True)
+    review_comment = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<KBReviewQueue id={self.id!s} status={self.status!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Table 19: auditor_logs
+# ---------------------------------------------------------------------------
+class AuditorLog(Base):
+    """Audit findings emitted by automated auditors."""
+
+    __tablename__ = "auditor_logs"
+
+    id = _uuid_pk()
+    agent_type = Column(String(128), nullable=False)
+    agent_run_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("agent_runs.id"),
+        nullable=True,
+    )
+    severity = Column(String(32), nullable=False)
+    finding = Column(Text, nullable=False)
+    auto_action = Column(String(32), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<AuditorLog id={self.id!s} agent_type={self.agent_type!r} severity={self.severity!r}>"

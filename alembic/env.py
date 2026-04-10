@@ -5,9 +5,12 @@ It reads DATABASE_URL from the environment (via src.config.settings) and
 references Base.metadata from src.db.models for autogenerate support.
 """
 
+# pyright: reportMissingImports=false, reportAttributeAccessIssue=false
+
 import os
 import sys
 from logging.config import fileConfig
+from importlib import import_module
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -20,12 +23,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 # ---------------------------------------------------------------------------
 # Import application models so Alembic autogenerate can detect them
 # ---------------------------------------------------------------------------
-from src.db.models import Base  # noqa: E402
+from src.db.models import *  # noqa: F401,F403,E402
 
 # Register pgvector type with Alembic comparison if available
 try:
-    from pgvector.sqlalchemy import Vector  # noqa: F401
-except ImportError:
+    import_module("pgvector.sqlalchemy")
+except Exception:
     pass  # pgvector not installed; migrations can still be generated without type comparison
 
 # ---------------------------------------------------------------------------

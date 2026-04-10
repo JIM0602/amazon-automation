@@ -7,6 +7,23 @@ from src.api.schemas.agents import (
     AgentRunStatus,
     AgentRunList,
 )
+from src.api.schemas.chat import (
+    CreateConversationRequest,
+    ConversationResponse,
+    MessageResponse,
+    ConversationListResponse,
+    MessageHistoryResponse,
+    ChatStreamRequest,
+    conversation_to_response,
+    message_to_response,
+)
+from src.api.schemas.kb_review import (
+    KBReviewItemResponse,
+    KBReviewListResponse,
+    KBReviewEditRequest,
+    KBReviewRejectRequest,
+    KBReviewApproveRequest,
+)
 
 __all__ = [
     "LoginRequest",
@@ -18,4 +35,17 @@ __all__ = [
     "AgentRunResponse",
     "AgentRunStatus",
     "AgentRunList",
+    "CreateConversationRequest",
+    "ConversationResponse",
+    "MessageResponse",
+    "ConversationListResponse",
+    "MessageHistoryResponse",
+    "ChatStreamRequest",
+    "conversation_to_response",
+    "message_to_response",
+    "KBReviewItemResponse",
+    "KBReviewListResponse",
+    "KBReviewEditRequest",
+    "KBReviewRejectRequest",
+    "KBReviewApproveRequest",
 ]

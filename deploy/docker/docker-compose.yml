@@ -2,7 +2,7 @@ version: "3.9"
 
 # ================================
 # PUDIWIND AI System — Docker Compose 生产配置
-# 包含服务：app（FastAPI）+ postgres（pgvector）+ frontend（Next.js）+ nginx（反向代理）
+# 包含服务：app（FastAPI）+ postgres（pgvector）+ nginx（反向代理 + 静态前端）
 # ================================
 
 services:
@@ -24,6 +24,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://app_user:${POSTGRES_PASSWORD:-changeme}@postgres:5432/amazon_ai
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GOOGLE_TRENDS_ENABLED=${GOOGLE_TRENDS_ENABLED:-false}
+      - GOOGLE_TRENDS_API_KEY=${GOOGLE_TRENDS_API_KEY:-}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
 
     depends_on:
       postgres:
@@ -47,40 +51,7 @@ services:
 
     volumes:
       - app_logs:/app/logs
-
-  # ---- Next.js 前端服务 ----
-  frontend:
-    build:
-      context: ../../frontend
-      dockerfile: Dockerfile
-    image: amazon-ai-frontend:latest
-    container_name: amazon-ai-frontend
-    restart: unless-stopped
-
-    ports:
-      - "127.0.0.1:3000:3000"
-
-    environment:
-      - NEXT_PUBLIC_API_URL=
-
-    depends_on:
-      - app
-
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-        reservations:
-          memory: 128m
-
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "3"
-
-    networks:
-      - internal
+      - frontend_dist:/app/frontend_dist  # Share built frontend with nginx
 
   # ---- Nginx 反向代理 ----
   nginx:
@@ -94,12 +65,12 @@ services:
 
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - frontend_dist:/usr/share/nginx/html:ro  # Serve frontend static files
       - certbot_conf:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
 
     depends_on:
       - app
-      - frontend
 
     logging:
       driver: "json-file"
@@ -171,3 +142,7 @@ volumes:
   certbot_www:
     driver: local
     name: amazon-ai-certbot-www
+
+  frontend_dist:
+    driver: local
+    name: amazon-ai-frontend-dist

@@ -16,10 +16,10 @@
 """
 from __future__ import annotations
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
 
 try:
-    from loguru import logger
+    from loguru import logger  # pyright: ignore[reportMissingImports]
 except ImportError:  # pragma: no cover
     import logging as _logging
     logger = _logging.getLogger(__name__)  # type: ignore[assignment]
@@ -56,6 +56,12 @@ try:
 except Exception:  # pragma: no cover
     db_session = None  # type: ignore[assignment]
     AgentRun = None  # type: ignore[assignment]
+
+# 模块级懒加载：settings（便于测试 patch）
+try:
+    from src.config import settings
+except Exception:  # pragma: no cover
+    settings = None  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------------
 # 费用价格表 (USD/1K tokens)
@@ -99,10 +105,37 @@ def _calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     Returns:
         费用（USD）
     """
-    prices = _PRICE_TABLE.get(model, _PRICE_TABLE.get("gpt-4o-mini"))
+    prices = _PRICE_TABLE.get(model) or _PRICE_TABLE["gpt-4o-mini"]
     input_cost = (input_tokens / 1000.0) * prices["input"]
     output_cost = (output_tokens / 1000.0) * prices["output"]
     return input_cost + output_cost
+
+
+def _track_usage(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    agent_type: str,
+) -> float:
+    """记录一次 LLM 调用的用量与费用。"""
+    from datetime import datetime, timezone
+
+    cost_usd = _calculate_cost(model, input_tokens, output_tokens)
+    started_at = datetime.now(tz=timezone.utc)
+    finished_at = started_at
+
+    try:
+        _record_agent_run(
+            model=model,
+            content=f"agent_type={agent_type}; input_tokens={input_tokens}; output_tokens={output_tokens}",
+            cost_usd=cost_usd,
+            started_at=started_at,
+            finished_at=finished_at,
+        )
+    except Exception as e:
+        logger.warning(f"记录 usage 失败（非阻塞）: {e}")
+
+    return cost_usd
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +187,7 @@ def _call_llm_api(
         }
     """
     try:
-        import litellm
+        import litellm  # pyright: ignore[reportMissingImports]
 
         # litellm 使用统一接口
         response = litellm.completion(
@@ -171,7 +204,7 @@ def _call_llm_api(
     except ImportError:
         # 降级：直接使用 openai
         logger.debug("litellm 未安装，降级到 openai 直接调用")
-        import openai
+        import openai  # pyright: ignore[reportMissingImports]
         from src.config import settings
 
         api_key = getattr(settings, 'OPENAI_API_KEY', None)
@@ -217,6 +250,9 @@ def _record_agent_run(
         started_at: 调用开始时间
         finished_at: 调用完成时间
     """
+    if AgentRun is None or db_session is None:
+        logger.warning("记录 agent_runs 失败：数据库组件不可用")
+        return
     try:
         run = AgentRun(
             agent_type="llm_call",
@@ -247,6 +283,9 @@ def _record_cache_hit_audit(model: str, cache_key: str) -> None:
         model: 模型名称
         cache_key: 命中的缓存键
     """
+    if AgentRun is None or db_session is None:
+        logger.warning("写入缓存命中审计日志失败：数据库组件不可用")
+        return
     try:
         from datetime import datetime, timezone
         now = datetime.now(tz=timezone.utc)
@@ -331,7 +370,7 @@ def chat(
     logger.debug(f"PII 过滤完成，准备调用模型 {model!r}")
 
     # 3. 检查缓存
-    if use_cache and _cache_available and is_cacheable(filtered_messages):
+    if use_cache and _cache_available and is_cacheable is not None and compute_cache_key is not None and get_cached_response is not None and record_cache_hit is not None:
         cache_key = compute_cache_key(
             messages=filtered_messages,
             model=model,
@@ -395,7 +434,7 @@ def chat(
 
     # 8. 写入缓存（若 use_cache=True，请求可缓存，且有 cache_key）
     if use_cache and _cache_available and cache_key is not None:
-        if is_cacheable(filtered_messages, response_content=content):
+        if is_cacheable is not None and set_cached_response is not None and is_cacheable(filtered_messages, response_content=content):
             response_to_cache = {
                 "content": content,
                 "model": actual_model,
@@ -434,3 +473,115 @@ def chat(
         "cost_usd": cost_usd,
         "cache_hit": False,
     }
+
+
+async def chat_stream(
+    messages: List[Dict[str, Any]],
+    model: Optional[str] = None,
+    temperature: Optional[float] = None,
+    max_tokens: Optional[int] = None,
+    agent_type: Optional[str] = None,
+) -> AsyncGenerator[str, None]:
+    """统一 LLM 流式调用接口。"""
+    resolved_model = model or getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
+    resolved_temperature = 0.7 if temperature is None else temperature
+    resolved_max_tokens = 2000 if max_tokens is None else max_tokens
+    is_anthropic = resolved_model.startswith("claude")
+
+    try:
+        limiter = get_rate_limiter()
+        limiter.acquire_or_raise(
+            api_group="llm",
+            account_id="default",
+            priority=ApiPriority.NORMAL,
+        )
+
+        filtered_messages = _filter_messages_pii(messages)
+        logger.debug(f"PII 过滤完成，准备流式调用模型 {resolved_model!r}")
+
+        status = check_daily_limit()
+        if status["exceeded"]:
+            logger.error(
+                f"每日 LLM 费用超限：已花费 ${status['daily_cost']:.4f} / "
+                f"上限 ${status['limit']:.2f}"
+            )
+            raise DailyCostLimitExceeded(
+                daily_cost=status["daily_cost"],
+                limit=status["limit"],
+            )
+
+        if status["warning"]:
+            try:
+                send_feishu_warning(status["percentage"])
+            except Exception as e:
+                logger.warning(f"预警发送失败（继续执行）: {e}")
+
+        input_tokens = 0
+        output_tokens = 0
+        actual_model = resolved_model
+        collected_content = ""
+
+        if is_anthropic:
+            import anthropic  # pyright: ignore[reportMissingImports]
+
+            api_key = getattr(settings, "ANTHROPIC_API_KEY", None)
+            client = anthropic.AsyncAnthropic(api_key=api_key)
+
+            async with client.messages.stream(
+                model=resolved_model,
+                messages=filtered_messages,
+                max_tokens=resolved_max_tokens or 4096,
+            ) as stream:
+                async for text in stream.text_stream:
+                    if text:
+                        collected_content += text
+                        output_tokens += 1
+                        yield text
+
+                final_message = stream.get_final_message()
+                if hasattr(final_message, "__await__"):
+                    final_message = await final_message
+                usage = getattr(final_message, "usage", None)
+                if usage is not None:
+                    input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+                    output_tokens = int(getattr(usage, "output_tokens", output_tokens) or output_tokens)
+                actual_model = getattr(final_message, "model", resolved_model) or resolved_model
+        else:
+            import openai  # pyright: ignore[reportMissingImports]
+
+            api_key = getattr(settings, "OPENAI_API_KEY", None)
+            client = openai.AsyncOpenAI(api_key=api_key)
+
+            response = await client.chat.completions.create(
+                model=resolved_model,
+                messages=filtered_messages,
+                stream=True,
+                temperature=resolved_temperature,
+                max_tokens=resolved_max_tokens,
+            )
+
+            async for chunk in response:
+                choice = chunk.choices[0]
+                delta = getattr(choice, "delta", None)
+                content = getattr(delta, "content", None) if delta is not None else None
+                if content:
+                    collected_content += content
+                    output_tokens += 1
+                    yield content
+
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                input_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+                output_tokens = int(getattr(usage, "completion_tokens", output_tokens) or output_tokens)
+            actual_model = getattr(response, "model", resolved_model) or resolved_model
+
+        _track_usage(
+            model=actual_model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            agent_type=agent_type or "llm_stream",
+        )
+
+    except Exception as e:
+        logger.error(f"chat_stream error: {e}")
+        yield f"\n\n[Error: {str(e)}]"

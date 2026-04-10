@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # 系统行为控制
     DRY_RUN: bool = Field(False, description="dry-run模式：只分析不执行写入")
 
+    # Google Trends (Optional)
+    GOOGLE_TRENDS_ENABLED: bool = Field(False, description="是否启用Google Trends集成")
+    GOOGLE_TRENDS_API_KEY: Optional[str] = Field(None, description="SerpApi API密钥")
+
     # 服务配置
     APP_HOST: str = Field("0.0.0.0", description="服务监听地址")
     APP_PORT: int = Field(8000, description="服务端口")

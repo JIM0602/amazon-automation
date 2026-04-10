@@ -8,7 +8,6 @@ from typing import Any, Dict, List
 from fastapi import FastAPI, HTTPException, Request, Response
 
 from src.feishu.bot_handler import get_bot
-from src.feishu.command_router import route_command
 from src.feishu.approval import handle_card_callback
 
 logger = logging.getLogger(__name__)
@@ -97,92 +96,17 @@ async def feishu_webhook(request: Request) -> Response:
         message_obj = event_data.get("message", {})
         sender_obj = event_data.get("sender", {})
 
-        sender_id = sender_obj.get("sender_id", {}).get("open_id", "")
         msg_type = message_obj.get("message_type", "")
 
         if msg_type == "text":
-            try:
-                content = json.loads(message_obj.get("content", "{}"))
-                text = content.get("text", "").strip()
-            except (json.JSONDecodeError, AttributeError):
-                text = ""
-
-            if text:
-                result = route_command(text, sender_id)
-                action = result.get("action", "")
-                chat_id = message_obj.get("chat_id", "")
-                logger.info("收到指令: action=%s chat_id=%s sender=%s", action, chat_id, sender_id)
-
-                if action == "daily_report" and chat_id:
-                    try:
-                        bot.send_text_message(chat_id, "⏳ 正在生成日报，请稍候...")
-                        from src.agents.core_agent.daily_report import (
-                            generate_daily_report,
-                            generate_feishu_card,
-                        )
-                        report = generate_daily_report(dry_run=True)
-                        card = generate_feishu_card(report)
-                        bot.send_card_message(chat_id, card)
-                    except Exception as exc:
-                        logger.error("日报生成失败: %s", exc)
-                        bot.send_text_message(chat_id, f"❌ 日报生成失败: {exc}")
-
-                elif action == "selection_analysis" and chat_id:
-                    try:
-                        bot.send_text_message(chat_id, "⏳ 正在进行选品分析，请稍候...")
-                        from src.agents.selection_agent import run
-                        report = run()
-                        # 将 dict 格式化为可读文本
-                        candidates = report.get("candidates", [])
-                        status = report.get("status", "completed")
-                        error = report.get("error")
-                        if error:
-                            result_text = f"❌ 选品分析出错：{error}"
-                        elif not candidates:
-                            result_text = "⚠️ 选品分析完成，但未找到合适的候选产品。"
-                        else:
-                            lines = [f"✅ 选品分析完成（类目：{report.get('category', '')}）\n"]
-                            for i, c in enumerate(candidates[:5], 1):
-                                name = c.get("name") or c.get("title") or c.get("asin") or f"产品{i}"
-                                score = c.get("score") or c.get("composite_score") or ""
-                                reason = c.get("reason") or c.get("recommendation_reason") or ""
-                                lines.append(f"{i}. {name}")
-                                if score:
-                                    lines.append(f"   综合评分：{score}")
-                                if reason:
-                                    lines.append(f"   推荐理由：{reason}")
-                                lines.append("")
-                            result_text = "\n".join(lines).strip()
-                        bot.send_text_message(chat_id, result_text)
-                    except Exception as exc:
-                        logger.error("选品分析失败: %s", exc)
-                        bot.send_text_message(chat_id, f"❌ 选品分析失败: {exc}")
-
-                elif action == "knowledge_query" and chat_id:
-                    try:
-                        query = result.get("query", "")
-                        from src.feishu.bot_handler import handle_qa
-                        handle_qa(sender_id, chat_id, query)
-                    except Exception as exc:
-                        logger.error("知识库查询失败: %s", exc)
-                        bot.send_text_message(chat_id, f"❌ 查询失败: {exc}")
-
-                elif action == "emergency_stop" and chat_id:
-                    try:
-                        from src.utils import killswitch as killswitch_module
-                        killswitch_module.activate_stop(reason="飞书指令触发", triggered_by=sender_id)
-                        bot.send_text_message(chat_id, "🛑 紧急停机已激活，所有自动化任务已暂停。")
-                    except Exception as exc:
-                        logger.error("紧急停机失败: %s", exc)
-                        bot.send_text_message(chat_id, f"❌ 紧急停机失败: {exc}")
-
-                else:
-                    reply = result.get("message", "")
-                    if reply and chat_id:
-                        try:
-                            bot.send_text_message(chat_id, reply)
-                        except Exception as exc:
-                            logger.error("发送回复失败: %s", exc)
+            result = bot.handle_event(event)
+            reply = result.get("reply", "")
+            chat_id = result.get("chat_id", "")
+            if reply and chat_id:
+                try:
+                    bot.send_message(chat_id, reply)
+                except Exception as exc:
+                    logger.error("发送跳转提示失败: %s", exc)
         else:
             logger.debug("忽略非文本消息类型: %s", msg_type)
 
@@ -235,6 +159,27 @@ async def feishu_card_callback(request: Request) -> Response:
 # --------------------------------------------------------------------------- #
 from src.api.agents import router as agents_router  # noqa: E402
 app.include_router(agents_router)
+
+# --------------------------------------------------------------------------- #
+#  Chat SSE 路由（实时对话流）
+# --------------------------------------------------------------------------- #
+from src.api.chat import router as chat_router  # noqa: E402
+app.include_router(chat_router)
+
+# --------------------------------------------------------------------------- #
+#  审批流路由（HITL Approval Workflow）
+# --------------------------------------------------------------------------- #
+from src.api.approvals import router as approvals_router  # noqa: E402
+app.include_router(approvals_router)
+
+from src.api.kb_review import router as kb_review_router  # noqa: E402
+app.include_router(kb_review_router)
+
+# --------------------------------------------------------------------------- #
+#  API 费用监控路由（boss-only）
+# --------------------------------------------------------------------------- #
+from src.api.monitoring import router as monitoring_router  # noqa: E402
+app.include_router(monitoring_router)
 
 # --------------------------------------------------------------------------- #
 #  知识库路由（文档导入 + RAG 查询）
@@ -330,3 +275,21 @@ async def trigger_scheduler_job(job_id: str) -> Dict[str, Any]:
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"触发任务失败: {exc}") from exc
+
+
+# --------------------------------------------------------------------------- #
+#  应用启动事件 — 初始化 LangGraph Checkpointer
+# --------------------------------------------------------------------------- #
+@app.on_event("startup")
+async def startup_event():
+    """Initialize LangGraph checkpointer tables on app startup."""
+    import logging
+
+    _logger = logging.getLogger(__name__)
+    try:
+        from src.agents.checkpointer import setup_checkpointer
+
+        setup_checkpointer()
+        _logger.info("LangGraph checkpointer initialized successfully")
+    except Exception as exc:
+        _logger.warning("Checkpointer setup failed (non-fatal): %s", exc)

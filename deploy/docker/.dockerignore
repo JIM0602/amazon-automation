@@ -63,4 +63,8 @@ Thumbs.db
 Makefile
 *.sh
 pyproject.toml
-alembic.ini  # alembic.ini 在 runtime 阶段单独复制
+
+# Frontend (allow for build stage)
+!src/frontend/
+src/frontend/node_modules/
+src/frontend/dist/
