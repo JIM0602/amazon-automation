@@ -1,0 +1,8 @@
+验证结果：通过
+
+- `python -m py_compile src/llm/client.py src/config.py src/agents/model_config.py src/api/system.py`
+- `python -c "from src.llm.client import chat, chat_stream; print('ok')"`
+- `Select-String -Path "src/llm/client.py" -Pattern "AsyncAnthropic|anthropic\.Client"` 无输出
+- `lsp_diagnostics` 对修改文件执行 error 级检查：`src/llm/client.py`、`src/config.py`、`src/agents/model_config.py`、`src/api/system.py` 均无错误
+
+备注：OpenRouter key 为空时，OpenRouter 路由会降级为 OpenAI 直连；stream 使用 LiteLLM `acompletion(..., stream=True)`。

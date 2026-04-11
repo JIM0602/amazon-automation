@@ -5,162 +5,123 @@ import {
   ShoppingBag,
   TrendingUp,
   Percent,
-  BarChart3,
   Activity,
-  Clock,
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
-} from 'recharts';
 import api from '../api/client';
-import type { AgentRun } from '../types';
+import TrendChart from '../components/TrendChart';
+import { DataTable } from '../components/DataTable';
+import type { Column, SortOrder } from '../types/table';
 
-interface DashboardSummary {
-  totalSales: number;
-  salesChange: number;
-  totalOrders: number;
-  ordersChange: number;
-  adSpend: number;
-  adSpendChange: number;
-  acos: number;
-  acosChange: number;
-  conversionRate: number;
-  conversionChange: number;
+interface MetricValue {
+  value: number;
+  change_percentage: number;
 }
 
-interface SalesTrend {
-  date: string;
-  sales: number;
-  orders: number;
+interface DashboardMetrics {
+  total_sales: MetricValue;
+  total_orders: MetricValue;
+  units_sold: MetricValue;
+  ad_spend: MetricValue;
+  ad_orders: MetricValue;
+  tacos: MetricValue;
+  acos: MetricValue;
+  returns_count: MetricValue;
 }
 
-interface TopProduct {
+export interface SkuRankingItem {
+  [key: string]: unknown;
   sku: string;
+  image_url: string;
   sales: number;
   orders: number;
-  inventory: number;
+  units_sold: number;
+  ad_spend: number;
+  acos: number;
+  tacos: number;
+  gross_profit: number | null;
+  gross_margin: number | null;
+  fba_stock: number;
+  estimated_days: number;
 }
 
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diff = Math.floor((now - then) / 1000);
-  if (diff < 60) return `${diff}秒前`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-  return `${Math.floor(diff / 86400)}天前`;
-}
-
-type DateRange = '7' | '30' | '90';
-
-type SortField = 'sku' | 'sales' | 'orders' | 'inventory';
-type SortDirection = 'asc' | 'desc';
+type TimeRange = 'site_today' | 'last_24h';
 
 export default function Dashboard() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState<TimeRange>('site_today');
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
-  const [dateRange, setDateRange] = useState<DateRange>('30');
-  const [trendData, setTrendData] = useState<SalesTrend[]>([]);
-  const [trendLoading, setTrendLoading] = useState(false);
+  const [skuRanking, setSkuRanking] = useState<SkuRankingItem[]>([]);
+  const [skuSummary, setSkuSummary] = useState<Partial<SkuRankingItem>>({});
+  const [skuTotal, setSkuTotal] = useState(0);
+  const [skuLoading, setSkuLoading] = useState(true);
+  
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [sortBy, setSortBy] = useState('sales');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('sales');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-
-  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
-  const [runsLoading, setRunsLoading] = useState(true);
-
+  // Fetch metrics based on timeRange
   useEffect(() => {
     let mounted = true;
-
-    async function fetchData() {
-      // Summary
+    async function fetchMetrics() {
+      if (mounted) setMetricsLoading(true);
       try {
-        const res = await api.get('/dashboard/summary');
-        if (mounted && res.data) setSummary(res.data);
-      } catch (err) {
-        console.warn('Dashboard summary not available', err);
-        // Fallback to null
-      } finally {
-        if (mounted) setSummaryLoading(false);
-      }
-
-      // Products (simulate or try fetch if endpoint existed, but we assume it might not)
-      try {
-        const res = await api.get('/dashboard/top-products');
-        if (mounted && res.data) setTopProducts(res.data);
-      } catch (err) {
-        console.warn('Top products not available', err);
-      } finally {
-        if (mounted) setProductsLoading(false);
-      }
-
-      // Agent Runs
-      try {
-        const res = await api.get('/agents/runs', { params: { limit: 10 } });
-        if (mounted && res.data && Array.isArray(res.data.items || res.data)) {
-          setAgentRuns(res.data.items || res.data);
+        const res = await api.get('/dashboard/metrics', { params: { time_range: timeRange } });
+        if (mounted && res.data) {
+          setMetrics(res.data);
+          const now = new Date();
+          setLastUpdated(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
         }
       } catch (err) {
-        console.warn('Agent runs not available', err);
+        console.warn('Dashboard metrics not available', err);
       } finally {
-        if (mounted) setRunsLoading(false);
+        if (mounted) setMetricsLoading(false);
       }
     }
-
-    fetchData();
+    fetchMetrics();
     return () => { mounted = false; };
-  }, []);
+  }, [timeRange]);
 
+  // Fetch SKU Ranking data
   useEffect(() => {
     let mounted = true;
-    async function fetchTrend() {
-      if (mounted) setTrendLoading(true);
+
+    async function fetchSkuRanking() {
+      if (mounted) setSkuLoading(true);
       try {
-        const res = await api.get('/dashboard/sales-trend', { params: { days: dateRange } });
-        if (mounted && res.data) setTrendData(res.data);
+        const res = await api.get('/dashboard/sku_ranking', {
+          params: {
+            sort_by: sortBy || 'sales',
+            sort_order: sortOrder || 'desc',
+            page,
+            page_size: pageSize,
+          }
+        });
+        if (mounted && res.data) {
+          setSkuRanking(res.data.items || []);
+          setSkuTotal(res.data.total_count || 0);
+          setSkuSummary(res.data.summary_row || {});
+        }
       } catch (err) {
-        console.warn('Sales trend not available', err);
-        if (mounted) setTrendData([]);
+        console.warn('SKU ranking not available', err);
       } finally {
-        if (mounted) setTrendLoading(false);
+        if (mounted) setSkuLoading(false);
       }
     }
-    fetchTrend();
+
+    fetchSkuRanking();
     return () => { mounted = false; };
-  }, [dateRange]);
+  }, [sortBy, sortOrder, page, pageSize]);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
+  const handleTableSort = (key: string, order: SortOrder) => {
+    setSortBy(key);
+    setSortOrder(order || 'desc');
+    setPage(1); // Reset to page 1 on sort
   };
-
-  const sortedProducts = [...topProducts].sort((a, b) => {
-    let valA = a[fieldToKey(sortField)];
-    let valB = b[fieldToKey(sortField)];
-    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  function fieldToKey(field: SortField): keyof TopProduct {
-    return field;
-  }
 
   const renderChange = (value: number | undefined) => {
     if (value === undefined) return <span className="text-gray-500">—</span>;
@@ -174,21 +135,73 @@ export default function Dashboard() {
   };
 
   const kpis = [
-    { title: '总销售额', icon: <DollarSign className="w-5 h-5 text-[var(--color-accent)]" />, value: summary ? `$${summary.totalSales.toLocaleString()}` : '—', change: summary?.salesChange },
-    { title: '总订单量', icon: <ShoppingBag className="w-5 h-5 text-[var(--color-accent)]" />, value: summary ? summary.totalOrders.toLocaleString() : '—', change: summary?.ordersChange },
-    { title: '广告花费', icon: <BarChart3 className="w-5 h-5 text-[var(--color-accent)]" />, value: summary ? `$${summary.adSpend.toLocaleString()}` : '—', change: summary?.adSpendChange },
-    { title: 'ACoS', icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: summary ? `${summary.acos.toFixed(1)}%` : '—', change: summary?.acosChange },
-    { title: '转化率', icon: <TrendingUp className="w-5 h-5 text-[var(--color-accent)]" />, value: summary ? `${summary.conversionRate.toFixed(1)}%` : '—', change: summary?.conversionChange },
+    { title: '总销售额', icon: <DollarSign className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `$${metrics.total_sales.value.toLocaleString()}` : '—', change: metrics?.total_sales.change_percentage },
+    { title: '总订单量', icon: <ShoppingBag className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.total_orders.value.toLocaleString() : '—', change: metrics?.total_orders.change_percentage },
+    { title: '销售量', icon: <TrendingUp className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.units_sold.value.toLocaleString() : '—', change: metrics?.units_sold.change_percentage },
+    { title: '广告花费', icon: <DollarSign className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `$${metrics.ad_spend.value.toLocaleString()}` : '—', change: metrics?.ad_spend.change_percentage },
+    { title: '广告订单量', icon: <ShoppingBag className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.ad_orders.value.toLocaleString() : '—', change: metrics?.ad_orders.change_percentage },
+    { title: 'TACoS', icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `${(metrics.tacos.value * 100).toFixed(1)}%` : '—', change: metrics?.tacos.change_percentage },
+    { title: 'ACoS', icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `${(metrics.acos.value * 100).toFixed(1)}%` : '—', change: metrics?.acos.change_percentage },
+    { title: '退货数量', icon: <Activity className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.returns_count.value.toLocaleString() : '—', change: metrics?.returns_count.change_percentage },
+  ];
+
+  const columns: Column<SkuRankingItem>[] = [
+    { key: 'sku', title: 'SKU码', sortable: true },
+    {
+      key: 'image_url',
+      title: '商品主图',
+      sortable: false,
+      render: (value) => (
+        <img
+          src={value as string}
+          className="w-12 h-12 rounded object-cover"
+          alt="thumbnail"
+        />
+      ),
+    },
+    { key: 'sales', title: '销售额', sortable: true, render: (val) => `$${Number(val).toLocaleString()}` },
+    { key: 'orders', title: '订单量', sortable: true, render: (val) => Number(val).toLocaleString() },
+    { key: 'units_sold', title: '销售量', sortable: true, render: (val) => Number(val).toLocaleString() },
+    { key: 'ad_spend', title: '广告花费', sortable: true, render: (val) => `$${Number(val).toLocaleString()}` },
+    { key: 'acos', title: 'ACoS', sortable: true, render: (val) => <span>{(Number(val) * 100).toFixed(1)}%</span> },
+    { key: 'tacos', title: 'TACoS', sortable: true, render: (val) => <span>{(Number(val) * 100).toFixed(1)}%</span> },
+    { key: 'gross_profit', title: '毛利润', sortable: true, render: () => <span className="text-gray-500">-</span> },
+    { key: 'gross_margin', title: '毛利率', sortable: true, render: () => <span className="text-gray-500">-</span> },
+    { key: 'fba_stock', title: 'FBA可售数', sortable: true, render: (val) => Number(val).toLocaleString() },
+    { key: 'estimated_days', title: '预计可售天数', sortable: true, render: (val) => Number(val).toLocaleString() },
   ];
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto text-gray-100">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">数据大盘</h1>
+        <div className="flex flex-wrap items-center gap-4">
+          {lastUpdated && (
+            <div className="text-xs text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-3 py-1.5 rounded-full flex items-center shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] mr-2 animate-pulse"></span>
+              Mock数据 · 最后更新: {lastUpdated}
+            </div>
+          )}
+          <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
+            {(['site_today', 'last_24h'] as TimeRange[]).map(range => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+                  timeRange === range
+                    ? 'bg-white/10 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                }`}
+              >
+                {range === 'site_today' ? '站点今天' : '最近24小时'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => (
           <motion.div
             key={i}
@@ -205,227 +218,47 @@ export default function Dashboard() {
             <p className="text-sm text-gray-400 font-medium mb-1">{kpi.title}</p>
             <div className="flex items-end justify-between">
               <h3 className="text-2xl font-bold tracking-tight">
-                {summaryLoading ? <span className="text-gray-500 text-sm font-normal">加载中...</span> : kpi.value}
+                {metricsLoading ? <span className="text-gray-500 text-sm font-normal">加载中...</span> : kpi.value}
               </h3>
-              {!summaryLoading && renderChange(kpi.change)}
+              {!metricsLoading && renderChange(kpi.change)}
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Sales Trend Chart */}
+      {/* Trend Chart */}
+      <TrendChart />
+
+      {/* SKU Ranking Table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="glass rounded-xl border border-white/5 bg-white/5 p-6 backdrop-blur-md"
+        transition={{ delay: 0.4 }}
+        className="glass rounded-xl border border-white/5 bg-white/5 p-6 backdrop-blur-md overflow-hidden flex flex-col"
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium flex items-center gap-2">
-            <Activity className="w-5 h-5 text-[var(--color-accent)]" />
-            销售与订单趋势
+            <ShoppingBag className="w-5 h-5 text-[var(--color-accent)]" />
+            SKU排名
           </h2>
-          <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
-            {(['7', '30', '90'] as DateRange[]).map(days => (
-              <button
-                key={days}
-                onClick={() => setDateRange(days)}
-                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
-                  dateRange === days
-                    ? 'bg-white/10 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
-                }`}
-              >
-                {days}天
-              </button>
-            ))}
-          </div>
         </div>
-
-        <div className="h-[300px] w-full relative">
-          {trendLoading ? (
-            <div className="absolute inset-0 flex items-center justify-center text-gray-500">加载中...</div>
-          ) : trendData.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center text-gray-500">暂无数据</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }} 
-                  axisLine={false} 
-                  tickLine={false} 
-                />
-                <YAxis 
-                  yAxisId="left" 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }} 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tickFormatter={(val) => `$${val}`}
-                />
-                <YAxis 
-                  yAxisId="right" 
-                  orientation="right" 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }} 
-                  axisLine={false} 
-                  tickLine={false} 
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    background: 'rgba(0,0,0,0.8)', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
-                    borderRadius: '8px', 
-                    color: '#fff' 
-                  }} 
-                  itemStyle={{ color: '#fff' }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
-                <Line 
-                  yAxisId="left"
-                  type="monotone" 
-                  dataKey="sales" 
-                  name="销售额" 
-                  stroke="var(--color-accent, #3B82F6)" 
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, fill: 'var(--color-accent, #3B82F6)' }} 
-                />
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="orders" 
-                  name="订单量" 
-                  stroke="#10b981" 
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, fill: '#10b981' }} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
+        <div className="overflow-x-auto flex-1">
+          <DataTable
+            columns={columns}
+            data={skuRanking}
+            loading={skuLoading}
+            rowKey="sku"
+            summaryRow={skuSummary}
+            onSort={handleTableSort}
+            pagination={{
+              current: page,
+              pageSize: pageSize,
+              total: skuTotal,
+              onChange: (p, ps) => { setPage(p); setPageSize(ps); }
+            }}
+          />
         </div>
       </motion.div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Top Products Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="xl:col-span-2 glass rounded-xl border border-white/5 bg-white/5 p-6 backdrop-blur-md overflow-hidden flex flex-col"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-[var(--color-accent)]" />
-              Top Products
-            </h2>
-          </div>
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="text-gray-400 border-b border-white/10">
-                <tr>
-                  {(['sku', 'sales', 'orders', 'inventory'] as SortField[]).map(field => (
-                    <th 
-                      key={field} 
-                      className="pb-3 px-4 font-medium cursor-pointer hover:text-gray-200 transition-colors"
-                      onClick={() => handleSort(field)}
-                    >
-                      <div className="flex items-center gap-1">
-                        {field === 'sku' ? 'SKU' : field === 'sales' ? '销售额' : field === 'orders' ? '订单量' : '库存'}
-                        {sortField === field && (
-                          <span className="text-[var(--color-accent)] text-xs">
-                            {sortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {productsLoading ? (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-gray-500">加载中...</td>
-                  </tr>
-                ) : sortedProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-gray-500">暂无数据</td>
-                  </tr>
-                ) : (
-                  sortedProducts.map((p) => (
-                    <tr key={p.sku} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="py-3 px-4 font-medium text-gray-200">{p.sku}</td>
-                      <td className="py-3 px-4">${p.sales.toLocaleString()}</td>
-                      <td className="py-3 px-4">{p.orders.toLocaleString()}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          p.inventory < 10 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-gray-300'
-                        }`}>
-                          {p.inventory.toLocaleString()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-
-        {/* Agent Activity Feed */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="glass rounded-xl border border-white/5 bg-white/5 p-6 backdrop-blur-md flex flex-col"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium flex items-center gap-2">
-              <Activity className="w-5 h-5 text-[var(--color-accent)]" />
-              Agent Activity
-            </h2>
-          </div>
-          <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[400px]">
-            {runsLoading ? (
-              <div className="py-8 text-center text-gray-500 text-sm">加载中...</div>
-            ) : agentRuns.length === 0 ? (
-              <div className="py-8 text-center text-gray-500 text-sm">暂无运行记录</div>
-            ) : (
-              agentRuns.map((run) => (
-                <div key={run.id} className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                  <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${
-                    run.status === 'success' ? 'bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                    run.status === 'error' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
-                    'bg-[#f59e0b] shadow-[0_0_8px_rgba(245,158,11,0.5)] animate-pulse'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-sm font-medium text-gray-200 truncate capitalize">
-                        {run.agent_type.replace('_', ' ')}
-                      </span>
-                      {run.started_at && (
-                        <span className="text-xs text-gray-500 flex items-center gap-1 whitespace-nowrap">
-                          <Clock className="w-3 h-3" />
-                          {timeAgo(run.started_at)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-400 truncate">
-                      {run.status === 'success' ? 'Task completed successfully' : 
-                       run.status === 'error' ? run.error_message || 'Task failed' : 
-                       'Running task...'}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </motion.div>
-      </div>
     </div>
   );
 }

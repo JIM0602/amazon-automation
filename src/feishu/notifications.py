@@ -75,13 +75,83 @@ def _send_card(card: Dict[str, Any], chat_id: Optional[str]) -> bool:
         return False
 
 
-def send_daily_report(report: Dict[str, Any], chat_id: Optional[str] = None) -> bool:
-    """Send daily summary report notification."""
-    title = "📊 每日报告"
-    summary = _stringify(report.get("summary") or report.get("message") or report.get("text") or "")
-    body = summary if summary not in ("", "-") else "今日日报已生成。"
-    details = _format_mapping(report, exclude={"summary", "message", "text"})
-    card = _build_card(title, f"{body}\n\n{details}", template="blue")
+def send_daily_report(metrics: Dict[str, Any], chat_id: Optional[str] = None) -> bool:
+    """发送每日运营日报飞书卡片消息。
+
+    Args:
+        metrics: 包含核心指标的字典，支持以下键（均可选，缺失显示 '-'）：
+            - total_sales:        销售额 (USD)
+            - total_orders:       订单量
+            - units_sold:         销量
+            - ad_spend:           广告花费 (USD)
+            - ad_orders:          广告订单
+            - acos:               ACoS (0~1 ratio)
+            - tacos:              TACoS (0~1 ratio)
+            - returns_count:      退货数
+            - conversion_rate:    转化率 (0~1 ratio)
+            - avg_order_value:    客单价 (USD)
+        chat_id: 目标飞书群 ID，None 时使用默认群。
+
+    Returns:
+        bool: 发送是否成功。
+    """
+    from datetime import date as _date
+
+    today_str = _date.today().strftime("%Y-%m-%d")
+    title = f"📊 每日运营日报 · {today_str}"
+
+    def _fmt_usd(v: Any) -> str:
+        if v is None:
+            return "-"
+        return f"${v:,.2f}" if isinstance(v, (int, float)) else _stringify(v)
+
+    def _fmt_pct(v: Any) -> str:
+        if v is None:
+            return "-"
+        if isinstance(v, (int, float)):
+            return f"{v * 100:.1f}%"
+        return _stringify(v)
+
+    def _fmt_int(v: Any) -> str:
+        if v is None:
+            return "-"
+        if isinstance(v, (int, float)):
+            return f"{int(v):,}"
+        return _stringify(v)
+
+    rows = [
+        ("💰 销售额", _fmt_usd(metrics.get("total_sales"))),
+        ("📦 订单量", _fmt_int(metrics.get("total_orders"))),
+        ("📈 销量", _fmt_int(metrics.get("units_sold"))),
+        ("💸 广告花费", _fmt_usd(metrics.get("ad_spend"))),
+        ("🎯 广告订单", _fmt_int(metrics.get("ad_orders"))),
+        ("📊 ACoS", _fmt_pct(metrics.get("acos"))),
+        ("📉 TACoS", _fmt_pct(metrics.get("tacos"))),
+        ("↩️ 退货数", _fmt_int(metrics.get("returns_count"))),
+        ("🔄 转化率", _fmt_pct(metrics.get("conversion_rate"))),
+        ("💵 客单价", _fmt_usd(metrics.get("avg_order_value"))),
+    ]
+
+    body_lines = [f"**{label}**：{value}" for label, value in rows if value != "-"]
+    body = "\n".join(body_lines) if body_lines else "今日暂无数据"
+
+    card: Dict[str, Any] = {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "template": "blue",
+            "title": {"tag": "plain_text", "content": title},
+        },
+        "elements": [
+            {"tag": "div", "text": {"tag": "lark_md", "content": body}},
+            {"tag": "hr"},
+            {
+                "tag": "note",
+                "elements": [
+                    {"tag": "plain_text", "content": f"数据统计日期: {today_str} · Amazon 运营自动化系统"},
+                ],
+            },
+        ],
+    }
     return _send_card(card, chat_id)
 
 
@@ -97,6 +167,76 @@ def send_task_completion(agent_type: str, task_summary: str, chat_id: Optional[s
     """Notify when agent task completes."""
     title = f"✅ 任务完成 · {agent_type}"
     card = _build_card(title, task_summary or "任务已完成。", template="green")
+    return _send_card(card, chat_id)
+
+
+def send_task_alert(alert_type: str, details: str, chat_id: Optional[str] = None) -> bool:
+    """发送任务告警飞书卡片消息。
+
+    Args:
+        alert_type: 告警类型，支持：
+            - ``approval_pending`` — 审批超时待处理
+            - ``agent_failed``    — Agent 执行失败
+            - ``kb_review``       — 知识库内容待审核
+        details: 告警详细描述（纯文本或 lark_md 格式均可）。
+        chat_id: 目标飞书群 ID，None 时使用默认群。
+
+    Returns:
+        bool: 发送是否成功。
+    """
+    alert_config: Dict[str, Dict[str, str]] = {
+        "approval_pending": {
+            "title": "⏰ 审批超时提醒",
+            "template": "orange",
+            "icon": "⏰",
+        },
+        "agent_failed": {
+            "title": "❗ Agent 执行失败",
+            "template": "red",
+            "icon": "❗",
+        },
+        "kb_review": {
+            "title": "📝 知识库待审核",
+            "template": "purple",
+            "icon": "📝",
+        },
+    }
+
+    config = alert_config.get(alert_type, {
+        "title": f"⚠️ 任务告警 · {alert_type}",
+        "template": "orange",
+        "icon": "⚠️",
+    })
+
+    body = details or "无详细信息"
+
+    card: Dict[str, Any] = {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "template": config["template"],
+            "title": {"tag": "plain_text", "content": config["title"]},
+        },
+        "elements": [
+            {
+                "tag": "div",
+                "text": {
+                    "tag": "lark_md",
+                    "content": f"{config['icon']} **告警类型**：{alert_type}",
+                },
+            },
+            {
+                "tag": "div",
+                "text": {"tag": "lark_md", "content": body},
+            },
+            {"tag": "hr"},
+            {
+                "tag": "note",
+                "elements": [
+                    {"tag": "plain_text", "content": "Amazon 运营自动化系统 · 任务告警"},
+                ],
+            },
+        ],
+    }
     return _send_card(card, chat_id)
 
 

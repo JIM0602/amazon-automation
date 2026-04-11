@@ -1,11 +1,18 @@
-"""飞书机器人核心模块：消息发送+Webhook接收处理。"""
+"""飞书机器人核心模块：消息发送+Webhook接收处理。
+
+新增普通文本消息 AI 集成：收到飞书用户文本后，转发给 core_management
+agent，收集完整回复后一次性通过飞书 API 返回给用户。
+"""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
 import logging
+import re
 import time
+import threading
 from typing import Any, Dict, Optional
 
 import requests
@@ -14,6 +21,9 @@ try:
     from src.config import settings
 except ImportError:  # pragma: no cover
     settings = None  # type: ignore[assignment]
+
+from src.db.connection import db_session
+from src.services.chat import ChatService
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +35,7 @@ _TOKEN_URL = f"{_FEISHU_API_BASE}/auth/v3/tenant_access_token/internal"
 _SEND_MSG_URL = f"{_FEISHU_API_BASE}/im/v1/messages?receive_id_type=chat_id"
 _UPDATE_MSG_URL = f"{_FEISHU_API_BASE}/im/v1/messages/{{message_id}}"
 
-class FeishuBot:
+class FeishuBotHandler:
     """飞书自建应用机器人封装，支持文本/卡片消息发送及 Webhook 事件解析。"""
 
     def __init__(self, app_id: str, app_secret: str, encrypt_key: Optional[str] = None):
@@ -127,6 +137,89 @@ class FeishuBot:
         message_id = result.get("data", {}).get("message_id", "")
         return message_id
 
+    @staticmethod
+    def _extract_text_content(message_obj: Dict[str, Any]) -> str:
+        content = message_obj.get("content", "")
+        if isinstance(content, dict):
+            text = content.get("text", "")
+        elif isinstance(content, str):
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError:
+                parsed = {}
+            if isinstance(parsed, dict):
+                text = parsed.get("text", content)
+            else:
+                text = content
+        else:
+            text = ""
+        return str(text).strip()
+
+    @staticmethod
+    def _extract_sender_user_id(message_obj: Dict[str, Any]) -> str:
+        sender = message_obj.get("sender", {})
+        sender_id = sender.get("sender_id", {}) if isinstance(sender, dict) else {}
+        if isinstance(sender_id, dict):
+            for key in ("open_id", "union_id", "user_id"):
+                value = sender_id.get(key)
+                if value:
+                    return f"feishu:{value}"
+        return f"feishu:{message_obj.get('chat_id', 'unknown')}"
+
+    @staticmethod
+    def _strip_conversation_marker(reply: str) -> str:
+        cleaned = re.sub(r"\n?\n?\[CONV_ID:[^\]]+\]\s*$", "", reply).strip()
+        return cleaned or reply.strip()
+
+    @staticmethod
+    def _run_async(coro):
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coro)
+
+        result: dict[str, Any] = {}
+        error: list[BaseException] = []
+
+        def _runner() -> None:
+            try:
+                result["value"] = asyncio.run(coro)
+            except BaseException as exc:  # pylint: disable=broad-except
+                error.append(exc)
+
+        thread = threading.Thread(target=_runner, daemon=True)
+        thread.start()
+        thread.join()
+
+        if error:
+            raise error[0]
+        return result.get("value")
+
+    async def _collect_core_management_reply(self, user_id: str, message: str) -> str:
+        with db_session() as db:
+            chat_service = ChatService(db)
+            conversation = chat_service.create_conversation(
+                user_id=user_id,
+                agent_type="core_management",
+                title=message[:100] or "飞书消息",
+            )
+
+            chunks: list[str] = []
+            async for chunk in chat_service.send_message(str(conversation.id), user_id, message):
+                chunks.append(chunk)
+
+            return self._strip_conversation_marker("".join(chunks))
+
+    def _reply_to_text_message(self, chat_id: str, user_id: str, message: str) -> None:
+        try:
+            reply_text = self._run_async(self._collect_core_management_reply(user_id, message))
+            if not reply_text:
+                reply_text = "AI 助手暂时无法回复，请稍后再试"
+            self.send_text_message(chat_id, reply_text)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("core_management 回复失败: %s", exc, exc_info=True)
+            self.send_text_message(chat_id, "AI 助手暂时无法回复，请稍后再试")
+
     def update_message(self, message_id: str, new_content: str) -> Dict[str, Any]:
         """用新内容替换已发送的消息（PUT /im/v1/messages/{message_id}）。"""
         url = _UPDATE_MSG_URL.format(message_id=message_id)
@@ -201,10 +294,17 @@ class FeishuBot:
             if message_obj.get("message_type") != "text":
                 return {"code": 0}
 
-            return {
-                "chat_id": message_obj.get("chat_id", ""),
-                "reply": "请使用 Web 端进行对话交互: https://52.221.207.30",
-            }
+            chat_id = message_obj.get("chat_id", "")
+            if not chat_id:
+                return {"code": 0}
+
+            text = self._extract_text_content(message_obj)
+            if not text:
+                return {"code": 0}
+
+            user_id = self._extract_sender_user_id(message_obj)
+            self._reply_to_text_message(chat_id, user_id, text)
+            return {"code": 0}
         except Exception as exc:  # pylint: disable=broad-except
             logger.error("handle_event 失败: %s", exc, exc_info=True)
             return {"code": 0}
@@ -213,16 +313,18 @@ class FeishuBot:
 # --------------------------------------------------------------------------- #
 #  全局单例
 # --------------------------------------------------------------------------- #
-_bot_instance: Optional[FeishuBot] = None
+FeishuBot = FeishuBotHandler
+
+_bot_instance: Optional[FeishuBotHandler] = None
 
 
-def get_bot() -> FeishuBot:
+def get_bot() -> FeishuBotHandler:
     """返回全局 FeishuBot 实例（懒加载），凭证从 settings 读取。"""
     global _bot_instance
     if _bot_instance is None:
         if settings is None:
             raise RuntimeError("settings 未初始化，无法创建 FeishuBot")
-        _bot_instance = FeishuBot(
+        _bot_instance = FeishuBotHandler(
             app_id=settings.FEISHU_APP_ID,
             app_secret=settings.FEISHU_APP_SECRET,
             encrypt_key=getattr(settings, "FEISHU_ENCRYPT_KEY", None),

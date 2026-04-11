@@ -7,6 +7,8 @@ from math import log
 from statistics import mean
 from typing import Any, Iterable, Mapping, Sequence
 
+from src.utils.timezone import now_site_time
+
 from .metrics import (
     bayesian_smoothed_cvr,
     calculate_acos,
@@ -59,7 +61,7 @@ class AdOptimizer:
         business_context: BusinessContext | Mapping[str, Any] | None = None,
         now: datetime | None = None,
     ) -> OptimizationResult:
-        now = now or datetime.utcnow()
+        now = now or now_site_time()
         campaign_map = {c.campaign_id: c for c in campaigns}
         ad_group_map = {a.ad_group_id: a for a in ad_groups}
         bid_recommendations: list[BidRecommendation] = []

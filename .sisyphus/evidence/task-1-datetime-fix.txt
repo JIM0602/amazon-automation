@@ -1,0 +1,18 @@
+Datetime timezone fix evidence
+
+1) Syntax check
+   - Command: python -m py_compile src\utils\timezone.py
+   - Result: passed
+
+2) Runtime validation
+   - Command: python -c "from src.utils.timezone import now_site_time, to_site_time; dt = now_site_time(); assert dt.tzinfo is not None, 'tzinfo is None'; print(dt.isoformat()); print(to_site_time(dt).isoformat())"
+   - Result: passed
+   - Sample output:
+     2026-04-10T01:16:45.510894-08:00
+     2026-04-10T01:16:45.510894-08:00
+
+3) Agent scan
+   - Result: no remaining bare datetime.now() / datetime.utcnow() calls under src/agents/**/*.py
+
+4) DB model check
+   - Result: DateTime columns in src/db/models.py already use timezone=True

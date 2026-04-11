@@ -1,0 +1,34 @@
+Task 13 - Returns Mock Data API - Verification Evidence
+========================================================
+
+Test: from src.api.returns import router
+Result: returns router OK
+
+Test: get_returns(page=1, page_size=5)
+Result:
+  total_count: 30
+  items in page: 5
+  summary_row keys: ['order_id', 'total_returns', 'return_qty', 'status_breakdown', 'reason_breakdown']
+  summary return_qty: 53
+  status_breakdown: {'Refunded': 9, 'Pending': 6, 'Received': 10, 'Closed': 5}
+  reason_breakdown: {'DAMAGED_BY_FC': 4, 'DEFECTIVE': 8, 'UNWANTED_ITEM': 6, 'WRONG_ITEM': 4, 'CUSTOMER_CHANGED_MIND': 5, 'NOT_AS_DESCRIBED': 3}
+
+Test: Filter by reason=DEFECTIVE
+  total_count: 8
+
+Test: Filter by status=Pending
+  total_count: 6
+
+Test: Search=BED
+  total_count: 1
+
+Test: Item fields (17 top-level keys, product_info contains 4 sub-fields = 18 display columns)
+  fields: ['order_id', 'after_sale_label', 'return_time', 'order_time', 'site_return_time', 'store_site', 'product_info', 'product_name_sku', 'parent_asin', 'buyer_remarks', 'return_qty', 'warehouse_id', 'inventory_attribute', 'return_reason', 'return_status', 'lpn_number', 'remarks']
+  return_status badge: {'text': 'Refunded', 'badge': 'success'}
+  product_info: {'image_url': '...', 'title': 'PUDIWIND Interactive Dog Toy Set', 'asin': 'B0CXYZ1005', 'msku': 'PDW-TOY-001'}
+
+Test: Pagination (page=2, page_size=10)
+  total_count: 30
+  items in page: 10
+
+ALL TESTS PASSED

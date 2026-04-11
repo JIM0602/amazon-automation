@@ -1,0 +1,24 @@
+=== Task 5: User CRUD API Verification ===
+
+1. src/api/users.py router import: OK
+2. src/db/users.py functions import: OK
+
+3. Registered routes:
+   GET    /api/users
+   POST   /api/users
+   PUT    /api/users/me/password
+   PUT    /api/users/{user_id}
+   DELETE /api/users/{user_id}
+
+4. Password hash/verify test:
+   hash_password('test123') = $2b$12$fEUkDO6oKx2WDQYV38T68em...
+   verify_password('test123', hash) = True
+   verify_password('wrong', hash)   = False
+
+5. Role protection:
+   require_role('boss') used 4 times (GET/POST/PUT/DELETE)
+   get_current_user used 2 times (import + change password)
+
+6. Operator calling GET /api/users -> 403 (enforced by require_role('boss') guard)
+
+=== ALL CHECKS PASSED ===

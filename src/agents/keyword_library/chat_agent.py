@@ -46,7 +46,10 @@ class KeywordLibraryChatAgent(ChatBaseAgent):
             "- 使用结构化 Markdown 或表格输出。\n"
             "- 每条关键词至少包含：keyword、source、search_volume、tier、relevance。\n"
             "- 默认中文输出，表达务实、简洁、可执行。\n"
-            "- 不要直接调用外部 MCP 或写死数据接口，只描述和编排关键词研究流程。"
+            "- 不要直接调用外部 MCP 或写死数据接口，只描述和编排关键词研究流程。\n\n"
+            "降级策略：\n"
+            "- 当卖家精灵MCP、Brand Analytics、Search Term Report 或广告数据不可用时，必须明确说明数据源受限。\n"
+            "- 在缺少外部数据时，给出基于已有上下文的可执行建议、待补充字段和下一步采集清单，不要静默结束或输出空内容。"
         )
 
     @override

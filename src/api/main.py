@@ -32,6 +32,9 @@ app.include_router(auth_router)
 from src.api.system import router as system_router  # noqa: E402
 app.include_router(system_router)
 
+from src.api.system import agents_config_router  # noqa: E402
+app.include_router(agents_config_router)
+
 # --------------------------------------------------------------------------- #
 #  健康检查路由
 # --------------------------------------------------------------------------- #
@@ -176,6 +179,38 @@ from src.api.kb_review import router as kb_review_router  # noqa: E402
 app.include_router(kb_review_router)
 
 # --------------------------------------------------------------------------- #
+#  通知路由（Notifications Mock Data API）
+# --------------------------------------------------------------------------- #
+from importlib import import_module
+
+notifications_router = import_module("src.api.notifications").router
+app.include_router(notifications_router)
+
+# --------------------------------------------------------------------------- #
+#  仪表盘路由（Dashboard Mock Data API）
+# --------------------------------------------------------------------------- #
+from src.api.dashboard import router as dashboard_router  # noqa: E402
+app.include_router(dashboard_router)
+
+# --------------------------------------------------------------------------- #
+#  订单管理路由（Orders Mock Data API）
+# --------------------------------------------------------------------------- #
+from src.api.orders import router as orders_router  # noqa: E402
+app.include_router(orders_router)
+
+# --------------------------------------------------------------------------- #
+#  退货管理路由（Returns Mock Data API）
+# --------------------------------------------------------------------------- #
+from src.api.returns import router as returns_router  # noqa: E402
+app.include_router(returns_router)
+
+# --------------------------------------------------------------------------- #
+#  用户管理路由（CRUD + 改密码）
+# --------------------------------------------------------------------------- #
+from src.api.users import router as users_router  # noqa: E402
+app.include_router(users_router)
+
+# --------------------------------------------------------------------------- #
 #  API 费用监控路由（boss-only）
 # --------------------------------------------------------------------------- #
 from src.api.monitoring import router as monitoring_router  # noqa: E402
@@ -186,6 +221,12 @@ app.include_router(monitoring_router)
 # --------------------------------------------------------------------------- #
 from src.api.knowledge_base import router as kb_router  # noqa: E402
 app.include_router(kb_router)
+
+# --------------------------------------------------------------------------- #
+#  广告管理路由（Ads Mock Data API — Dashboard + Tabs + Drill-down）
+# --------------------------------------------------------------------------- #
+from src.api.ads import router as ads_router  # noqa: E402
+app.include_router(ads_router)
 
 # --------------------------------------------------------------------------- #
 #  Amazon Ads OAuth 回调（获取 refresh_token 的临时工具）

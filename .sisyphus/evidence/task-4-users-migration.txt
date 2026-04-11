@@ -1,0 +1,9 @@
+Validation 1: python -c "from src.db.models import User; print('User model ok')"
+Result: PASS
+
+Validation 2: python -c "from src.api.auth import router; print('auth router ok')"
+Result: PASS
+
+Validation 3: temporary SQLite bootstrap + login with boss/test123
+Result: PASS
+JWT payload: {'sub': 'boss', 'username': 'boss', 'role': 'boss', 'type': 'access'}

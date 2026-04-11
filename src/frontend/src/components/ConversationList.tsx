@@ -22,9 +22,11 @@ export function ConversationList({
   const fetchConversations = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/chat/conversations?agent_type=${agentType}`);
+      const res = await api.get(`/chat/${agentType}/conversations`);
       if (Array.isArray(res.data)) {
         setConversations(res.data);
+      } else if (Array.isArray(res.data?.conversations)) {
+        setConversations(res.data.conversations);
       }
     } catch (err) {
       console.error('Failed to fetch conversations', err);

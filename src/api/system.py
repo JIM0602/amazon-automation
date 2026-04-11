@@ -8,6 +8,8 @@
 """
 from __future__ import annotations
 
+# pyright: reportAttributeAccessIssue=false
+
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -155,11 +157,14 @@ from src.db import get_db
 from sqlalchemy.orm import Session
 from src.db.models import SystemConfig
 from src.config import settings
-from src.api.auth import USERS
+from src.api import auth as auth_module
 
 try:
-    from src.agents.model_config import AGENT_MODEL_MAP
-    _model_config: dict[str, str] = dict(AGENT_MODEL_MAP)
+    from src.agents.model_config import AGENT_MODEL_MAP, get_agent_model_config
+    _model_config: dict[str, dict[str, str]] = {
+        agent_type: get_agent_model_config(agent_type)
+        for agent_type in AGENT_MODEL_MAP
+    }
 except ImportError:
     _model_config = {}
 
@@ -167,7 +172,8 @@ except ImportError:
 def get_users(user: dict[str, Any] = Depends(require_role("boss"))) -> list[dict[str, str]]:
     """Return list of users with roles."""
     result: list[dict[str, str]] = []
-    for username, info in USERS.items():
+    users = getattr(auth_module, "USERS", {})
+    for username, info in users.items():
         result.append({
             "username": username,
             "role": info.get("role", "unknown")
@@ -175,7 +181,7 @@ def get_users(user: dict[str, Any] = Depends(require_role("boss"))) -> list[dict
     return result
 
 @router.get("/agent-config")
-def get_agent_config(user: dict[str, Any] = Depends(require_role("boss"))) -> dict[str, str]:
+def get_agent_config(user: dict[str, Any] = Depends(require_role("boss"))) -> dict[str, dict[str, str]]:
     """Return agent type to model assignments."""
     return _model_config
 
@@ -249,3 +255,89 @@ def update_system_config(
         
     db.commit()
     return {"status": "success", "key": key, "value": value}
+
+
+# ---------------------------------------------------------------------------
+#  Agent 中文名配置 API (/api/agents/config)
+# ---------------------------------------------------------------------------
+from src.db.models import AgentConfig
+
+agents_config_router = APIRouter(prefix="/api/agents", tags=["agents-config"])
+
+
+class AgentDisplayNameRequest(BaseModel):
+    """PUT /api/agents/config/{agent_type} 的请求体。"""
+    display_name_cn: str
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    visible_roles: Optional[List[str]] = None
+    sort_order: Optional[int] = None
+
+
+@agents_config_router.get("/config")
+def get_agents_config(
+    db: Session = Depends(get_db),
+) -> List[Dict[str, Any]]:
+    """返回所有 Agent 配置（含 display_name_cn），无需认证。
+
+    Response::
+
+        [
+            {
+                "agent_type": "core_management",
+                "display_name_cn": "AI主管",
+                "description": null,
+                "is_active": true,
+                "visible_roles": null,
+                "sort_order": 0
+            },
+            ...
+        ]
+    """
+    configs = db.query(AgentConfig).order_by(AgentConfig.sort_order).all()
+    return [
+        {
+            "agent_type": c.agent_type,
+            "display_name_cn": c.display_name_cn,
+            "description": c.description,
+            "is_active": c.is_active,
+            "visible_roles": c.visible_roles,
+            "sort_order": c.sort_order,
+        }
+        for c in configs
+    ]
+
+
+@agents_config_router.put("/config/{agent_type}")
+def update_agent_display_config(
+    agent_type: str,
+    payload: AgentDisplayNameRequest,
+    db: Session = Depends(get_db),
+    _current_user: Dict[str, Any] = Depends(require_role("boss")),
+) -> Dict[str, Any]:
+    """更新 Agent 中文名配置。仅限 boss 角色。
+
+    Request body::
+
+        {"display_name_cn": "新名称", "description": "可选描述"}
+    """
+    config = db.query(AgentConfig).filter(AgentConfig.agent_type == agent_type).first()
+    if not config:
+        raise HTTPException(status_code=404, detail=f"Agent 类型 '{agent_type}' 不存在")
+
+    config.display_name_cn = payload.display_name_cn  # type: ignore[assignment]
+    if payload.description is not None:
+        config.description = payload.description  # type: ignore[assignment]
+    if payload.is_active is not None:
+        config.is_active = payload.is_active  # type: ignore[assignment]
+    if payload.visible_roles is not None:
+        config.visible_roles = payload.visible_roles  # type: ignore[assignment]
+    if payload.sort_order is not None:
+        config.sort_order = payload.sort_order  # type: ignore[assignment]
+
+    db.commit()
+    return {
+        "status": "success",
+        "agent_type": agent_type,
+        "display_name_cn": config.display_name_cn,
+    }

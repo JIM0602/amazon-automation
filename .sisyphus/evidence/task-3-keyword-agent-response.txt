@@ -1,0 +1,10 @@
+keyword_library agent fix evidence
+
+- Root cause: `src/config.py` raised `pydantic.ValidationError` during import because `DATABASE_URL`, `OPENAI_API_KEY`, `FEISHU_APP_ID`, and `FEISHU_APP_SECRET` were required with no defaults.
+- Fix: made config importable without mandatory env vars so `KeywordLibraryChatAgent` can be instantiated in local/test environments.
+- Added keyword_library prompt fallback guidance so missing MCP / external data sources must yield a friendly degradation message instead of silence.
+
+Verification:
+- `python -c "from src.agents.keyword_library.chat_agent import KeywordLibraryChatAgent; print('import ok')"` -> import ok
+- `python -m py_compile src/config.py src/agents/keyword_library/chat_agent.py` -> passed
+- `lsp_diagnostics` on modified files -> no errors

@@ -63,6 +63,99 @@ try:
 except Exception:  # pragma: no cover
     settings = None  # type: ignore[assignment]
 
+
+def _resolve_provider(model: str) -> str:
+    if model.startswith("openrouter/"):
+        return "openrouter"
+    if model.startswith("anthropic/") or model.startswith("claude"):
+        return "anthropic"
+    return "openai"
+
+
+def _prepare_model_for_provider(model: str, provider: str) -> str:
+    if provider == "openrouter":
+        if model.startswith("openrouter/"):
+            return model
+        return f"openrouter/{model}"
+    if provider == "anthropic":
+        if model.startswith("anthropic/"):
+            return model
+        if model.startswith("claude"):
+            return f"anthropic/{model}"
+    return model
+
+
+def _fallback_openai_model(model: str) -> str:
+    if "/" in model:
+        return model.split("/")[-1]
+    return model
+
+
+def _get_openrouter_key() -> Optional[str]:
+    return getattr(settings, "OPENROUTER_API_KEY", None) if settings is not None else None
+
+
+def _configure_openrouter_env() -> None:
+    openrouter_key = _get_openrouter_key()
+    if openrouter_key:
+        import os
+
+        os.environ["OPENROUTER_API_KEY"] = openrouter_key
+
+
+def _call_litellm_completion(
+    model: str,
+    messages: List[Dict[str, Any]],
+    temperature: float,
+    max_tokens: int,
+) -> Dict[str, Any]:
+    import litellm  # pyright: ignore[reportMissingImports]
+
+    response = litellm.completion(
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    content = response.choices[0].message.content or ""
+    input_tokens = response.usage.prompt_tokens
+    output_tokens = response.usage.completion_tokens
+    actual_model = response.model or model
+    return {
+        "content": content,
+        "model": actual_model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+    }
+
+
+def _call_openai_completion(
+    model: str,
+    messages: List[Dict[str, Any]],
+    temperature: float,
+    max_tokens: int,
+) -> Dict[str, Any]:
+    import openai  # pyright: ignore[reportMissingImports]
+
+    api_key = getattr(settings, "OPENAI_API_KEY", None)
+    client = openai.OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    content = response.choices[0].message.content or ""
+    input_tokens = response.usage.prompt_tokens
+    output_tokens = response.usage.completion_tokens
+    actual_model = response.model or model
+    return {
+        "content": content,
+        "model": actual_model,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+    }
+
 # ---------------------------------------------------------------------------
 # 费用价格表 (USD/1K tokens)
 # ---------------------------------------------------------------------------
@@ -186,48 +279,27 @@ def _call_llm_api(
             "output_tokens": int,
         }
     """
-    try:
-        import litellm  # pyright: ignore[reportMissingImports]
+    provider = _resolve_provider(model)
+    routed_model = _prepare_model_for_provider(model, provider)
 
-        # litellm 使用统一接口
-        response = litellm.completion(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        content = response.choices[0].message.content or ""
-        input_tokens = response.usage.prompt_tokens
-        output_tokens = response.usage.completion_tokens
-        actual_model = response.model or model
+    if provider == "openrouter":
+        openrouter_key = _get_openrouter_key()
+        if openrouter_key:
+            _configure_openrouter_env()
+            return _call_litellm_completion(routed_model, messages, temperature, max_tokens)
+        logger.info("OpenRouter key 为空，降级为 OpenAI 直连: %s", model)
+        return _call_openai_completion(_fallback_openai_model(model.replace("openrouter/", "", 1)), messages, temperature, max_tokens)
+
+    try:
+        if provider == "anthropic":
+            _configure_openrouter_env()
+            return _call_litellm_completion(routed_model, messages, temperature, max_tokens)
+
+        return _call_litellm_completion(routed_model, messages, temperature, max_tokens)
 
     except ImportError:
-        # 降级：直接使用 openai
         logger.debug("litellm 未安装，降级到 openai 直接调用")
-        import openai  # pyright: ignore[reportMissingImports]
-        from src.config import settings
-
-        api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        client = openai.OpenAI(api_key=api_key)
-
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        content = response.choices[0].message.content or ""
-        input_tokens = response.usage.prompt_tokens
-        output_tokens = response.usage.completion_tokens
-        actual_model = response.model or model
-
-    return {
-        "content": content,
-        "model": actual_model,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-    }
-
+        return _call_openai_completion(model, messages, temperature, max_tokens)
 
 # ---------------------------------------------------------------------------
 # 内部：非阻塞写入 agent_runs
@@ -486,7 +558,8 @@ async def chat_stream(
     resolved_model = model or getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
     resolved_temperature = 0.7 if temperature is None else temperature
     resolved_max_tokens = 2000 if max_tokens is None else max_tokens
-    is_anthropic = resolved_model.startswith("claude")
+    provider = _resolve_provider(resolved_model)
+    routed_model = _prepare_model_for_provider(resolved_model, provider)
 
     try:
         limiter = get_rate_limiter()
@@ -521,31 +594,44 @@ async def chat_stream(
         actual_model = resolved_model
         collected_content = ""
 
-        if is_anthropic:
-            import anthropic  # pyright: ignore[reportMissingImports]
+        if provider == "openrouter":
+            openrouter_key = _get_openrouter_key()
+            if openrouter_key:
+                _configure_openrouter_env()
+            else:
+                logger.info("OpenRouter key 为空，流式调用降级到 OpenAI 直连: %s", resolved_model)
+                provider = "openai"
+                routed_model = _fallback_openai_model(resolved_model.replace("openrouter/", "", 1))
 
-            api_key = getattr(settings, "ANTHROPIC_API_KEY", None)
-            client = anthropic.AsyncAnthropic(api_key=api_key)
+        if provider == "anthropic":
+            _configure_openrouter_env()
 
-            async with client.messages.stream(
-                model=resolved_model,
+        if provider in {"openrouter", "anthropic"}:
+            import litellm  # pyright: ignore[reportMissingImports]
+
+            response = await litellm.acompletion(
+                model=routed_model,
                 messages=filtered_messages,
-                max_tokens=resolved_max_tokens or 4096,
-            ) as stream:
-                async for text in stream.text_stream:
-                    if text:
-                        collected_content += text
-                        output_tokens += 1
-                        yield text
+                temperature=resolved_temperature,
+                max_tokens=resolved_max_tokens,
+                stream=True,
+                stream_options={"include_usage": True},
+            )
 
-                final_message = stream.get_final_message()
-                if hasattr(final_message, "__await__"):
-                    final_message = await final_message
-                usage = getattr(final_message, "usage", None)
-                if usage is not None:
-                    input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
-                    output_tokens = int(getattr(usage, "output_tokens", output_tokens) or output_tokens)
-                actual_model = getattr(final_message, "model", resolved_model) or resolved_model
+            async for chunk in response:
+                choice = chunk.choices[0]
+                delta = getattr(choice, "delta", None)
+                content = getattr(delta, "content", None) if delta is not None else None
+                if content:
+                    collected_content += content
+                    output_tokens += 1
+                    yield content
+
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                input_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+                output_tokens = int(getattr(usage, "completion_tokens", output_tokens) or output_tokens)
+            actual_model = getattr(response, "model", resolved_model) or resolved_model
         else:
             import openai  # pyright: ignore[reportMissingImports]
 

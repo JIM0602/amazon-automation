@@ -1,0 +1,45 @@
+Task 7: Agent Config DB + API — Verification Evidence
+=====================================================
+Date: 2026-04-10
+
+1. Router import test:
+   > python -c "from src.api.system import router, agents_config_router; print('ok')"
+   Result: system router ok / agents_config_router ok ✓
+
+2. Models compile test:
+   > python -m py_compile src/db/models.py
+   Result: models.py compile ok ✓
+
+3. Migration compile test:
+   > python -m py_compile alembic/versions/006_add_agent_configs.py
+   Result: 006_add_agent_configs.py compile ok ✓
+
+4. AgentConfig model import test:
+   > python -c "from src.db.models import AgentConfig; print(AgentConfig.__tablename__)"
+   Result: AgentConfig table: agent_configs ✓
+
+5. LSP diagnostics:
+   - src/db/models.py: No errors ✓
+   - src/api/system.py: No errors ✓
+   - alembic/versions/006_add_agent_configs.py: No errors ✓
+   - src/api/main.py: No errors ✓
+
+Files modified:
+  - src/db/models.py — Added AgentConfig model (Table 21)
+  - src/db/__init__.py — Exported AgentConfig
+  - src/api/system.py — Added agents_config_router with GET/PUT /api/agents/config
+  - src/api/main.py — Registered agents_config_router
+  - alembic/versions/006_add_agent_configs.py — Created migration with 13 agent initial data
+
+AGENT_REGISTRY keys (from src/services/chat.py:30-44):
+  core_management, brand_planning, selection, whitepaper, competitor,
+  persona, listing, image_generation, product_listing, inventory,
+  ad_monitor, auditor, keyword_library
+
+NOTE: AGENT_REGISTRY uses different keys than task description mapping:
+  - "selection" (not "product_selection")
+  - "listing" (not "listing_copywriting")
+  - "competitor" (not "market_analysis")
+  - "inventory" (not "supply_chain")
+  - Additional agents: whitepaper, persona, image_generation, product_listing
+  Used actual AGENT_REGISTRY keys for correctness.

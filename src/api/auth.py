@@ -11,14 +11,18 @@ import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from passlib.hash import bcrypt
 
 from src.api.dependencies import get_current_user
+from src.db.connection import SessionLocal
 from src.api.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserInfo
+from src.db.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -32,50 +36,6 @@ JWT_ACCESS_EXPIRE_MINUTES: int = int(os.environ.get("JWT_ACCESS_EXPIRE_MINUTES",
 JWT_REFRESH_EXPIRE_DAYS: int = int(os.environ.get("JWT_REFRESH_EXPIRE_DAYS", "7"))
 
 
-def _build_default_users() -> Dict[str, Dict[str, str]]:
-    """构建默认测试用户（boss/test123, op1/test123, op2/test123）。"""
-    users: Dict[str, Dict[str, str]] = {}
-    defaults = [
-        ("boss", "test123", "boss"),
-        ("op1", "test123", "operator"),
-        ("op2", "test123", "operator"),
-    ]
-    for username, password, role in defaults:
-        users[username] = {
-            "password_hash": bcrypt.hash(password),
-            "role": role,
-        }
-    return users
-
-
-def _parse_web_users(raw: str) -> Dict[str, Dict[str, str]]:
-    """解析 WEB_USERS 环境变量。
-
-    格式：username:bcrypt_hash:role,username2:bcrypt_hash2:role2
-    """
-    users: Dict[str, Dict[str, str]] = {}
-    for entry in raw.split(","):
-        entry = entry.strip()
-        if not entry:
-            continue
-        parts = entry.split(":", 2)
-        if len(parts) != 3:
-            logger.warning("WEB_USERS 格式错误，跳过: %r", entry)
-            continue
-        username, password_hash, role = parts
-        users[username.strip()] = {
-            "password_hash": password_hash.strip(),
-            "role": role.strip(),
-        }
-    return users
-
-
-# 模块加载时解析用户配置
-_raw_web_users = os.environ.get("WEB_USERS", "").strip()
-USERS: Dict[str, Dict[str, str]] = (
-    _parse_web_users(_raw_web_users) if _raw_web_users else _build_default_users()
-)
-
 # --------------------------------------------------------------------------- #
 #  Token 工具函数
 # --------------------------------------------------------------------------- #
@@ -84,7 +44,7 @@ def _create_token(username: str, role: str, token_type: str, expire_delta: timed
     """创建 JWT token。"""
     now = datetime.now(tz=timezone.utc)
     payload: Dict[str, Any] = {
-        "sub": username,
+        "username": username,
         "role": role,
         "type": token_type,
         "exp": now + expire_delta,
@@ -150,19 +110,26 @@ async def login(body: LoginRequest) -> TokenResponse:
 
     Returns access_token + refresh_token on success, 401 on failure.
     """
-    user = USERS.get(body.username)
-    if user is None or not bcrypt.verify(body.password, user["password_hash"]):
+    db: Session = SessionLocal()
+    try:
+        user = db.execute(select(User).where(User.username == body.username)).scalar_one_or_none()
+    finally:
+        db.close()
+
+    user_obj = cast(Any, user)
+    if user is None or not user_obj.is_active or not bcrypt.verify(body.password, user_obj.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    role = user["role"]
-    access_token = create_access_token(body.username, role)
-    refresh_token = create_refresh_token(body.username, role)
+    role = cast(str, user_obj.role)
+    username = cast(str, user_obj.username)
+    access_token = create_access_token(username, role)
+    refresh_token = create_refresh_token(username, role)
 
-    logger.info("用户登录成功: username=%s role=%s", body.username, role)
+    logger.info("用户登录成功: username=%s role=%s", username, role)
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -178,11 +145,18 @@ async def refresh(body: RefreshRequest) -> TokenResponse:
         {"refresh_token": "<token>"}
     """
     payload = verify_token(body.refresh_token, expected_type="refresh")
-    username: str = payload.get("sub", "")
+    username: str = payload.get("username") or payload.get("sub", "")
     role: str = payload.get("role", "")
 
     # 确认用户仍然存在
-    if username not in USERS:
+    db: Session = SessionLocal()
+    try:
+        user = db.execute(select(User).where(User.username == username)).scalar_one_or_none()
+    finally:
+        db.close()
+
+    user_obj = cast(Any, user)
+    if user is None or not user_obj.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户不存在",

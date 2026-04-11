@@ -88,6 +88,11 @@ export default function Login() {
             )}
           </button>
         </form>
+
+        <div className="mt-6 text-center space-y-1">
+          <p className="text-sm text-gray-400">没有账号？请联系管理员添加</p>
+          <p className="text-xs text-gray-500">© 2026 siqiangshangwu.com 版权所有</p>
+        </div>
       </div>
     </div>
   )

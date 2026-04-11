@@ -1,0 +1,16 @@
+Task: timezone utilities range functions + frontend timezone.ts
+
+Backend validation:
+- Command: python -c "from src.utils.timezone import site_today_range, last_24h_range, week_range, month_range, year_range; s,e = site_today_range(); assert s.tzinfo is not None; print('backend timezone ranges ok')"
+- Result: backend timezone ranges ok
+- LSP diagnostics: no diagnostics found for src/utils/timezone.py
+
+Frontend validation:
+- Command: npm run build (from src/frontend)
+- Result: build succeeded (tsc -b && vite build)
+- Note: TypeScript language server is not installed in this environment, so file-level LSP diagnostics could not run; build output was used as the verification signal.
+
+Files changed:
+- src/utils/timezone.py
+- src/frontend/src/utils/timezone.ts
+- .sisyphus/notepads/production-fixes-32issues/learnings.md

@@ -550,3 +550,40 @@ class AuditorLog(Base):
 
     def __repr__(self) -> str:
         return f"<AuditorLog id={self.id!s} agent_type={self.agent_type!r} severity={self.severity!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Table 20: users
+# ---------------------------------------------------------------------------
+class User(Base):
+    """Application users for authentication and authorization."""
+
+    __tablename__ = "users"
+
+    id = _uuid_pk()
+    username = Column(String(64), unique=True, nullable=False, index=True)
+    password_hash = Column(String(256), nullable=False)
+    role = Column(String(32), nullable=False, default="operator")
+    display_name = Column(String(128), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=_now_utc())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=_now_utc(), onupdate=_now_utc())
+
+
+# ---------------------------------------------------------------------------
+# Table 21: agent_configs
+# ---------------------------------------------------------------------------
+class AgentConfig(Base):
+    """Agent 中文名与显示配置，供前端读取。"""
+
+    __tablename__ = "agent_configs"
+
+    agent_type = Column(String(64), primary_key=True)
+    display_name_cn = Column(String(128), nullable=False)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    visible_roles = Column(JSON, nullable=True)  # ["boss", "operator"] 等
+    sort_order = Column(Integer, nullable=False, default=0)
+
+    def __repr__(self) -> str:
+        return f"<AgentConfig agent_type={self.agent_type!r} display_name_cn={self.display_name_cn!r}>"

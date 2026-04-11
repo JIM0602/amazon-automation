@@ -25,6 +25,7 @@ from src.api.schemas.chat import (
     ConversationListResponse,
     ConversationResponse,
     CreateConversationRequest,
+    MessageResponse,
     MessageHistoryResponse,
     UpdateConversationRequest,
     conversation_to_response,
@@ -151,6 +152,29 @@ def list_conversations(
 
 
 # ---------------------------------------------------------------------------
+#  GET /api/chat/{agent_type}/conversations — list conversations for agent
+# ---------------------------------------------------------------------------
+
+@router.get("/{agent_type}/conversations", response_model=list[ConversationResponse])
+def list_agent_conversations(
+    agent_type: str,
+    current_user: dict[str, Any] = Depends(require_role("boss", "operator")),
+    db: Session = Depends(get_db),
+) -> list[ConversationResponse]:
+    """List conversations for a specific agent type.
+
+    Returns an empty list when the user has no conversations for that agent.
+    """
+    _validate_agent_type(agent_type)
+    _check_boss_only(agent_type, current_user)
+
+    user_id = _get_user_id(current_user)
+    service = ChatService(db)
+    convs = service.list_conversations(user_id, agent_type)
+    return [conversation_to_response(c) for c in convs]
+
+
+# ---------------------------------------------------------------------------
 #  GET /api/chat/conversations/{conversation_id} — get single conversation
 # ---------------------------------------------------------------------------
 
@@ -232,6 +256,43 @@ def get_conversation_history(
         conversation_id=conversation_id,
         messages=[message_to_response(m) for m in messages],
     )
+
+
+# ---------------------------------------------------------------------------
+#  GET /api/chat/{agent_type}/conversations/{conversation_id}/messages
+# ---------------------------------------------------------------------------
+
+@router.get("/{agent_type}/conversations/{conversation_id}/messages", response_model=list[MessageResponse])
+def get_conversation_messages(
+    agent_type: str,
+    conversation_id: str,
+    limit: int = 50,
+    current_user: dict[str, Any] = Depends(require_role("boss", "operator")),
+    db: Session = Depends(get_db),
+) -> list[MessageResponse]:
+    """Get message history for a conversation under a specific agent type."""
+    _validate_agent_type(agent_type)
+    _check_boss_only(agent_type, current_user)
+
+    user_id = _get_user_id(current_user)
+    conv = _get_conversation_or_404(db, conversation_id, user_id)
+    conv_agent_type = str(getattr(conv, "agent_type"))
+    if conv_agent_type != agent_type:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    service = ChatService(db)
+    try:
+        messages = service.get_history(conversation_id, user_id, limit)
+    except (ValueError, PermissionError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    return [message_to_response(m) for m in messages]
 
 
 # ---------------------------------------------------------------------------

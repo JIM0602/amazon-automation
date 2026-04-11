@@ -62,6 +62,17 @@ def add_message(
     return message
 
 
+def save_message(
+    db: Session,
+    conversation_id: uuid.UUID,
+    role: str,
+    content: str,
+    metadata: dict[str, object] | None = None,
+) -> ChatMessage:
+    """Compatibility wrapper for older call sites expecting save_message."""
+    return add_message(db, conversation_id, role, content, metadata)
+
+
 def get_conversation_history(db: Session, conversation_id: uuid.UUID, limit: int = 50) -> list[ChatMessage]:
     return (
         db.query(ChatMessage)
@@ -70,6 +81,11 @@ def get_conversation_history(db: Session, conversation_id: uuid.UUID, limit: int
         .limit(limit)
         .all()
     )
+
+
+def get_messages(db: Session, conversation_id: uuid.UUID, limit: int = 50) -> list[ChatMessage]:
+    """Compatibility wrapper for older call sites expecting get_messages."""
+    return get_conversation_history(db, conversation_id, limit)
 
 
 def list_user_conversations(db: Session, user_id: str, agent_type: str | None = None) -> list[Conversation]:

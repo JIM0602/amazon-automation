@@ -1,15 +1,41 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --color-primary: #F0F4F8;
+    --color-primary-light: #E1E8F0;
+    --color-primary-dark: #D1D8E0;
+    --color-accent: #3B82F6;
+    --color-surface: rgba(0, 0, 0, 0.04);
+    --color-surface-hover: rgba(0, 0, 0, 0.08);
+    --color-glass: rgba(255, 255, 255, 0.6);
+    --color-glass-border: rgba(0, 0, 0, 0.1);
+  }
+
+  :root.dark {
+    --color-primary: #1E3A5F;
+    --color-primary-light: #2A4F7F;
+    --color-primary-dark: #142A45;
+    --color-accent: #3B82F6;
+    --color-surface: rgba(255, 255, 255, 0.08);
+    --color-surface-hover: rgba(255, 255, 255, 0.12);
+    --color-glass: rgba(255, 255, 255, 0.05);
+    --color-glass-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
 /* Custom design tokens */
 @theme {
-  --color-primary: #1E3A5F;
-  --color-primary-light: #2A4F7F;
-  --color-primary-dark: #142A45;
-  --color-accent: #3B82F6;
-  --color-surface: rgba(255, 255, 255, 0.08);
-  --color-surface-hover: rgba(255, 255, 255, 0.12);
-  --color-glass: rgba(255, 255, 255, 0.05);
-  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-primary: var(--color-primary);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-accent: var(--color-accent);
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-glass: var(--color-glass);
+  --color-glass-border: var(--color-glass-border);
 }
 
 /* Glass morphism base */

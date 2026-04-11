@@ -1,0 +1,21 @@
+﻿=== Task 10: Dashboard Mock Data API QA ===
+Date: 2026-04-10 18:52:09
+
+--- Test 1: Router import ---
+dashboard router OK
+
+--- Test 2: Metrics data ---
+[{'key': 'total_sales', 'label': 'Total Sales', 'value': 3333.85, 'change_percentage': -11.5, 'unit': 'USD'}, {'key': 'total_orders', 'label': 'Total Orders', 'value': 73, 'change_percentage': 2.7, 'unit': ''}, {'key': 'units_sold', 'label': 'Units Sold', 'value': 112, 'change_percentage': -9.1, 'unit': ''}, {'key': 'ad_spend', 'label': 'Ad Spend', 'value': 412.63, 'change_percentage': -9.1, 'unit': 'USD'}, {'key': 'ad_orders', 'label': 'Ad Orders', 'value': 27, 'change_percentage': 5.2, 'unit': ''}, {'key': 'tacos', 'label': 'TACoS', 'value': 0.1238, 'change_percentage': -9.5, 'unit': 'ratio'}, {'key': 'acos', 'label': 'ACoS', 'value': 0.3346, 'change_percentage': -6.0, 'unit': 'ratio'}, {'key': 'returns_count', 'label': 'Returns', 'value': 4, 'change_percentage': 2.7, 'unit': ''}, {'key': 'conversion_rate', 'label': 'Conversion Rate', 'value': 0.0702, 'change_percentage': 3.2, 'unit': 'ratio'}, {'key': 'avg_order_value', 'label': 'Avg Order Value', 'value': 45.67, 'change_percentage': -3.6, 'unit': 'USD'}]
+
+--- Test 3: Trend data ---
+Points: 4
+{'date': '2026-04-06', 'sales': 3556.93, 'orders': 53}
+{'date': '2026-04-07', 'sales': 2624.08, 'orders': 66}
+{'date': '2026-04-08', 'sales': 3805.37, 'orders': 97}
+
+--- Test 4: SKU ranking data ---
+Total: 25
+Items: 5
+{'sku': 'PDW-CLR-001', 'image_url': 'https://placehold.co/80x80?text=SKU', 'sales': 14943.76, 'orders': 219, 'units_sold': 389, 'ad_spend': 1728.52, 'acos': 1.0, 'tacos': 0.1157, 'gross_profit': None, 'gross_margin': None, 'fba_available': 360, 'days_available': 27.8}
+
+ALL TESTS PASSED

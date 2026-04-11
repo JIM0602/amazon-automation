@@ -24,15 +24,17 @@ export function useChat(agentType: AgentType): UseChatReturn {
 
   const loadHistory = useCallback(async (convId: string) => {
     try {
-      const response = await api.get(`/chat/conversations/${convId}/history`);
+      const response = await api.get(`/chat/${agentType}/conversations/${convId}/messages`);
       if (Array.isArray(response.data)) {
         setMessages(response.data);
+      } else if (Array.isArray(response.data?.messages)) {
+        setMessages(response.data.messages);
       }
       setConversationId(convId);
     } catch (err) {
       console.error('Failed to load history', err);
     }
-  }, []);
+  }, [agentType]);
 
   const createConversation = useCallback(async (type: AgentType) => {
     try {

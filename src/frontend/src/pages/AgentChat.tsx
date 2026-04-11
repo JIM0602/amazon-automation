@@ -1,11 +1,12 @@
-import { useMemo, useState, type CSSProperties } from 'react'
-import { useParams } from 'react-router-dom'
-import { Lock, AlertCircle } from 'lucide-react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Lock, AlertCircle, ChevronLeft } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { AGENTS } from '../data/agents'
 import { ChatWindow } from '../components/ChatWindow'
 import { ConversationList } from '../components/ConversationList'
 import type { AgentType } from '../types'
+import api from '../api/client'
 
 function NotFoundState() {
   return (
@@ -38,6 +39,7 @@ function AccessDeniedState() {
 export default function AgentChat() {
   const { type } = useParams<{ type: string }>()
   const { role } = useAuth()
+  const navigate = useNavigate()
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
 
   const agentInfo = useMemo(() => AGENTS.find((agent) => agent.type === type), [type])
@@ -51,6 +53,34 @@ export default function AgentChat() {
   }
 
   const Icon = agentInfo.icon
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadLatestConversation = async () => {
+      try {
+        const res = await api.get(`/chat/${type}/conversations`)
+        const conversations = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.conversations)
+            ? res.data.conversations
+            : []
+
+        if (!cancelled && selectedConversationId === null && conversations.length > 0) {
+          setSelectedConversationId(conversations[0].id)
+        }
+      } catch (err) {
+        console.error('Failed to preload conversations', err)
+      }
+    }
+
+    loadLatestConversation()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedConversationId, type])
+
   const themeVars = {
     '--color-primary': '#1E3A5F',
     '--color-accent': '#3B82F6',
@@ -63,6 +93,13 @@ export default function AgentChat() {
     <div className="flex h-full min-h-[calc(100vh-4rem)] bg-[#0a0a1a] text-white" style={themeVars}>
       <div className="w-[280px] flex-shrink-0 border-r border-[var(--color-glass-border)] bg-[var(--color-glass)] backdrop-blur-xl">
         <div className="border-b border-[var(--color-glass-border)] p-4">
+          <button
+            onClick={() => navigate('/agents')}
+            className="mb-3 flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors"
+          >
+            <ChevronLeft size={14} />
+            <span>返回</span>
+          </button>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(255,255,255,0.08)] text-[var(--color-accent)]">
               <Icon size={20} />

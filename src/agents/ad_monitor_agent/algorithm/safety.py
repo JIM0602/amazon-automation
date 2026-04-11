@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Iterable
 
+from src.utils.timezone import now_site_time
+
 from .models import BidDirection, BidRecommendation
 
 
@@ -26,7 +28,7 @@ class SafetyContext:
 
 class SafetyRails:
     def apply(self, recommendation: BidRecommendation, context: SafetyContext) -> BidRecommendation:
-        now = context.now or datetime.utcnow()
+        now = context.now or now_site_time()
         result = BidRecommendation(
             keyword_id=recommendation.keyword_id,
             current_bid=recommendation.current_bid,

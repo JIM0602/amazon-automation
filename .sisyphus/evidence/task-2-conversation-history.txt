@@ -1,0 +1,23 @@
+## Conversation history persistence/loading evidence
+
+### Files changed
+- `src/api/chat.py`
+- `src/db/chat.py`
+- `src/frontend/src/components/ConversationList.tsx`
+- `src/frontend/src/hooks/useChat.ts`
+- `src/frontend/src/pages/AgentChat.tsx`
+- `.sisyphus/notepads/production-fixes-32issues/learnings.md`
+
+### Verification
+- `npm run build` in `src/frontend/` ✅
+- Backend import check with temporary env vars ✅
+- Temporary SQLite route test for agent-scoped history endpoints ✅
+
+### Route behavior
+- `list_agent_conversations('core_management', ...)` returned `[]` when no conversations existed.
+- After creating a conversation and adding two messages, the same route returned `1` conversation.
+- `get_conversation_messages('core_management', ...)` returned `2` messages and preserved the latest content.
+
+### Notes
+- Frontend build command in this repo is `npm run build` (`tsc -b && vite build`).
+- Pyright still reports pre-existing warnings in `src/api/chat.py` / `src/db/chat.py`; no new runtime errors were introduced by this fix.

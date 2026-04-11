@@ -21,6 +21,8 @@ from src.db.models import (
     AdOptimizationLog,
     KBReviewQueue,
     AuditorLog,
+    AgentConfig,
+    User,
 )
 from src.db.connection import engine, SessionLocal, get_db
 
@@ -45,6 +47,8 @@ __all__ = [
     "AdOptimizationLog",
     "KBReviewQueue",
     "AuditorLog",
+    "AgentConfig",
+    "User",
     "engine",
     "SessionLocal",
     "get_db",

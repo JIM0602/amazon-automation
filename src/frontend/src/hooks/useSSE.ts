@@ -106,7 +106,7 @@ export function useSSE() {
         }
       } catch (err: any) {
         if (err.name === 'AbortError') {
-          console.log('Stream aborted');
+          // Stream aborted intentionally, no action needed
         } else {
           setError(err.message || 'Stream connection failed');
           if (options.onError) options.onError(err.message || 'Stream connection failed');
