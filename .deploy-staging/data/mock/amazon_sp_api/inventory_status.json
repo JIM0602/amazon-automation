@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "description": "SP-API Inventory Status 模拟数据 — PUDIWIND品牌FBA库存状态",
+    "endpoint": "inventory",
+    "generated_at": "2026-03-31",
+    "marketplace": "ATVPDKIKX0DER"
+  },
+  "code": 0,
+  "endpoint": "inventory",
+  "data": [
+    {
+      "sku": "PUDIWIND-BED-001",
+      "asin": "B0PUDI001",
+      "quantity": 120,
+      "reserved": 18,
+      "inbound": 40,
+      "fulfillable": 102,
+      "unfulfillable": 3,
+      "researching": 1,
+      "warehouse_id": "LAX5",
+      "days_of_supply": 48,
+      "reorder_recommended": false,
+      "reorder_quantity": 0,
+      "age_distribution": {
+        "0_to_90_days": 112,
+        "91_to_180_days": 8,
+        "over_180_days": 0
+      }
+    },
+    {
+      "sku": "PUDIWIND-WTR-001",
+      "asin": "B0PUDI002",
+      "quantity": 86,
+      "reserved": 12,
+      "inbound": 30,
+      "fulfillable": 74,
+      "unfulfillable": 1,
+      "researching": 0,
+      "warehouse_id": "LAX5",
+      "days_of_supply": 35,
+      "reorder_recommended": true,
+      "reorder_quantity": 150,
+      "age_distribution": {
+        "0_to_90_days": 82,
+        "91_to_180_days": 4,
+        "over_180_days": 0
+      }
+    },
+    {
+      "sku": "PUDIWIND-TOY-001",
+      "asin": "B0PUDI003",
+      "quantity": 150,
+      "reserved": 24,
+      "inbound": 50,
+      "fulfillable": 126,
+      "unfulfillable": 2,
+      "researching": 0,
+      "warehouse_id": "LAX5",
+      "days_of_supply": 65,
+      "reorder_recommended": false,
+      "reorder_quantity": 0,
+      "age_distribution": {
+        "0_to_90_days": 145,
+        "91_to_180_days": 5,
+        "over_180_days": 0
+      }
+    },
+    {
+      "sku": "PUDIWIND-BOWL-001",
+      "asin": "B0PUDI004",
+      "quantity": 95,
+      "reserved": 8,
+      "inbound": 0,
+      "fulfillable": 87,
+      "unfulfillable": 0,
+      "researching": 0,
+      "warehouse_id": "LAX5",
+      "days_of_supply": 58,
+      "reorder_recommended": false,
+      "reorder_quantity": 0,
+      "age_distribution": {
+        "0_to_90_days": 88,
+        "91_to_180_days": 7,
+        "over_180_days": 0
+      }
+    },
+    {
+      "sku": "PUDIWIND-DENTAL-001",
+      "asin": "B0PUDI005",
+      "quantity": 62,
+      "reserved": 5,
+      "inbound": 20,
+      "fulfillable": 57,
+      "unfulfillable": 0,
+      "researching": 0,
+      "warehouse_id": "LAX5",
+      "days_of_supply": 42,
+      "reorder_recommended": false,
+      "reorder_quantity": 0,
+      "age_distribution": {
+        "0_to_90_days": 62,
+        "91_to_180_days": 0,
+        "over_180_days": 0
+      }
+    }
+  ],
+  "summary": {
+    "total_skus": 5,
+    "total_fulfillable_units": 446,
+    "skus_with_low_stock": 1,
+    "skus_with_reorder_recommended": 1,
+    "ipi_score": 520,
+    "excess_inventory_value_usd": 0,
+    "aged_inventory_value_usd": 0
+  }
+}

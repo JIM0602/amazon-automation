@@ -1,0 +1,29 @@
+[
+  {
+    "asin": "B0PUDI001",
+    "title": "PUDIWIND 宠物记忆棉睡垫",
+    "price": 29.99,
+    "bsr_rank": 1523,
+    "category": "Pet Beds",
+    "review_count": 186,
+    "rating": 4.6
+  },
+  {
+    "asin": "B0PUDI002",
+    "title": "PUDIWIND 自动循环宠物饮水机",
+    "price": 39.99,
+    "bsr_rank": 884,
+    "category": "Pet Supplies",
+    "review_count": 243,
+    "rating": 4.7
+  },
+  {
+    "asin": "B0PUDI003",
+    "title": "PUDIWIND 耐咬宠物互动玩具套装",
+    "price": 18.99,
+    "bsr_rank": 2310,
+    "category": "Pet Toys",
+    "review_count": 97,
+    "rating": 4.5
+  }
+]

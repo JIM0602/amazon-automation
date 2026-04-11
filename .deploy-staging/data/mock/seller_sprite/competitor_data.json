@@ -1,0 +1,120 @@
+{
+  "meta": {
+    "description": "卖家精灵 competitor_data 模拟数据 — ASIN竞品数据，格式与 get_asin_data/reverse_lookup 一致",
+    "methods": ["get_asin_data", "reverse_lookup"],
+    "generated_at": "2026-03-31",
+    "market": "US"
+  },
+  "asin_data": [
+    {
+      "asin": "B0PUDI001",
+      "title": "PUDIWIND 宠物记忆棉睡垫 - 机洗可拆卸防水犬猫通用",
+      "rating": 4.6,
+      "review_count": 186,
+      "price": 29.99,
+      "bsr_rank": 1523,
+      "monthly_sales": 320,
+      "category": "Pet Beds",
+      "keywords": ["pet bed", "dog bed", "memory foam dog bed", "washable dog bed", "waterproof pet bed"]
+    },
+    {
+      "asin": "B0PUDI002",
+      "title": "PUDIWIND 自动循环宠物饮水机 2.5L 超静音净水款",
+      "rating": 4.7,
+      "review_count": 243,
+      "price": 39.99,
+      "bsr_rank": 884,
+      "monthly_sales": 520,
+      "category": "Pet Supplies",
+      "keywords": ["cat water fountain", "pet fountain", "automatic cat water dispenser", "silent cat fountain", "2.5L pet fountain"]
+    },
+    {
+      "asin": "B0PUDI003",
+      "title": "PUDIWIND 耐咬宠物互动玩具套装 天然橡胶3件装",
+      "rating": 4.5,
+      "review_count": 97,
+      "price": 18.99,
+      "bsr_rank": 2310,
+      "monthly_sales": 210,
+      "category": "Pet Toys",
+      "keywords": ["indestructible dog toy", "rubber dog toy", "interactive dog toy", "pet toy set", "chew toy"]
+    },
+    {
+      "asin": "B07FKQ9FLS",
+      "title": "FurHaven Ultra Plush Deluxe Orthopedic Pet Bed",
+      "rating": 4.4,
+      "review_count": 8524,
+      "price": 44.99,
+      "bsr_rank": 312,
+      "monthly_sales": 1850,
+      "category": "Pet Beds",
+      "keywords": ["orthopedic dog bed", "plush dog bed", "large dog bed", "pet bed for dogs", "foam dog bed"]
+    },
+    {
+      "asin": "B08DKH4T9Q",
+      "title": "Heavy Duty Dog Leash 6ft Nylon Lead",
+      "rating": 4.5,
+      "review_count": 8920,
+      "price": 14.99,
+      "bsr_rank": 234,
+      "monthly_sales": 4500,
+      "category": "Dog Leashes",
+      "keywords": ["dog leash", "nylon dog leash", "heavy duty leash", "6ft dog leash", "strong dog leash"]
+    },
+    {
+      "asin": "B08WATER01",
+      "title": "PETLIBRO Automatic Cat Water Fountain 2.5L with Wireless Pump",
+      "rating": 4.6,
+      "review_count": 3241,
+      "price": 45.99,
+      "bsr_rank": 523,
+      "monthly_sales": 980,
+      "category": "Pet Supplies",
+      "keywords": ["cat water fountain", "wireless pump cat fountain", "automatic water dispenser", "silent cat fountain", "cat drinking fountain"]
+    },
+    {
+      "asin": "B09INTER01",
+      "title": "Outward Hound Interactive Puzzle Dog Toy",
+      "rating": 4.3,
+      "review_count": 2876,
+      "price": 16.99,
+      "bsr_rank": 891,
+      "monthly_sales": 760,
+      "category": "Pet Toys",
+      "keywords": ["interactive dog toy", "puzzle dog toy", "dog enrichment toy", "mental stimulation dog", "slow feeder puzzle"]
+    }
+  ],
+  "reverse_lookup": [
+    {
+      "asin": "B0PUDI001",
+      "keywords": [
+        {"keyword": "pet bed", "search_volume": 28000, "rank": 12},
+        {"keyword": "dog bed", "search_volume": 56000, "rank": 23},
+        {"keyword": "memory foam dog bed", "search_volume": 22000, "rank": 5},
+        {"keyword": "washable dog bed", "search_volume": 12000, "rank": 8},
+        {"keyword": "orthopedic dog bed", "search_volume": 15000, "rank": 31},
+        {"keyword": "waterproof pet bed", "search_volume": 8000, "rank": 4}
+      ]
+    },
+    {
+      "asin": "B0PUDI002",
+      "keywords": [
+        {"keyword": "cat water fountain", "search_volume": 95000, "rank": 7},
+        {"keyword": "pet fountain", "search_volume": 45000, "rank": 11},
+        {"keyword": "automatic cat water dispenser", "search_volume": 25000, "rank": 4},
+        {"keyword": "dog water fountain", "search_volume": 18000, "rank": 19},
+        {"keyword": "silent cat fountain", "search_volume": 8000, "rank": 3}
+      ]
+    },
+    {
+      "asin": "B0PUDI003",
+      "keywords": [
+        {"keyword": "indestructible dog toy", "search_volume": 18000, "rank": 15},
+        {"keyword": "rubber dog toy", "search_volume": 12000, "rank": 9},
+        {"keyword": "interactive dog toy", "search_volume": 22000, "rank": 24},
+        {"keyword": "pet toy set", "search_volume": 6500, "rank": 6},
+        {"keyword": "chew toy for aggressive chewers", "search_volume": 9500, "rank": 12}
+      ]
+    }
+  ]
+}

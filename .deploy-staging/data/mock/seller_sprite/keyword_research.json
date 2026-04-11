@@ -1,0 +1,100 @@
+{
+  "meta": {
+    "description": "卖家精灵 keyword_research 模拟数据 — 宠物用品关键词研究",
+    "method": "search_keyword",
+    "generated_at": "2026-03-31",
+    "market": "US"
+  },
+  "keywords": [
+    {
+      "keyword": "pet bed",
+      "search_volume": 28000,
+      "competition": 0.61,
+      "trend": [24000, 25000, 26000, 27000, 27500, 28000, 29000, 28500, 27000, 26500, 27000, 28000],
+      "top_asins": ["B0PUDI001", "B08KH4T9Q2", "B07XVZ8FM1"],
+      "avg_price": 34.99,
+      "click_share": 0.64
+    },
+    {
+      "keyword": "dog bed",
+      "search_volume": 56000,
+      "competition": 0.75,
+      "trend": [50000, 51000, 52000, 53000, 54000, 55000, 57000, 56500, 55000, 54000, 54500, 56000],
+      "top_asins": ["B07FKQ9FLS", "B08PUDI01X", "B09RNHM8DJ"],
+      "avg_price": 38.99,
+      "click_share": 0.71
+    },
+    {
+      "keyword": "memory foam dog bed",
+      "search_volume": 22000,
+      "competition": 0.55,
+      "trend": [18000, 19000, 20000, 21000, 21500, 22000, 23000, 22500, 21000, 20500, 21000, 22000],
+      "top_asins": ["B0PUDI001", "B08FOAM001", "B09MEMO002"],
+      "avg_price": 44.99,
+      "click_share": 0.68
+    },
+    {
+      "keyword": "cat water fountain",
+      "search_volume": 95000,
+      "competition": 0.78,
+      "trend": [82000, 84000, 87000, 90000, 92000, 95000, 97000, 96000, 94000, 92000, 93000, 95000],
+      "top_asins": ["B0PUDI002", "B08WATER01", "B07CATFNT2"],
+      "avg_price": 42.99,
+      "click_share": 0.73
+    },
+    {
+      "keyword": "automatic cat water dispenser",
+      "search_volume": 25000,
+      "competition": 0.52,
+      "trend": [20000, 21000, 22000, 23000, 24000, 25000, 26000, 25500, 24000, 23500, 24000, 25000],
+      "top_asins": ["B0PUDI002", "B08AUTO001", "B09DISP002"],
+      "avg_price": 39.99,
+      "click_share": 0.65
+    },
+    {
+      "keyword": "dog leash",
+      "search_volume": 45000,
+      "competition": 0.72,
+      "trend": [38000, 40000, 42000, 43000, 44000, 45000, 46000, 47000, 45500, 44000, 43500, 45000],
+      "top_asins": ["B08DKH4T9Q", "B07XVZW8FM", "B09L3JTPKR"],
+      "avg_price": 15.99,
+      "click_share": 0.68
+    },
+    {
+      "keyword": "indestructible dog toy",
+      "search_volume": 18000,
+      "competition": 0.48,
+      "trend": [15000, 15500, 16000, 17000, 17500, 18000, 18500, 18000, 17000, 16500, 17000, 18000],
+      "top_asins": ["B0PUDI003", "B08TOY001X", "B09INDES02"],
+      "avg_price": 18.99,
+      "click_share": 0.62
+    },
+    {
+      "keyword": "washable dog bed",
+      "search_volume": 12000,
+      "competition": 0.43,
+      "trend": [10000, 10500, 11000, 11500, 11800, 12000, 12500, 12200, 11500, 11200, 11500, 12000],
+      "top_asins": ["B0PUDI001", "B08WASH01X", "B09WBD002X"],
+      "avg_price": 36.99,
+      "click_share": 0.60
+    },
+    {
+      "keyword": "orthopedic dog bed",
+      "search_volume": 15000,
+      "competition": 0.58,
+      "trend": [12000, 12500, 13000, 14000, 14500, 15000, 15500, 15200, 14000, 13500, 14000, 15000],
+      "top_asins": ["B0ORTHO001", "B08PUDI01X", "B09ORTHO02"],
+      "avg_price": 52.99,
+      "click_share": 0.66
+    },
+    {
+      "keyword": "pet toy interactive",
+      "search_volume": 8500,
+      "competition": 0.38,
+      "trend": [7000, 7200, 7500, 7800, 8000, 8500, 8800, 8600, 8200, 7900, 8100, 8500],
+      "top_asins": ["B0PUDI003", "B08INTER01", "B09PTOY002"],
+      "avg_price": 16.99,
+      "click_share": 0.55
+    }
+  ]
+}

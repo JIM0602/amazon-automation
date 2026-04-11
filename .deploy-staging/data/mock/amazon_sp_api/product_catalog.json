@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "description": "SP-API Product Catalog 模拟数据 — PUDIWIND品牌虚拟产品",
+    "endpoint": "products",
+    "generated_at": "2026-03-31",
+    "marketplace": "ATVPDKIKX0DER",
+    "brand": "PUDIWIND"
+  },
+  "code": 0,
+  "endpoint": "products",
+  "data": [
+    {
+      "asin": "B0PUDI001",
+      "title": "PUDIWIND 宠物记忆棉睡垫",
+      "price": 29.99,
+      "bsr_rank": 1523,
+      "category": "Pet Beds",
+      "review_count": 186,
+      "rating": 4.6,
+      "brand": "PUDIWIND",
+      "sku": "PUDIWIND-BED-001",
+      "parent_asin": null,
+      "variants": [
+        {"asin": "B0PUDI001", "size": "Medium (20-40lbs)", "color": "Gray"},
+        {"asin": "B0PUDI001L", "size": "Large (40-70lbs)", "color": "Gray"},
+        {"asin": "B0PUDI001S", "size": "Small (Under 20lbs)", "color": "Gray"}
+      ],
+      "status": "ACTIVE",
+      "fulfillment_channel": "AMAZON_FBA",
+      "marketplace_id": "ATVPDKIKX0DER"
+    },
+    {
+      "asin": "B0PUDI002",
+      "title": "PUDIWIND 自动循环宠物饮水机",
+      "price": 39.99,
+      "bsr_rank": 884,
+      "category": "Pet Supplies",
+      "review_count": 243,
+      "rating": 4.7,
+      "brand": "PUDIWIND",
+      "sku": "PUDIWIND-WTR-001",
+      "parent_asin": null,
+      "variants": [
+        {"asin": "B0PUDI002", "size": "2.5L Standard", "color": "White"},
+        {"asin": "B0PUDI002B", "size": "2.5L Standard", "color": "Black"}
+      ],
+      "status": "ACTIVE",
+      "fulfillment_channel": "AMAZON_FBA",
+      "marketplace_id": "ATVPDKIKX0DER"
+    },
+    {
+      "asin": "B0PUDI003",
+      "title": "PUDIWIND 耐咬宠物互动玩具套装",
+      "price": 18.99,
+      "bsr_rank": 2310,
+      "category": "Pet Toys",
+      "review_count": 97,
+      "rating": 4.5,
+      "brand": "PUDIWIND",
+      "sku": "PUDIWIND-TOY-001",
+      "parent_asin": null,
+      "variants": [
+        {"asin": "B0PUDI003", "size": "3-Pack Standard", "color": "Multi-Color"}
+      ],
+      "status": "ACTIVE",
+      "fulfillment_channel": "AMAZON_FBA",
+      "marketplace_id": "ATVPDKIKX0DER"
+    },
+    {
+      "asin": "B0PUDI004",
+      "title": "PUDIWIND 不锈钢宠物食碗双碗套装",
+      "price": 14.99,
+      "bsr_rank": 3841,
+      "category": "Pet Bowls",
+      "review_count": 52,
+      "rating": 4.3,
+      "brand": "PUDIWIND",
+      "sku": "PUDIWIND-BOWL-001",
+      "parent_asin": null,
+      "variants": [
+        {"asin": "B0PUDI004", "size": "Medium (16oz each)", "color": "Silver"},
+        {"asin": "B0PUDI004L", "size": "Large (32oz each)", "color": "Silver"}
+      ],
+      "status": "ACTIVE",
+      "fulfillment_channel": "AMAZON_FBA",
+      "marketplace_id": "ATVPDKIKX0DER"
+    },
+    {
+      "asin": "B0PUDI005",
+      "title": "PUDIWIND 宠物牙刷洁牙套装 天然酶牙膏",
+      "price": 12.99,
+      "bsr_rank": 5122,
+      "category": "Pet Health",
+      "review_count": 38,
+      "rating": 4.4,
+      "brand": "PUDIWIND",
+      "sku": "PUDIWIND-DENTAL-001",
+      "parent_asin": null,
+      "variants": [
+        {"asin": "B0PUDI005", "size": "Standard Set", "color": "Blue"}
+      ],
+      "status": "ACTIVE",
+      "fulfillment_channel": "AMAZON_FBA",
+      "marketplace_id": "ATVPDKIKX0DER"
+    }
+  ]
+}

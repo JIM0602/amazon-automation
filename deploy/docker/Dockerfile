@@ -54,6 +54,7 @@ COPY --from=builder /build/packages /usr/local/lib/python3.12/site-packages
 
 # 复制应用代码（仅复制必要的源码目录）
 COPY src/ ./src/
+COPY data/ ./data/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 

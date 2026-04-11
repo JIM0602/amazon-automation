@@ -1,0 +1,72 @@
+[
+  {
+    "question": "亚马逊A9算法的核心目标是什么？",
+    "expected_keywords": ["最大化购买可能性", "帮助买家", "最有可能购买", "购买可能性"],
+    "expected_answer": "A9算法的核心目标是最大化购买可能性，即帮助买家找到最有可能购买的商品。与谷歌SEO不同，A9算法专注于为亚马逊平台匹配买家需求与最适合的商品，驱动购买转化。",
+    "source_doc": "01_a9_algorithm.md",
+    "category": "A9算法"
+  },
+  {
+    "question": "亚马逊A9算法中影响排名的三大因素类型是什么？",
+    "expected_keywords": ["相关性因素", "销售绩效因素", "客户满意度因素", "Relevance", "Performance"],
+    "expected_answer": "A9算法的三大排名因素类型为：相关性因素（Relevance Signals，包括标题关键词、五点描述、Search Terms等）、销售绩效因素（Performance Signals，包括销量、转化率、点击率）、客户满意度因素（Customer Satisfaction Signals，包括评分评论数、退货率、库存可用性）。",
+    "source_doc": "01_a9_algorithm.md",
+    "category": "A9算法"
+  },
+  {
+    "question": "什么是需求竞争比（D/C Ratio）？如何使用它判断选品机会？",
+    "expected_keywords": ["D/C Ratio", "月搜索量", "总评论数", "0.5", "1.0", "需求竞争比"],
+    "expected_answer": "D/C Ratio = 核心关键词月搜索量 / BSR前50名产品总评论数之和。D/C Ratio > 1.0：需求远大于竞争，强烈推荐；D/C Ratio 0.5-1.0：需求竞争平衡，可以考虑；D/C Ratio < 0.5：竞争激烈，需谨慎进入。",
+    "source_doc": "02_product_selection.md",
+    "category": "选品方法论"
+  },
+  {
+    "question": "宠物用品Listing标题应该遵循什么公式？",
+    "expected_keywords": ["品牌名", "核心关键词", "主要功能特性", "适用对象", "规格", "数量", "包装"],
+    "expected_answer": "Listing标题优化公式为：品牌名 + 核心关键词 + 主要功能特性 + 适用对象/规格 + 数量/包装。最重要的关键词应放在前50字符内，确保手机端展示效果。标题应避免价格、促销信息和主观评价词。",
+    "source_doc": "03_listing_optimization.md",
+    "category": "Listing优化"
+  },
+  {
+    "question": "A+内容的4个最佳模块组合是什么？",
+    "expected_keywords": ["Header Image", "产品功能展示", "对比表格", "品牌故事", "Banner"],
+    "expected_answer": "A+内容推荐的4个最佳模块组合为：1）Header Image头部Banner（1464×600px品牌形象展示）；2）产品功能展示模块（图片+文字并排详细介绍功能）；3）对比表格模块（与同系列产品对比引导交叉销售）；4）品牌故事模块（建立情感连接讲述品牌理念）。",
+    "source_doc": "03_listing_optimization.md",
+    "category": "Listing优化"
+  },
+  {
+    "question": "PPC广告中什么是ACoS？宠物用品类目合理的ACoS范围是多少？",
+    "expected_keywords": ["广告花费", "广告销售额", "15%", "35%", "ACoS", "毛利率"],
+    "expected_answer": "ACoS（Advertising Cost of Sales）= 广告花费 / 广告带来的销售额 × 100%。宠物用品类目健康的ACoS范围为15%-35%。ACoS应低于毛利率才能保持广告盈利，稳定期应将ACoS控制在毛利率的70%以内。",
+    "source_doc": "04_advertising_strategy.md",
+    "category": "广告投放"
+  },
+  {
+    "question": "新品期PPC广告建议的三个广告组架构是什么？",
+    "expected_keywords": ["自动广告", "手动精准广告", "手动词组广告", "Auto Campaign", "Exact Match", "Phrase Match"],
+    "expected_answer": "新品期建议的三组广告架构为：1）自动广告（Auto Campaign，预算$20-$30/天，用于探索关键词）；2）手动精准广告（Exact Match，3-5个核心词，预算$15-$25/天）；3）手动词组广告（Phrase Match，10-15个长尾词，预算$10-$15/天）。",
+    "source_doc": "04_advertising_strategy.md",
+    "category": "广告投放"
+  },
+  {
+    "question": "FBA补货触发点的计算公式是什么？",
+    "expected_keywords": ["日均销量", "头程天数", "安全库存天数", "补货触发点", "Reorder Point"],
+    "expected_answer": "补货触发点（Reorder Point）= 日均销量 × (头程天数 + 安全库存天数)。例如日均销量20单、海运头程35天、安全库存30天，则补货触发点 = 20 × (35 + 30) = 1300件。当FBA可用库存降至触发点时立即下采购单。",
+    "source_doc": "06_inventory_management.md",
+    "category": "库存管理"
+  },
+  {
+    "question": "亚马逊IPI分数低于多少会受到仓储容量限制？提高IPI分数的主要方法有哪些？",
+    "expected_keywords": ["400", "IPI", "滞销率", "过剩库存", "库龄", "180天"],
+    "expected_answer": "IPI分数低于400会被亚马逊设置仓储容量上限，限制补货能力。提高IPI分数的主要方法：1）清理超过180天的库存（降价促销或移除销毁）；2）降低过剩库存，将库存覆盖天数保持在30-60天；3）确保所有ASIN有活跃listing；4）提升销售速度（广告、促销）降低滞销率。",
+    "source_doc": "06_inventory_management.md",
+    "category": "库存管理"
+  },
+  {
+    "question": "宠物用品定价时成本加成法如何计算净利润率？以$29.99售价为例说明各项成本构成。",
+    "expected_keywords": ["产品成本", "FBA配送费", "亚马逊佣金", "15%", "净利润率", "广告费"],
+    "expected_answer": "以PUDIWIND宠物睡垫（售价$29.99）为例：产品成本$6.50、头程运费$1.20、清关费$0.30、FBA配送费$4.86、仓储费$0.40、亚马逊佣金（15%）$4.50、广告费（15%）$4.50，总成本约$22.46，净利润$7.53，净利润率约25%。健康净利润率目标为20-30%。",
+    "source_doc": "08_pricing_strategy.md",
+    "category": "产品定价"
+  }
+]
