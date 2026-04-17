@@ -40,8 +40,8 @@ export function ConversationList({
   }, [fetchConversations]);
 
   return (
-    <div className="flex flex-col h-full w-full glass bg-[#0a0a1a]">
-      <div className="p-4 border-b border-[rgba(255,255,255,0.1)]">
+    <div className="flex flex-col h-full w-full glass bg-white dark:bg-[#0a0a1a]">
+      <div className="p-4 border-b border-gray-200 dark:border-[rgba(255,255,255,0.1)]">
         <button
           onClick={onNewConversation}
           className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-[var(--color-accent)] hover:opacity-90 transition-opacity text-white font-medium"
@@ -62,8 +62,8 @@ export function ConversationList({
               onClick={() => onSelectConversation(conv.id)}
               className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors duration-200 ${
                 currentConversationId === conv.id
-                  ? 'bg-[rgba(255,255,255,0.1)] text-white'
-                  : 'text-gray-400 hover:bg-[rgba(255,255,255,0.05)] hover:text-white'
+                  ? 'bg-blue-50 text-blue-600 dark:bg-[rgba(255,255,255,0.1)] dark:text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[rgba(255,255,255,0.05)] dark:hover:text-white'
               }`}
             >
               <MessageSquare size={16} className="flex-shrink-0" />

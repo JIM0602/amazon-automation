@@ -127,7 +127,7 @@ export default function TrendChart() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="glass rounded-xl border border-white/5 bg-white/5 p-6 backdrop-blur-md"
+      className="glass rounded-xl border border-gray-200 bg-white/50 dark:border-white/5 dark:bg-white/5 p-6 backdrop-blur-md"
     >
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-4">
         <h2 className="text-lg font-medium flex items-center gap-2 flex-shrink-0">
@@ -137,34 +137,32 @@ export default function TrendChart() {
 
         <div className="flex flex-wrap items-center justify-end gap-3 w-full lg:w-auto">
           {timeRange === 'custom' && (
-            <div className="flex items-center gap-2 text-sm text-gray-300">
+            <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input 
                 type="date" 
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded px-2 py-1.5 outline-none focus:border-white/20 color-scheme-dark"
-                style={{ colorScheme: 'dark' }}
+                className="bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 outline-none focus:border-blue-500 dark:focus:border-white/20 dark:[color-scheme:dark]"
               />
               <span>-</span>
               <input 
                 type="date" 
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded px-2 py-1.5 outline-none focus:border-white/20 color-scheme-dark"
-                style={{ colorScheme: 'dark' }}
+                className="bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 outline-none focus:border-blue-500 dark:focus:border-white/20 dark:[color-scheme:dark]"
               />
             </div>
           )}
           
-          <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 overflow-x-auto max-w-full">
+          <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10 overflow-x-auto max-w-full">
             {(Object.entries(TIME_RANGES) as [TimeRange, string][]).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setTimeRange(key)}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
                   timeRange === key
-                    ? 'bg-white/10 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                    ? 'bg-white text-blue-600 shadow-sm dark:bg-white/10 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
                 }`}
               >
                 {label}

@@ -91,18 +91,18 @@ export function ChatWindow({
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#0a0a1a] rounded-xl overflow-hidden glass border border-[rgba(255,255,255,0.1)]">
+    <div className="flex flex-col h-full w-full bg-white dark:bg-[#0a0a1a] rounded-xl overflow-hidden glass border border-gray-200 dark:border-[rgba(255,255,255,0.1)]">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.02)]">
-        <div className="p-2 rounded-lg bg-[rgba(255,255,255,0.05)] text-[var(--color-accent)]">
+      <div className="flex items-center gap-3 p-4 border-b border-gray-200 bg-gray-50 dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(255,255,255,0.02)]">
+        <div className="p-2 rounded-lg bg-gray-100 dark:bg-[rgba(255,255,255,0.05)] text-[var(--color-accent)]">
           {agentIcon}
         </div>
         <div>
-          <h2 className="text-white font-semibold flex items-center gap-2">
+          <h2 className="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
             {agentName}
             <span className="flex h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
           </h2>
-          <p className="text-xs text-gray-400">Online</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Online</p>
         </div>
       </div>
 
@@ -115,11 +115,11 @@ export function ChatWindow({
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-            <div className="p-4 rounded-full bg-[rgba(255,255,255,0.05)] text-gray-400">
+            <div className="p-4 rounded-full bg-gray-100 text-gray-500 dark:bg-[rgba(255,255,255,0.05)] dark:text-gray-400">
               {agentIcon}
             </div>
-            <p className="text-gray-400 font-medium">开始与 {agentName} 对话</p>
-            <p className="text-xs text-gray-500 max-w-sm">
+            <p className="text-gray-400 dark:text-gray-500 font-medium">开始与 {agentName} 对话</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 max-w-sm">
               请在下方输入框中描述您的需求，AI 将为您提供专业解答与协助。
             </p>
           </div>
@@ -136,7 +136,7 @@ export function ChatWindow({
                   className={`flex gap-3 w-full ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isUser && (
-                    <div className="flex-shrink-0 mt-1 p-2 h-8 w-8 rounded-full bg-[rgba(255,255,255,0.1)] flex items-center justify-center text-[var(--color-accent)]">
+                    <div className="flex-shrink-0 mt-1 p-2 h-8 w-8 rounded-full bg-gray-100 dark:bg-[rgba(255,255,255,0.1)] flex items-center justify-center text-[var(--color-accent)]">
                       {agentIcon}
                     </div>
                   )}
@@ -145,7 +145,7 @@ export function ChatWindow({
                     className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-lg ${
                       isUser
                         ? 'bg-[var(--color-accent)] text-white rounded-tr-sm'
-                        : 'bg-[rgba(255,255,255,0.05)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] text-gray-200 rounded-tl-sm'
+                        : 'bg-gray-100 border border-gray-200 text-gray-700 dark:bg-[rgba(255,255,255,0.05)] dark:backdrop-blur-md dark:border-[rgba(255,255,255,0.05)] dark:text-gray-200 rounded-tl-sm'
                     }`}
                   >
                     {isUser ? (
@@ -177,10 +177,10 @@ export function ChatWindow({
             animate={{ opacity: 1 }}
             className="flex gap-3 justify-start"
           >
-             <div className="flex-shrink-0 mt-1 p-2 h-8 w-8 rounded-full bg-[rgba(255,255,255,0.1)] flex items-center justify-center text-[var(--color-accent)]">
+             <div className="flex-shrink-0 mt-1 p-2 h-8 w-8 rounded-full bg-gray-100 dark:bg-[rgba(255,255,255,0.1)] flex items-center justify-center text-[var(--color-accent)]">
               {agentIcon}
             </div>
-            <div className="bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.05)] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1">
+            <div className="bg-gray-100 border border-gray-200 dark:bg-[rgba(255,255,255,0.05)] dark:border-[rgba(255,255,255,0.05)] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
               <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
               <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
@@ -198,15 +198,15 @@ export function ChatWindow({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.2)]">
-        <div className="relative flex items-end gap-2 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-xl p-1 focus-within:border-[var(--color-accent)] focus-within:ring-1 focus-within:ring-[var(--color-accent)] transition-all">
+      <div className="p-4 border-t border-gray-200 bg-gray-50 dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(0,0,0,0.2)]">
+        <div className="relative flex items-end gap-2 bg-white border border-gray-200 dark:bg-[rgba(255,255,255,0.05)] dark:border-[rgba(255,255,255,0.1)] rounded-xl p-1 focus-within:border-[var(--color-accent)] focus-within:ring-1 focus-within:ring-[var(--color-accent)] transition-all">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             placeholder="输入消息 (Enter 发送, Shift+Enter 换行)..."
-            className="w-full max-h-[120px] min-h-[44px] bg-transparent text-white text-sm px-3 py-3 resize-none outline-none overflow-y-auto"
+            className="w-full max-h-[120px] min-h-[44px] bg-transparent text-gray-900 dark:text-white text-sm px-3 py-3 resize-none outline-none overflow-y-auto"
             rows={1}
             disabled={isTyping}
           />
@@ -215,7 +215,7 @@ export function ChatWindow({
             disabled={!input.trim() || isTyping}
             className={`flex-shrink-0 h-10 w-10 mb-0.5 mr-0.5 rounded-lg flex items-center justify-center transition-all ${
               !input.trim() || isTyping
-                ? 'bg-[rgba(255,255,255,0.05)] text-gray-500 cursor-not-allowed'
+                ? 'bg-gray-100 text-gray-400 dark:bg-[rgba(255,255,255,0.05)] dark:text-gray-500 cursor-not-allowed'
                 : 'bg-[var(--color-accent)] text-white hover:bg-opacity-90 shadow-md'
             }`}
           >

@@ -47,12 +47,12 @@ export default function AgentCatalog() {
   }, [role, search, activeCategory])
 
   return (
-    <div className="flex-1 p-8 text-white min-h-full">
+    <div className="flex-1 p-8 text-gray-900 dark:text-white min-h-full">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-10">
           <h1 className="text-3xl font-bold tracking-tight mb-2">AI Agent 矩阵</h1>
-          <p className="text-gray-400 text-lg">多维度AI助手，全方位赋能亚马逊运营流程</p>
+          <p className="text-gray-500 dark:text-gray-400 text-lg">多维度AI助手，全方位赋能亚马逊运营流程</p>
         </div>
 
         {/* Filters & Search */}
@@ -65,7 +65,7 @@ export default function AgentCatalog() {
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   activeCategory === category
                     ? 'bg-[var(--color-accent)] text-white shadow-lg shadow-[var(--color-accent)]/20'
-                    : 'bg-[rgba(255,255,255,0.05)] text-gray-400 hover:text-white hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.05)]'
+                    : 'bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 border border-gray-200 dark:bg-[rgba(255,255,255,0.05)] dark:text-gray-400 dark:hover:text-white dark:hover:bg-[rgba(255,255,255,0.1)] dark:border-[rgba(255,255,255,0.05)]'
                 }`}
               >
                 {category}
@@ -82,7 +82,7 @@ export default function AgentCatalog() {
               placeholder="搜索 Agent 名称或描述..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-[rgba(255,255,255,0.1)] rounded-xl leading-5 bg-[rgba(0,0,0,0.2)] text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] sm:text-sm transition-colors"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-200 bg-white text-gray-700 placeholder-gray-400 dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(0,0,0,0.2)] dark:text-gray-300 dark:placeholder-gray-500 rounded-xl leading-5 focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] sm:text-sm transition-colors"
             />
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function AgentCatalog() {
                 whileHover={{ y: -4 }}
                 key={agent.type}
                 onClick={() => navigate(`/agents/${agent.type}`)}
-                className="group cursor-pointer bg-[rgba(255,255,255,0.03)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] rounded-2xl p-6 flex flex-col h-full hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.15)] transition-all duration-300 shadow-xl shadow-black/20 relative overflow-hidden"
+                className="group cursor-pointer bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:bg-[rgba(255,255,255,0.03)] dark:border-[rgba(255,255,255,0.08)] dark:hover:bg-[rgba(255,255,255,0.06)] dark:hover:border-[rgba(255,255,255,0.15)] backdrop-blur-xl rounded-2xl p-6 flex flex-col h-full transition-all duration-300 shadow-lg shadow-gray-200/50 dark:shadow-xl dark:shadow-black/20 relative overflow-hidden"
               >
                 {/* Glossy gradient accent */}
                 <div className="absolute -inset-x-2 -top-2 h-1/2 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-500" />
@@ -108,16 +108,16 @@ export default function AgentCatalog() {
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${agent.color}`}>
                     <Icon className="w-6 h-6" />
                   </div>
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[rgba(255,255,255,0.05)] text-gray-400 border border-[rgba(255,255,255,0.1)]">
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200 dark:bg-[rgba(255,255,255,0.05)] dark:text-gray-400 dark:border-[rgba(255,255,255,0.1)]">
                     {agent.category}
                   </span>
                 </div>
                 
                 <div className="relative z-10 flex-1">
-                  <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-[var(--color-accent)] transition-colors">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-[var(--color-accent)] transition-colors">
                     {agent.name}
                   </h3>
-                  <p className="text-gray-400 text-sm leading-relaxed mb-6 line-clamp-3">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-6 line-clamp-3">
                     {agent.description}
                   </p>
                 </div>
@@ -127,14 +127,14 @@ export default function AgentCatalog() {
                     {agent.tags.map(tag => (
                       <span 
                         key={tag}
-                        className="text-xs px-2 py-1 bg-black/30 text-gray-300 rounded-md border border-white/5"
+                        className="text-xs px-2 py-1 bg-gray-100 text-gray-600 border border-gray-200 dark:bg-black/30 dark:text-gray-300 dark:border-white/5 rounded-md"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
                   
-                  <div className="flex items-center text-sm font-medium text-gray-400 group-hover:text-[var(--color-accent)] transition-colors">
+                  <div className="flex items-center text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-[var(--color-accent)] transition-colors">
                     <span>开始对话</span>
                     <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -145,9 +145,9 @@ export default function AgentCatalog() {
         </div>
         
         {filteredAgents.length === 0 && (
-          <div className="text-center py-20 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] rounded-2xl backdrop-blur-sm">
+          <div className="text-center py-20 bg-gray-50 border border-gray-200 dark:bg-[rgba(255,255,255,0.02)] dark:border-[rgba(255,255,255,0.05)] rounded-2xl backdrop-blur-sm">
             <Bot className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-300">没有找到匹配的 Agent</h3>
+            <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">没有找到匹配的 Agent</h3>
             <p className="text-gray-500 mt-1">请尝试更换搜索词或分类</p>
           </div>
         )}

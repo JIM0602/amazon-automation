@@ -122,6 +122,10 @@ export default function AdDashboard() {
   // Campaign Ranking State
   const [campaigns, setCampaigns] = useState<CampaignRankingItem[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const [campaignTimeRange, setCampaignTimeRange] = useState<TimeRangeCard>('site_today');
+  const [campaignPage, setCampaignPage] = useState(1);
+  const [campaignPageSize, setCampaignPageSize] = useState(20);
+  const [campaignTotal, setCampaignTotal] = useState(0);
 
   // Click outside to close popover
   useEffect(() => {
@@ -202,10 +206,17 @@ export default function AdDashboard() {
     async function fetchCampaignRanking() {
       if (mounted) setCampaignsLoading(true);
       try {
-        const res = await api.get('/ads/dashboard/campaign_ranking');
+        const res = await api.get('/ads/dashboard/campaign_ranking', {
+          params: {
+            time_range: campaignTimeRange,
+            page: campaignPage,
+            page_size: campaignPageSize,
+          }
+        });
         if (mounted && res.data && res.data.items) {
           const sorted = [...res.data.items].sort((a: CampaignRankingItem, b: CampaignRankingItem) => (b.ad_spend || 0) - (a.ad_spend || 0));
           setCampaigns(sorted);
+          setCampaignTotal(res.data.total_count || res.data.items.length);
         }
       } catch (err) {
         console.warn('Campaign ranking not available', err);
@@ -215,7 +226,7 @@ export default function AdDashboard() {
     }
     fetchCampaignRanking();
     return () => { mounted = false; };
-  }, []);
+  }, [campaignTimeRange, campaignPage, campaignPageSize]);
 
   const renderChange = (value: number | undefined, invertColor = false) => {
     if (value === undefined) return <span className="text-gray-500">-</span>;
@@ -243,7 +254,7 @@ export default function AdDashboard() {
   ];
 
   const columns: Column<CampaignRankingItem>[] = [
-    { key: 'name', title: '广告活动名', sortable: true },
+    { key: 'name', title: '广告活动名', sortable: false },
     { key: 'clicks', title: '广告点击量', sortable: true, render: (val) => Number(val).toLocaleString() },
     { key: 'ctr', title: '广告点击率', sortable: true, render: (val) => `${(Number(val) * 100).toFixed(2)}%` },
     { key: 'ad_orders', title: '广告订单量', sortable: true, render: (val) => Number(val).toLocaleString() },
@@ -259,7 +270,7 @@ export default function AdDashboard() {
   const hasRightAxis = Array.from(chartMetrics).some(m => CHART_METRICS[m].yAxisId === 'right');
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto text-gray-100">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto text-gray-900 dark:text-gray-100">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">广告数据大盘</h1>
         <div className="flex flex-wrap items-center gap-4">
@@ -267,15 +278,15 @@ export default function AdDashboard() {
             <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] mr-2 animate-pulse"></span>
             Mock数据
           </div>
-          <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
+          <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10">
             {(['site_today', 'last_24h'] as TimeRangeCard[]).map(range => (
               <button
                 key={range}
                 onClick={() => setCardTime(range)}
                 className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
                   cardTime === range
-                    ? 'bg-white/10 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                    ? 'bg-white text-blue-600 shadow-sm dark:bg-white/10 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
                 }`}
               >
                 {range === 'site_today' ? '站点今天' : '最近24小时'}
@@ -301,14 +312,14 @@ export default function AdDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="glass p-5 rounded-xl border border-white/5 bg-white/5 backdrop-blur-md relative overflow-hidden"
+              className="glass p-5 rounded-xl border border-gray-200 bg-white/50 dark:border-white/5 dark:bg-white/5 backdrop-blur-md relative overflow-hidden"
             >
               <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                <div className="p-2 bg-gray-100/50 dark:bg-white/5 rounded-lg border border-gray-200/50 dark:border-white/10">
                   {kpi.icon}
                 </div>
               </div>
-              <p className="text-sm text-gray-400 font-medium mb-1">{kpi.title}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">{kpi.title}</p>
               <div className="flex items-end justify-between">
                 <h3 className="text-2xl font-bold tracking-tight">
                   {metricsLoading ? <span className="text-gray-500 text-sm font-normal">加载中...</span> : displayVal}
@@ -325,7 +336,7 @@ export default function AdDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="glass rounded-xl border border-white/5 bg-white/5 p-6 backdrop-blur-md"
+        className="glass rounded-xl border border-gray-200 bg-white/50 dark:border-white/5 dark:bg-white/5 p-6 backdrop-blur-md"
       >
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-4 relative">
           <h2 className="text-lg font-medium flex items-center gap-2 flex-shrink-0">
@@ -335,34 +346,32 @@ export default function AdDashboard() {
 
           <div className="flex flex-wrap items-center justify-end gap-3 w-full lg:w-auto">
             {chartTime === 'custom' && (
-              <div className="flex items-center gap-2 text-sm text-gray-300">
+              <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input 
                   type="date" 
                   value={chartStartDate}
                   onChange={e => setChartStartDate(e.target.value)}
-                  className="bg-black/40 border border-white/10 rounded px-2 py-1.5 outline-none focus:border-white/20 color-scheme-dark"
-                  style={{ colorScheme: 'dark' }}
+                  className="bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 outline-none focus:border-blue-500 dark:focus:border-white/20 dark:[color-scheme:dark]"
                 />
                 <span>-</span>
                 <input 
                   type="date" 
                   value={chartEndDate}
                   onChange={e => setChartEndDate(e.target.value)}
-                  className="bg-black/40 border border-white/10 rounded px-2 py-1.5 outline-none focus:border-white/20 color-scheme-dark"
-                  style={{ colorScheme: 'dark' }}
+                  className="bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 outline-none focus:border-blue-500 dark:focus:border-white/20 dark:[color-scheme:dark]"
                 />
               </div>
             )}
             
-            <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 overflow-x-auto max-w-full">
+            <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10 overflow-x-auto max-w-full">
               {(Object.entries(CHART_TIME_RANGES) as [TimeRangeChart, string][]).map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setChartTime(key as TimeRangeChart)}
                   className={`px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
                     chartTime === key
-                      ? 'bg-white/10 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                      ? 'bg-white text-blue-600 shadow-sm dark:bg-white/10 dark:text-white'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
                   }`}
                 >
                   {label}
@@ -373,15 +382,15 @@ export default function AdDashboard() {
             <div className="relative" ref={gearPopoverRef}>
               <button
                 onClick={() => setShowGearPopover(!showGearPopover)}
-                className="p-2 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-300"
+                className="p-2 rounded-md bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-gray-600 dark:text-gray-300"
               >
                 <Settings className="w-5 h-5" />
               </button>
               
               {showGearPopover && (
-                <div className="absolute right-0 mt-2 w-64 bg-gray-900 border border-white/10 rounded-xl shadow-xl z-50 p-4">
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 rounded-xl shadow-xl z-50 p-4">
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-medium text-sm text-gray-200">指标选择 ({chartMetrics.size}/{MAX_METRICS})</h3>
+                    <h3 className="font-medium text-sm text-gray-700 dark:text-gray-200">指标选择 ({chartMetrics.size}/{MAX_METRICS})</h3>
                   </div>
                   <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                     {(Object.entries(CHART_METRICS) as [MetricKey, typeof CHART_METRICS[MetricKey]][]).map(([key, config]) => {
@@ -389,7 +398,7 @@ export default function AdDashboard() {
                       const isSelected = chartMetrics.has(mKey);
                       const isDisabled = !isSelected && chartMetrics.size >= MAX_METRICS;
                       return (
-                        <label key={key} className={`flex items-center gap-2 text-sm ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                        <label key={key} className={`flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                           <input
                             type="checkbox"
                             className="rounded border-gray-600 text-[var(--color-accent)] focus:ring-[var(--color-accent)] bg-gray-800"
@@ -507,20 +516,41 @@ export default function AdDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="glass rounded-xl border border-white/5 bg-white/5 p-6 backdrop-blur-md overflow-hidden flex flex-col"
+        className="glass rounded-xl border border-gray-200 bg-white/50 dark:border-white/5 dark:bg-white/5 p-6 backdrop-blur-md overflow-hidden flex flex-col"
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium flex items-center gap-2">
             <Target className="w-5 h-5 text-[var(--color-accent)]" />
             广告活动排名
           </h2>
+          <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10">
+            {(['site_today', 'last_24h'] as TimeRangeCard[]).map(range => (
+              <button
+                key={range}
+                onClick={() => { setCampaignTimeRange(range); setCampaignPage(1); }}
+                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+                  campaignTimeRange === range
+                    ? 'bg-white text-blue-600 shadow-sm dark:bg-white/10 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
+                }`}
+              >
+                {range === 'site_today' ? '站点今天' : '最近24小时'}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="overflow-x-auto flex-1">
+        <div className="h-[500px] overflow-auto">
           <DataTable
             columns={columns}
             data={campaigns}
             loading={campaignsLoading}
             rowKey="name"
+            pagination={{
+              current: campaignPage,
+              pageSize: campaignPageSize,
+              total: campaignTotal,
+              onChange: (p, ps) => { setCampaignPage(p); setCampaignPageSize(ps); }
+            }}
           />
         </div>
       </motion.div>
