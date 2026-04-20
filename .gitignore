@@ -4,9 +4,98 @@ __pycache__/
 .pytest_cache/
 dist/
 build/
+out/
 *.egg-info/
 .ruff_cache/
+.mypy_cache/
+.eggs/
+.venv/
+.ipynb_checkpoints/
 data/raw_docs/
 data/processed_docs/
 node_modules/
 frontend/node_modules/
+
+.tmp
+.gradle
+.idea
+*.iml
+*.swp
+.DS_Store
+.dockerversions
+.classpath
+.project
+.settings
+.vscode
+.kotlin
+**/gmon.out
+static_checker_reports/
+.tool-versions
+test-results/
+
+# Logs
+acceptance_tests_logs/
+airbyte_ci_logs/
+live_tests_debug_reports/
+dagger_engine_logs*
+
+# Secrets
+secrets/
+updated_configurations/
+!airbyte-integrations/connector-templates/**/secrets
+
+# Connector debug configs
+airbyte-integrations/connectors/**/src/test/resources/debug_resources
+airbyte-integrations/connectors/**/integration_tests/temp
+
+# Python unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+cover/
+
+# dbt
+profiles.yml
+
+# Terraform
+.terraform/
+crash.log
+*.tfstate
+*.tfstate.backup
+*.lock.hcl
+
+# Airflow Demo
+resources/examples/airflow/logs/*
+!resources/examples/airflow/logs/.gitkeep
+
+# Generated output
+docs/SUMMARY.md
+lowcode_connector_names.txt
+num_lowcode_connectors.csv
+charts/**/charts
+.dccache
+dd-java-agent.jar
+/docker-compose.yaml
+/docker-compose.debug.yaml
+/.env.dev
+/flags.yml
+/temporal/dynamicconfig/development.yaml
+gha-creds-*.json
+tools/ci_connector_ops/pipeline_reports/
+scan-journal.log
+*.sqlite
+target/
+airbyte-cdk/bulk/core/load/airbyte-cdk-load/
+airbyte-integrations/connectors/**/airbyte-cdk-load/
+
+# AI
+AGENT.md
+.claude/settings.local.json
