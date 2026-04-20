@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Bell, LogOut, Sun, Moon, CheckCircle, BookOpen, AlertTriangle } from 'lucide-react';
 import { useNotifications, Notification } from '../hooks/useNotifications';
+import { AGENTS } from '../data/agents';
 
 // helper for time ago
 function timeAgo(dateString: string) {
@@ -51,7 +52,15 @@ export default function TopBar() {
 
   const getPageTitle = (path: string) => {
     if (path === '/') return '数据大盘';
-    if (path.startsWith('/agents')) return 'AI主管';
+    if (path === '/agents') return 'AI Agent矩阵';
+    if (path.startsWith('/agents/')) {
+      const agentType = path.split('/agents/')[1]?.split('/')[0];
+
+      if (agentType === 'core_management') return 'AI主管';
+
+      const agent = AGENTS.find((item) => item.type === agentType);
+      return agent?.name || 'AI Agent矩阵';
+    }
     if (path.startsWith('/ads/manage')) return '广告管理';
     if (path.startsWith('/ads')) return '广告数据大盘';
     if (path.startsWith('/orders')) return '全部订单';
@@ -73,14 +82,14 @@ export default function TopBar() {
 
   return (
     <header className="h-16 shrink-0 glass border-b border-t-0 border-x-0 border-[var(--color-glass-border)] px-6 flex items-center justify-between z-10">
-      <div className="text-lg font-medium text-white tracking-wide">
+      <div className="text-lg font-medium text-gray-900 dark:text-white tracking-wide">
         {getPageTitle(location.pathname)}
       </div>
 
       <div className="flex items-center space-x-6">
         <button 
           onClick={toggleTheme}
-          className="relative text-gray-400 hover:text-white transition-colors" 
+          className="relative text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors" 
           title="Toggle Theme"
         >
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
@@ -90,7 +99,7 @@ export default function TopBar() {
           <button 
             ref={bellRef}
             onClick={handleBellClick}
-            className="relative text-gray-400 hover:text-white transition-colors flex items-center justify-center" 
+            className="relative text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center justify-center" 
             title="Notifications"
           >
             <Bell size={20} />
@@ -158,12 +167,12 @@ export default function TopBar() {
         </div>
 
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] border border-[var(--color-glass-border)] text-white flex items-center justify-center font-bold">
+          <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] border border-[var(--color-glass-border)] text-gray-900 dark:text-white flex items-center justify-center font-bold">
             {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-white leading-tight">{user?.username || 'User'}</span>
-            <span className="text-[10px] text-gray-400 uppercase tracking-wider">{role || 'Unknown'}</span>
+            <span className="text-sm font-medium text-gray-900 dark:text-white leading-tight">{user?.username || 'User'}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">{role || 'Unknown'}</span>
           </div>
         </div>
 
@@ -171,7 +180,7 @@ export default function TopBar() {
 
         <button
           onClick={logout}
-          className="flex items-center text-gray-400 hover:text-white transition-colors"
+          className="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           title="Logout"
         >
           <LogOut size={20} />

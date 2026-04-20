@@ -1,248 +1,41 @@
 {
-  "active_plan": "E:\\amazon-automation\\.sisyphus\\plans\\production-fixes-32issues.md",
-  "started_at": "2026-04-10T09:03:02.297Z",
+  "active_plan": "E:\\amazon-automation\\.sisyphus\\plans\\white-theme-fix.md",
+  "started_at": "2026-04-17T10:39:17.819Z",
   "session_ids": [
-    "ses_2b24b10b0ffezwvEa0VL8uq8Tu",
-    "ses_289575e1bffe7u2hBVoVW9126E",
-    "ses_2894d6d76ffeeQdN7zhf7UbbQf",
-    "ses_28940e0e0ffeNNknkjyj8nScEz",
-    "ses_28941348bffeMDRnuwkPGxZTOw",
-    "ses_28935b836ffexP87uRjc5ZPv8W",
-    "ses_2893611d5ffeOuovgEK4346btg",
-    "ses_2891d6eceffeKUHATHovgvYWN5",
-    "ses_2891d0e88ffePD8kZ0ZEyKOAoW",
-    "ses_2891e12ceffejEUZS6M76kXFhF",
-    "ses_2891dc15fffexDwel12WRqoNsI",
-    "ses_288ff0236ffeEylrgXusEwDoZz",
-    "ses_288f835c6ffeZPgmYH67LvVcsB",
-    "ses_288e8d57fffewhx56mipSEXoWg",
-    "ses_288da2659ffeHPjGUUxiCf8BxL",
-    "ses_288b7a91effevAVLtvwq5YgGv6",
-    "ses_288b0f6e7ffeELLWpNK0Q76xqy",
-    "ses_288ac8c5fffeKfrlnqD5T210JI",
-    "ses_288a7308cffeqWa3gwMupJYJC5",
-    "ses_2889c0039ffe2zotpBvByA0uqx",
-    "ses_28895f3dfffeIbn8ssKa4TxKQs",
-    "ses_2888bc277ffeq9b5PANfk3Bee2",
-    "ses_2887dd769ffelZ76190fjqhtkF",
-    "ses_28873b73affehEERQgMDFeoFVJ",
-    "ses_2886d1031ffeb6ZJMT1rCayxgX",
-    "ses_28862c2dbffePB0Vn7bpYWFku5",
-    "ses_2885d5735ffeHlhxHu6uxNS1FD",
-    "ses_288512830ffeuBvSdpkB9c9wLY",
-    "ses_28843b927ffek4Qh1MVW3yZpXJ",
-    "ses_28839115effe1VTuWck1BHB7kZ",
-    "ses_288389004ffe6ekTH2ERP5SI1c",
-    "ses_28838322fffe5l8ELQjPcIEBH3",
-    "ses_2883861dbffeYfHBFDasqJ6b0k",
-    "ses_28838c7f8ffevV93MX37Smr07Q",
-    "ses_2880fba3affezk2SfOYU0u5PzT",
-    "ses_28806d675ffeSRunRSAXrGiSAw",
-    "ses_287f7b732ffeABh10MiUkMzq0P",
-    "ses_287ddf5dcffeLTSY3R5Sc32iGc",
-    "ses_287dac376ffe0Z5UCZAXejfs1c",
-    "ses_287b52719ffe4sqItJAwMxDZzT",
-    "ses_287a35be9ffeGQx5IYHNzsQ9iL",
-    "ses_283fbc4f0ffeML3Og2IbLX7dk7"
+    "ses_27a1579c8ffeKCMpKrhBusKiEZ"
   ],
-  "plan_name": "production-fixes-32issues",
+  "session_origins": {
+    "ses_27a1579c8ffeKCMpKrhBusKiEZ": "direct"
+  },
+  "plan_name": "white-theme-fix",
   "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "datetime时区修复 — 全Agent修复offset-naive vs offset-aware比较",
-      "session_id": "ses_289575e1bffe7u2hBVoVW9126E",
+      "task_title": "TrendChart.tsx 白色主题修复",
+      "session_id": "ses_264f8dc26ffeX2qybNZUzwXjrF",
       "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-10T09:19:00.181Z"
+      "category": "visual-engineering",
+      "updated_at": "2026-04-17T10:42:33.943Z"
     },
     "todo:2": {
       "task_key": "todo:2",
       "task_label": "2",
-      "task_title": "对话历史修复 — 前端加载+后端保存联合修复",
-      "session_id": "ses_28941348bffeMDRnuwkPGxZTOw",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-10T09:42:29.204Z"
-    },
-    "todo:4": {
-      "task_key": "todo:4",
-      "task_label": "4",
-      "task_title": "users数据库表 + Alembic迁移 — DB用户管理基础",
-      "session_id": "ses_2893611d5ffeOuovgEK4346btg",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-10T10:09:41.687Z"
-    },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "用户CRUD API — boss专属用户管理端点",
-      "session_id": "ses_2891e12ceffejEUZS6M76kXFhF",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-10T10:38:25.673Z"
-    },
-    "todo:10": {
-      "task_key": "todo:10",
-      "task_label": "10",
-      "task_title": "仪表盘Mock数据API — Dashboard指标/趋势/SKU数据",
-      "session_id": "ses_288e30a66ffeMx3xWfyQnT9VTG",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-04-10T11:24:28.776Z"
-    },
-    "todo:15": {
-      "task_key": "todo:15",
-      "task_label": "15",
-      "task_title": "登录页增强 — 版权信息+联系管理员提示",
-      "session_id": "ses_288b7a91effevAVLtvwq5YgGv6",
+      "task_title": "AdDashboard.tsx 白色主题修复",
+      "session_id": "ses_264f4bddfffeApZJ6vQ4pAYly4",
       "agent": "Sisyphus-Junior",
       "category": "visual-engineering",
-      "updated_at": "2026-04-10T12:09:28.731Z"
+      "updated_at": "2026-04-17T10:49:29.910Z"
     },
-    "todo:17": {
-      "task_key": "todo:17",
-      "task_label": "17",
-      "task_title": "侧边栏完全重构 — 8项导航+折叠子菜单",
-      "session_id": "ses_288b0f6e7ffeELLWpNK0Q76xqy",
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "AgentCatalog.tsx 白色主题修复",
+      "session_id": "ses_264eb51c4ffe551ODZ1Ep7p3oT",
       "agent": "Sisyphus-Junior",
       "category": "visual-engineering",
-      "updated_at": "2026-04-10T12:15:48.290Z"
-    },
-    "todo:18": {
-      "task_key": "todo:18",
-      "task_label": "18",
-      "task_title": "通知铃铛组件 — 增强版带弹窗列表",
-      "session_id": "ses_288a7308cffeqWa3gwMupJYJC5",
-      "agent": "Sisyphus-Junior",
-      "category": "visual-engineering",
-      "updated_at": "2026-04-10T12:27:23.051Z"
-    },
-    "todo:21": {
-      "task_key": "todo:21",
-      "task_label": "21",
-      "task_title": "仪表盘指标卡片+时间切换 — 10个指标卡片",
-      "session_id": "ses_28895f3dfffeIbn8ssKa4TxKQs",
-      "agent": "Sisyphus-Junior",
-      "category": "visual-engineering",
-      "updated_at": "2026-04-10T12:51:00.655Z"
-    },
-    "todo:23": {
-      "task_key": "todo:23",
-      "task_label": "23",
-      "task_title": "SKU排名表格 — DataTable集成+Agent Activity移除",
-      "session_id": "ses_2888bc277ffeq9b5PANfk3Bee2",
-      "agent": "Sisyphus-Junior",
-      "category": "visual-engineering",
-      "updated_at": "2026-04-10T13:00:54.418Z"
-    },
-    "todo:24": {
-      "task_key": "todo:24",
-      "task_label": "24",
-      "task_title": "广告仪表盘卡片+时间 — 广告指标卡片",
-      "session_id": "ses_2887dd769ffelZ76190fjqhtkF",
-      "agent": "Sisyphus-Junior",
-      "category": "visual-engineering",
-      "updated_at": "2026-04-10T13:14:14.870Z"
-    },
-    "todo:27": {
-      "task_key": "todo:27",
-      "task_label": "27",
-      "task_title": "广告管理主框架+Portfolio树+Tab导航 — 页面骨架",
-      "session_id": "ses_28873b73affehEERQgMDFeoFVJ",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-10T13:24:08.843Z"
-    },
-    "todo:28": {
-      "task_key": "todo:28",
-      "task_label": "28",
-      "task_title": "广告管理-广告组合+广告活动Tab — 前两个Tab列定义",
-      "session_id": "ses_2885d5735ffeHlhxHu6uxNS1FD",
-      "agent": "Sisyphus-Junior",
-      "category": "visual-engineering",
-      "updated_at": "2026-04-10T13:48:32.407Z"
-    },
-    "todo:31": {
-      "task_key": "todo:31",
-      "task_label": "31",
-      "task_title": "广告管理-两级钻取子页面 — Campaign+AdGroup详情子页面",
-      "session_id": "ses_288512830ffeuBvSdpkB9c9wLY",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-10T14:04:23.858Z"
-    },
-    "todo:32": {
-      "task_key": "todo:32",
-      "task_label": "32",
-      "task_title": "全部订单页面 — 14列列表+详情弹窗",
-      "session_id": "ses_28843b927ffek4Qh1MVW3yZpXJ",
-      "agent": "Sisyphus-Junior",
-      "category": "visual-engineering",
-      "updated_at": "2026-04-10T14:21:00.322Z"
-    },
-    "todo:33": {
-      "task_key": "todo:33",
-      "task_label": "33",
-      "task_title": "退货订单页面 — FBA退货18列列表",
-      "session_id": "ses_28839115effe1VTuWck1BHB7kZ",
-      "agent": "Sisyphus-Junior",
-      "category": "visual-engineering",
-      "updated_at": "2026-04-10T14:53:43.309Z"
-    },
-    "todo:42": {
-      "task_key": "todo:42",
-      "task_label": "42",
-      "task_title": "飞书AI聊天集成 — 飞书消息→AI Manager",
-      "session_id": "ses_2880fba3affezk2SfOYU0u5PzT",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-10T15:16:24.539Z"
-    },
-    "todo:43": {
-      "task_key": "todo:43",
-      "task_label": "43",
-      "task_title": "飞书通知推送增强 — 日报+任务提醒",
-      "session_id": "ses_287f7b732ffeABh10MiUkMzq0P",
-      "agent": "oracle",
-      "updated_at": "2026-04-10T15:47:23.187Z"
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "**Plan Compliance Audit** — `oracle`",
-      "session_id": "ses_287ddf5dcffeLTSY3R5Sc32iGc",
-      "agent": "oracle",
-      "updated_at": "2026-04-10T16:05:21.485Z"
-    },
-    "final-wave:f2": {
-      "task_key": "final-wave:f2",
-      "task_label": "F2",
-      "task_title": "**Code Quality Review** — `unspecified-high`",
-      "session_id": "ses_287dac376ffe0Z5UCZAXejfs1c",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-10T16:15:21.728Z"
-    },
-    "final-wave:f3": {
-      "task_key": "final-wave:f3",
-      "task_label": "F3",
-      "task_title": "**Real Manual QA** — `unspecified-high` (+ `playwright` skill if UI)",
-      "session_id": "ses_287d1728bffexdHEo4KwSTHeRe",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-04-10T16:26:26.272Z"
-    },
-    "final-wave:f4": {
-      "task_key": "final-wave:f4",
-      "task_label": "F4",
-      "task_title": "**Scope Fidelity Check** — `deep`",
-      "session_id": "ses_287a35be9ffeGQx5IYHNzsQ9iL",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-04-10T17:16:57.402Z"
+      "updated_at": "2026-04-17T10:59:25.821Z"
     }
   }
 }

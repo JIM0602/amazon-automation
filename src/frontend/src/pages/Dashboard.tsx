@@ -37,6 +37,7 @@ export interface SkuRankingItem {
   sales: number;
   orders: number;
   units_sold: number;
+  returns_count: number;
   ad_spend: number;
   acos: number;
   tacos: number;
@@ -46,7 +47,16 @@ export interface SkuRankingItem {
   estimated_days: number;
 }
 
-type TimeRange = 'site_today' | 'last_24h';
+type TimeRange = 'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year' | 'custom';
+
+const TIME_RANGE_LABELS: Record<TimeRange, string> = {
+  site_today: '站点今天',
+  last_24h: '最近24小时',
+  this_week: '本周',
+  this_month: '本月',
+  this_year: '本年',
+  custom: '自定义',
+};
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -63,6 +73,9 @@ export default function Dashboard() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState('sales');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [skuTimeRange, setSkuTimeRange] = useState<TimeRange>('site_today');
+  const [skuStartDate, setSkuStartDate] = useState('');
+  const [skuEndDate, setSkuEndDate] = useState('');
 
   // Fetch metrics based on timeRange
   useEffect(() => {
@@ -91,14 +104,23 @@ export default function Dashboard() {
     let mounted = true;
 
     async function fetchSkuRanking() {
+      if (skuTimeRange === 'custom' && (!skuStartDate || !skuEndDate)) {
+        if (mounted) setSkuLoading(false);
+        return;
+      }
+
       if (mounted) setSkuLoading(true);
       try {
         const res = await api.get('/dashboard/sku_ranking', {
           params: {
+            time_range: skuTimeRange,
             sort_by: sortBy || 'sales',
             sort_order: sortOrder || 'desc',
             page,
             page_size: pageSize,
+            ...(skuTimeRange === 'custom'
+              ? { start_date: skuStartDate, end_date: skuEndDate }
+              : {}),
           }
         });
         if (mounted && res.data) {
@@ -115,7 +137,7 @@ export default function Dashboard() {
 
     fetchSkuRanking();
     return () => { mounted = false; };
-  }, [sortBy, sortOrder, page, pageSize]);
+  }, [skuTimeRange, skuStartDate, skuEndDate, sortBy, sortOrder, page, pageSize]);
 
   const handleTableSort = (key: string, order: SortOrder) => {
     setSortBy(key);
@@ -146,7 +168,7 @@ export default function Dashboard() {
   ];
 
   const columns: Column<SkuRankingItem>[] = [
-    { key: 'sku', title: 'SKU码', sortable: true },
+    { key: 'sku', title: 'SKU码', sortable: false },
     {
       key: 'image_url',
       title: '商品主图',
@@ -162,6 +184,7 @@ export default function Dashboard() {
     { key: 'sales', title: '销售额', sortable: true, render: (val) => `$${Number(val).toLocaleString()}` },
     { key: 'orders', title: '订单量', sortable: true, render: (val) => Number(val).toLocaleString() },
     { key: 'units_sold', title: '销售量', sortable: true, render: (val) => Number(val).toLocaleString() },
+    { key: 'returns_count', title: '退货量', sortable: true, render: (val) => Number(val).toLocaleString() },
     { key: 'ad_spend', title: '广告花费', sortable: true, render: (val) => `$${Number(val).toLocaleString()}` },
     { key: 'acos', title: 'ACoS', sortable: true, render: (val) => <span>{(Number(val) * 100).toFixed(1)}%</span> },
     { key: 'tacos', title: 'TACoS', sortable: true, render: (val) => <span>{(Number(val) * 100).toFixed(1)}%</span> },
@@ -172,7 +195,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto text-gray-100">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto text-gray-900 dark:text-gray-100">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">数据大盘</h1>
         <div className="flex flex-wrap items-center gap-4">
@@ -182,18 +205,18 @@ export default function Dashboard() {
               Mock数据 · 最后更新: {lastUpdated}
             </div>
           )}
-          <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
-            {(['site_today', 'last_24h'] as TimeRange[]).map(range => (
+          <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10">
+            {(Object.entries(TIME_RANGE_LABELS) as [TimeRange, string][]).map(([range, label]) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+                className={`px-4 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
                   timeRange === range
-                    ? 'bg-white/10 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                    ? 'bg-white text-blue-600 dark:bg-white/10 dark:text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
                 }`}
               >
-                {range === 'site_today' ? '站点今天' : '最近24小时'}
+                {label}
               </button>
             ))}
           </div>
@@ -208,14 +231,14 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="glass p-5 rounded-xl border border-white/5 bg-white/5 backdrop-blur-md relative overflow-hidden"
+            className="glass p-5 rounded-xl border border-gray-200 bg-white/50 dark:border-white/5 dark:bg-white/5 backdrop-blur-md relative overflow-hidden"
           >
             <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+              <div className="p-2 bg-white/50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10">
                 {kpi.icon}
               </div>
             </div>
-            <p className="text-sm text-gray-400 font-medium mb-1">{kpi.title}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">{kpi.title}</p>
             <div className="flex items-end justify-between">
               <h3 className="text-2xl font-bold tracking-tight">
                 {metricsLoading ? <span className="text-gray-500 text-sm font-normal">加载中...</span> : kpi.value}
@@ -234,15 +257,49 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="glass rounded-xl border border-white/5 bg-white/5 p-6 backdrop-blur-md overflow-hidden flex flex-col"
+        className="glass rounded-xl border border-gray-200 bg-white/50 dark:border-white/5 dark:bg-white/5 p-6 backdrop-blur-md overflow-hidden flex flex-col"
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium flex items-center gap-2">
             <ShoppingBag className="w-5 h-5 text-[var(--color-accent)]" />
             SKU排名
           </h2>
+          <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
+            {skuTimeRange === 'custom' && (
+              <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="date"
+                  value={skuStartDate}
+                  onChange={(e) => setSkuStartDate(e.target.value)}
+                  className="bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 outline-none focus:border-blue-500 dark:focus:border-white/20 dark:[color-scheme:dark]"
+                />
+                <span>-</span>
+                <input
+                  type="date"
+                  value={skuEndDate}
+                  onChange={(e) => setSkuEndDate(e.target.value)}
+                  className="bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 outline-none focus:border-blue-500 dark:focus:border-white/20 dark:[color-scheme:dark]"
+                />
+              </div>
+            )}
+            <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10 overflow-x-auto max-w-full">
+              {(Object.entries(TIME_RANGE_LABELS) as [TimeRange, string][]).map(([range, label]) => (
+                <button
+                  key={range}
+                  onClick={() => { setSkuTimeRange(range); setPage(1); }}
+                  className={`px-4 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
+                    skuTimeRange === range
+                      ? 'bg-white text-blue-600 dark:bg-white/10 dark:text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="overflow-x-auto flex-1">
+        <div className="h-[500px] overflow-auto">
           <DataTable
             columns={columns}
             data={skuRanking}

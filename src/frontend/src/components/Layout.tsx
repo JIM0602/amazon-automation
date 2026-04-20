@@ -7,7 +7,7 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen w-full bg-[#0a0a1a] overflow-hidden text-gray-100 font-sans">
+    <div className="flex h-screen w-full bg-gray-50 dark:bg-[#0a0a1a] overflow-hidden text-gray-900 dark:text-gray-100 font-sans">
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <div className="flex flex-col flex-1 overflow-hidden relative">
         <TopBar />

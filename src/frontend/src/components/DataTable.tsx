@@ -73,14 +73,14 @@ export function DataTable<T extends Record<string, unknown>>({
     <div className={`w-full overflow-hidden flex flex-col ${className}`}>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+          <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
             <tr>
               {columns.map((col) => {
                 const isSorted = sortState.key === col.key && sortState.order;
                 return (
                   <th
                     key={col.key}
-                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider
+                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800
                       ${col.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : ''}
                       ${isSorted ? 'font-bold text-gray-900 dark:text-white' : ''}
                     `}
@@ -106,11 +106,11 @@ export function DataTable<T extends Record<string, unknown>>({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-800">
             {summaryRow && !loading && data.length > 0 && (
-              <tr className="bg-gray-100 dark:bg-gray-800 font-bold">
+              <tr className="sticky top-[41px] z-[9] bg-gray-100 dark:bg-gray-800 font-bold">
                 {columns.map((col, idx) => (
                   <td
                     key={`summary-${col.key}`}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
+                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800"
                     style={{ textAlign: col.align || 'left' }}
                   >
                     {idx === 0 ? '合计' : (summaryRow[col.key as keyof Partial<T>] as React.ReactNode) ?? ''}

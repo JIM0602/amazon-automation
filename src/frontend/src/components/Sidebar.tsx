@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { AGENTS } from '../data/agents';
 import {
   LayoutDashboard, Bot, Grid3x3, BarChart3, Target,
   ShoppingCart, CheckCircle, Settings, ChevronLeft, ChevronRight,
@@ -25,7 +24,6 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const state: Record<string, boolean> = {};
-    state['more_features'] = getInitialExpanded('more_features', true);
     state['ads_manage'] = getInitialExpanded('ads_manage', false);
     state['orders'] = getInitialExpanded('orders', false);
     state['system'] = getInitialExpanded('system', false);
@@ -53,22 +51,10 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     }
   };
 
-  const moreAgents = AGENTS.filter(a => a.type !== 'core_management' && (!a.bossOnly || role === 'boss'));
-
   const navConfig = [
     { id: 'dashboard', path: '/', label: '数据大盘', icon: LayoutDashboard },
-    { id: 'ai_manager', path: '/agents/core_management', label: 'AI Manager', icon: Bot },
-    { 
-      id: 'more_features', 
-      label: '更多功能', 
-      icon: Grid3x3, 
-      defaultExpanded: true,
-      subItems: moreAgents.map(a => ({
-        path: `/agents/${a.type}`,
-        label: a.name,
-        icon: a.icon
-      }))
-    },
+    { id: 'ai_manager', path: '/agents/core_management', label: 'AI主管', icon: Bot },
+    { id: 'agent_matrix', path: '/agents', label: 'AI Agent矩阵', icon: Grid3x3 },
     { id: 'ads_dashboard', path: '/ads', label: '广告数据大盘', icon: BarChart3 },
     {
       id: 'ads_manage',
@@ -120,10 +106,10 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
           <span className="text-xl font-bold text-[var(--color-accent)]">P</span>
         ) : (
           <div className="flex flex-col items-center">
-            <span className="text-xl font-bold text-white tracking-wider">
+            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-wider">
               PUDIWIND <span className="text-[var(--color-accent)]">AI</span>
             </span>
-            <span className="text-[10px] text-gray-400">Amazon Automation</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">Amazon Automation</span>
           </div>
         )}
       </div>
@@ -140,7 +126,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                   to={item.path}
                   className={`
                     flex items-center px-3 py-3 rounded-lg transition-colors
-                    ${exactActive ? 'bg-[var(--color-accent)] text-white' : 'text-gray-400 hover:bg-[var(--color-surface-hover)] hover:text-white'}
+                    ${exactActive ? 'bg-[var(--color-accent)] text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-[var(--color-surface-hover)] hover:text-gray-900 dark:hover:text-white'}
                     ${collapsed ? 'justify-center' : ''}
                   `}
                   title={collapsed ? item.label : undefined}
@@ -153,7 +139,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                   onClick={() => handleParentClick(item.id)}
                   className={`
                     flex items-center px-3 py-3 rounded-lg transition-colors w-full
-                    ${(childActive && collapsed) ? 'bg-[var(--color-accent)] text-white' : 'text-gray-400 hover:bg-[var(--color-surface-hover)] hover:text-white'}
+                    ${(childActive && collapsed) ? 'bg-[var(--color-accent)] text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-[var(--color-surface-hover)] hover:text-gray-900 dark:hover:text-white'}
                     ${collapsed ? 'justify-center' : 'justify-between'}
                   `}
                   title={collapsed ? item.label : undefined}
@@ -181,7 +167,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                         to={sub.path}
                         className={`
                           flex items-center px-3 py-2 rounded-lg transition-colors text-sm
-                          ${subActive ? 'bg-[var(--color-accent)] text-white font-medium' : 'text-gray-400 hover:bg-[var(--color-surface-hover)] hover:text-white'}
+                          ${subActive ? 'bg-[var(--color-accent)] text-white font-medium' : 'text-gray-500 dark:text-gray-400 hover:bg-[var(--color-surface-hover)] hover:text-gray-900 dark:hover:text-white'}
                         `}
                       >
                         {sub.icon && <sub.icon size={16} className="shrink-0 mr-3" />}
@@ -199,7 +185,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       <div className="p-2 border-t border-[var(--color-glass-border)] shrink-0">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-white hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="w-full flex items-center justify-center p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-[var(--color-surface-hover)] transition-colors"
         >
           {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>

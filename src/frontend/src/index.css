@@ -4,17 +4,21 @@
 
 @layer base {
   :root {
+    --color-bg: #f0f4f8;
     --color-primary: #F0F4F8;
     --color-primary-light: #E1E8F0;
     --color-primary-dark: #D1D8E0;
-    --color-accent: #3B82F6;
-    --color-surface: rgba(0, 0, 0, 0.04);
-    --color-surface-hover: rgba(0, 0, 0, 0.08);
-    --color-glass: rgba(255, 255, 255, 0.6);
+    --color-accent: #2563eb;
+    --color-surface: rgba(255, 255, 255, 0.9);
+    --color-surface-hover: rgba(0, 0, 0, 0.05);
+    --color-glass: rgba(255, 255, 255, 0.8);
     --color-glass-border: rgba(0, 0, 0, 0.1);
+    --color-text-primary: #1a202c;
+    --color-text-secondary: #4a5568;
   }
 
   :root.dark {
+    --color-bg: #0a0a1a;
     --color-primary: #1E3A5F;
     --color-primary-light: #2A4F7F;
     --color-primary-dark: #142A45;
@@ -23,6 +27,8 @@
     --color-surface-hover: rgba(255, 255, 255, 0.12);
     --color-glass: rgba(255, 255, 255, 0.05);
     --color-glass-border: rgba(255, 255, 255, 0.1);
+    --color-text-primary: #f3f4f6;
+    --color-text-secondary: #9ca3af;
   }
 }
 
