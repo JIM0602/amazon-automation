@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/returns", tags=["returns"])
 
 @router.get("")
 async def list_returns(
-    time_range: Optional[str] = Query(default=None, description="Time range filter (reserved)"),
+    time_range: Optional[str] = Query(default=None, description="Time range filter: site_today | last_24h | this_week | this_month | this_year"),
     reason: Optional[str] = Query(default=None, description="Filter by return reason: DEFECTIVE | UNWANTED_ITEM | CUSTOMER_CHANGED_MIND | WRONG_ITEM | DAMAGED_BY_FC | NOT_AS_DESCRIBED"),
     status: Optional[str] = Query(default=None, description="Filter by return status: Pending | Received | Refunded | Closed"),
     search: Optional[str] = Query(default=None, description="Search by order_id, product name/sku, or ASIN"),

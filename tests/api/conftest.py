@@ -11,25 +11,54 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from passlib.hash import bcrypt
+from sqlalchemy import select
 
 from src.api.main import app
 from src.db import Base
+from src.db.connection import SessionLocal
+from src.db.models import User
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _init_db() -> None:
-    """Create all DB tables once before the test session starts."""
+    """Create all DB tables and seed auth users once before the test session starts."""
     import src.config as _cfg
     from src.db import connection as _conn
 
-    # Re-instantiate settings so it picks up test env vars
     _cfg.settings = _cfg.Settings()
 
-    # Reset cached engine/session to use the new (test) DATABASE_URL
     _conn._engine = None
     _conn._SessionLocal = None
     engine = _conn.get_engine()
     Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+    try:
+        seeds = [
+            {"username": "boss", "role": "boss", "display_name": "Boss"},
+            {"username": "op1", "role": "operator", "display_name": "Operator 1"},
+        ]
+        for seed in seeds:
+            existing = db.execute(select(User).where(User.username == seed["username"])).scalar_one_or_none()
+            if existing is None:
+                db.add(
+                    User(
+                        username=seed["username"],
+                        password_hash=bcrypt.hash("test123"),
+                        role=seed["role"],
+                        display_name=seed["display_name"],
+                        is_active=True,
+                    )
+                )
+        db.commit()
+    finally:
+        db.close()
+
+
+@pytest.fixture(scope="session")
+def seeded_users() -> None:
+    return None
 
 
 @pytest.fixture(scope="session")
@@ -40,7 +69,7 @@ def client() -> TestClient:
 
 
 @pytest.fixture(scope="session")
-def boss_token(client: TestClient) -> str:
+def boss_token(client: TestClient, seeded_users: None) -> str:
     """获取 boss 用户的 access_token。"""
     response = client.post(
         "/api/auth/login",
@@ -51,7 +80,7 @@ def boss_token(client: TestClient) -> str:
 
 
 @pytest.fixture(scope="session")
-def operator_token(client: TestClient) -> str:
+def operator_token(client: TestClient, seeded_users: None) -> str:
     """获取 op1（operator 角色）用户的 access_token。"""
     response = client.post(
         "/api/auth/login",

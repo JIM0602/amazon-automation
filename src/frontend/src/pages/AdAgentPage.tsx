@@ -55,9 +55,9 @@ export default function AdAgentPage() {
       <div className="flex-shrink-0 border-b border-[var(--color-glass-border)] bg-[var(--color-glass)] px-6 py-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/ads/dashboard')}
+            onClick={() => navigate('/ads/manage')}
             className="flex items-center justify-center rounded-lg p-2 text-gray-400 transition-colors hover:bg-[rgba(255,255,255,0.1)] hover:text-white"
-            title="返回仪表盘"
+            title="返回广告管理"
           >
             <ChevronLeft size={20} />
           </button>

@@ -67,9 +67,22 @@ def _resolve_time_range(time_range: str) -> tuple[datetime, datetime]:
     }
     func = mapping.get(time_range)
     if func is None:
-        # Default to site_today
         func = site_today_range
     return func()
+
+
+def _resolve_custom_or_named_range(
+    time_range: str,
+    start_date: str | None,
+    end_date: str | None,
+) -> tuple[datetime, datetime]:
+    if time_range == "custom" and start_date and end_date:
+        start = datetime.fromisoformat(start_date)
+        end = datetime.fromisoformat(end_date)
+        if end < start:
+            start, end = end, start
+        return start, end
+    return _resolve_time_range(time_range)
 
 
 def _days_in_range(start: datetime, end: datetime) -> int:
@@ -185,6 +198,9 @@ def get_trend_data(
 # ---------------------------------------------------------------------------
 
 def get_sku_ranking(
+    time_range: str = "site_today",
+    start_date: str | None = None,
+    end_date: str | None = None,
     sort_by: str = "sales",
     sort_order: str = "desc",
     page: int = 1,
@@ -198,15 +214,18 @@ def get_sku_ranking(
         gross_profit (null), gross_margin (null), fba_stock, estimated_days
     """
     rng = Random(42)
+    start, end = _resolve_custom_or_named_range(time_range, start_date, end_date)
+    days = _days_in_range(start, end)
+    scale = max(days, 1)
+    multiplier = min(scale / 7, 12)
 
-    # Generate all SKU rows
     all_items: list[dict[str, Any]] = []
     for sku_info in _SKUS:
-        sales = round(rng.uniform(500, 15000), 2)
-        orders = round(rng.uniform(15, 400))
+        sales = round(rng.uniform(500, 15000) * multiplier, 2)
+        orders = round(rng.uniform(15, 400) * multiplier)
         units_sold = round(orders * rng.uniform(1.0, 1.8))
-        ad_spend = round(rng.uniform(50, 2000), 2)
-        ad_orders_sku = round(rng.uniform(5, int(orders * 0.5)) if orders > 10 else rng.uniform(1, 5))
+        ad_spend = round(rng.uniform(50, 2000) * multiplier, 2)
+        ad_orders_sku = round(rng.uniform(5, max(int(orders * 0.5), 5))) if orders > 10 else round(rng.uniform(1, 5))
         avg_price = sales / orders if orders else 0
         acos = round(ad_spend / (ad_orders_sku * avg_price), 4) if (ad_orders_sku and avg_price) else 0.0
         tacos = round(ad_spend / sales, 4) if sales else 0.0
@@ -228,18 +247,15 @@ def get_sku_ranking(
             "estimated_days": days_available,
         })
 
-    # Sort
     reverse = sort_order == "desc"
     sort_key = sort_by if sort_by in ("sales", "orders", "units_sold", "ad_spend", "acos", "tacos", "fba_stock", "estimated_days") else "sales"
     all_items.sort(key=lambda x: x.get(sort_key) or 0, reverse=reverse)
 
-    # Paginate
     total_count = len(all_items)
     start_idx = (page - 1) * page_size
     end_idx = start_idx + page_size
     page_items = all_items[start_idx:end_idx]
 
-    # Summary row (totals / averages over ALL items)
     sum_sales = sum(i["sales"] for i in all_items)
     sum_orders = sum(i["orders"] for i in all_items)
     sum_units = sum(i["units_sold"] for i in all_items)

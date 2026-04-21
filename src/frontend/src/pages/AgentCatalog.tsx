@@ -51,8 +51,8 @@ export default function AgentCatalog() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-10">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">AI Agent 矩阵</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-lg">多维度AI助手，全方位赋能亚马逊运营流程</p>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">更多功能</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-lg">除 AI 主管外的其他专业 Agent 入口</p>
         </div>
 
         {/* Filters & Search */}

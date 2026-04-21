@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef, type CSSProperties } from 'react'
-import { useParams } from 'react-router-dom'
-import { Lock, AlertCircle, PanelRight } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Lock, AlertCircle, PanelRight, ChevronLeft } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { AGENTS } from '../data/agents'
 import { ChatWindow } from '../components/ChatWindow'
@@ -47,6 +47,7 @@ function AccessDeniedState() {
 
 export default function AgentChat() {
   const { type } = useParams<{ type: string }>()
+  const navigate = useNavigate()
   const { role } = useAuth()
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -119,7 +120,14 @@ export default function AgentChat() {
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-gray-50 text-gray-900 dark:bg-[#0a0a1a] dark:text-white" style={themeVars}>
       {/* 左侧会话列表 */}
       <div className="w-[280px] flex-shrink-0 flex flex-col border-r border-[var(--color-glass-border)] bg-[var(--color-glass)] backdrop-blur-xl overflow-hidden">
-        <div className="border-b border-[var(--color-glass-border)] p-4 flex-shrink-0">
+        <div className="border-b border-[var(--color-glass-border)] p-4 flex-shrink-0 space-y-4">
+          <button
+            onClick={() => navigate('/agents')}
+            className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10"
+          >
+            <ChevronLeft size={16} />
+            返回更多功能
+          </button>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-[rgba(255,255,255,0.08)] text-[var(--color-accent)]">
               <Icon size={20} />

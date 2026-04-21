@@ -61,6 +61,7 @@ export interface CampaignRankingItem {
 
 type TimeRangeCard = 'site_today' | 'last_24h';
 type TimeRangeChart = 'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year' | 'custom';
+type TimeRangeRanking = 'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year' | 'custom';
 type MetricKey = 'ad_spend' | 'ad_sales' | 'acos' | 'clicks' | 'impressions' | 'ctr' | 'cvr' | 'cpc' | 'ad_units' | 'ad_orders' | 'tacos';
 
 interface TrendData {
@@ -89,7 +90,7 @@ const CHART_METRICS: Record<MetricKey, { label: string; color: string; yAxisId: 
   cpc: { label: 'CPC', color: '#ec4899', yAxisId: 'left' },
   ad_units: { label: '广告销量', color: '#14b8a6', yAxisId: 'left' },
   ad_orders: { label: '广告订单量', color: '#6366f1', yAxisId: 'left' },
-  tacos: { label: 'TACoS', color: '#a855f7', yAxisId: 'right', isPercent: true },
+  tacos: { label: 'TACoS / ACoAS', color: '#a855f7', yAxisId: 'right', isPercent: true },
 };
 
 const CHART_TIME_RANGES: Record<TimeRangeChart, string> = {
@@ -122,7 +123,9 @@ export default function AdDashboard() {
   // Campaign Ranking State
   const [campaigns, setCampaigns] = useState<CampaignRankingItem[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
-  const [campaignTimeRange, setCampaignTimeRange] = useState<TimeRangeCard>('site_today');
+  const [campaignTimeRange, setCampaignTimeRange] = useState<TimeRangeRanking>('site_today');
+  const [campaignStartDate, setCampaignStartDate] = useState('');
+  const [campaignEndDate, setCampaignEndDate] = useState('');
   const [campaignPage, setCampaignPage] = useState(1);
   const [campaignPageSize, setCampaignPageSize] = useState(20);
   const [campaignTotal, setCampaignTotal] = useState(0);
@@ -204,6 +207,11 @@ export default function AdDashboard() {
   useEffect(() => {
     let mounted = true;
     async function fetchCampaignRanking() {
+      if (campaignTimeRange === 'custom' && (!campaignStartDate || !campaignEndDate)) {
+        if (mounted) setCampaignsLoading(false);
+        return;
+      }
+
       if (mounted) setCampaignsLoading(true);
       try {
         const res = await api.get('/ads/dashboard/campaign_ranking', {
@@ -211,11 +219,13 @@ export default function AdDashboard() {
             time_range: campaignTimeRange,
             page: campaignPage,
             page_size: campaignPageSize,
+            ...(campaignTimeRange === 'custom'
+              ? { start_date: campaignStartDate, end_date: campaignEndDate }
+              : {}),
           }
         });
         if (mounted && res.data && res.data.items) {
-          const sorted = [...res.data.items].sort((a: CampaignRankingItem, b: CampaignRankingItem) => (b.ad_spend || 0) - (a.ad_spend || 0));
-          setCampaigns(sorted);
+          setCampaigns(res.data.items);
           setCampaignTotal(res.data.total_count || res.data.items.length);
         }
       } catch (err) {
@@ -226,7 +236,7 @@ export default function AdDashboard() {
     }
     fetchCampaignRanking();
     return () => { mounted = false; };
-  }, [campaignTimeRange, campaignPage, campaignPageSize]);
+  }, [campaignTimeRange, campaignStartDate, campaignEndDate, campaignPage, campaignPageSize]);
 
   const renderChange = (value: number | undefined, invertColor = false) => {
     if (value === undefined) return <span className="text-gray-500">-</span>;
@@ -263,7 +273,7 @@ export default function AdDashboard() {
     { key: 'ad_spend', title: '广告花费', sortable: true, render: (val) => `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
     { key: 'cpc', title: 'CPC', sortable: true, render: (val) => `$${Number(val).toFixed(2)}` },
     { key: 'acos', title: 'ACoS', sortable: true, render: (val) => `${(Number(val) * 100).toFixed(1)}%` },
-    { key: 'tacos', title: 'TACoS', sortable: true, render: (val) => `${(Number(val) * 100).toFixed(1)}%` },
+    { key: 'tacos', title: 'TACoS / ACoAS', sortable: true, render: (val, row) => `${(Number(val) * 100).toFixed(1)}% / ${(Number(row.acos) * 100).toFixed(1)}%` },
   ];
 
   const hasLeftAxis = Array.from(chartMetrics).some(m => CHART_METRICS[m].yAxisId === 'left');
@@ -341,7 +351,7 @@ export default function AdDashboard() {
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-4 relative">
           <h2 className="text-lg font-medium flex items-center gap-2 flex-shrink-0">
             <Activity className="w-5 h-5 text-[var(--color-accent)]" />
-            广告趋势分析
+            广告综合指标
           </h2>
 
           <div className="flex flex-wrap items-center justify-end gap-3 w-full lg:w-auto">
@@ -523,20 +533,39 @@ export default function AdDashboard() {
             <Target className="w-5 h-5 text-[var(--color-accent)]" />
             广告活动排名
           </h2>
-          <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10">
-            {(['site_today', 'last_24h'] as TimeRangeCard[]).map(range => (
-              <button
-                key={range}
-                onClick={() => { setCampaignTimeRange(range); setCampaignPage(1); }}
-                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
-                  campaignTimeRange === range
-                    ? 'bg-white text-blue-600 shadow-sm dark:bg-white/10 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
-                }`}
-              >
-                {range === 'site_today' ? '站点今天' : '最近24小时'}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
+            {campaignTimeRange === 'custom' && (
+              <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="date"
+                  value={campaignStartDate}
+                  onChange={(e) => setCampaignStartDate(e.target.value)}
+                  className="bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 outline-none focus:border-blue-500 dark:focus:border-white/20 dark:[color-scheme:dark]"
+                />
+                <span>-</span>
+                <input
+                  type="date"
+                  value={campaignEndDate}
+                  onChange={(e) => setCampaignEndDate(e.target.value)}
+                  className="bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 outline-none focus:border-blue-500 dark:focus:border-white/20 dark:[color-scheme:dark]"
+                />
+              </div>
+            )}
+            <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10 overflow-x-auto max-w-full">
+              {(Object.entries(CHART_TIME_RANGES) as [TimeRangeRanking, string][]).map(([range, label]) => (
+                <button
+                  key={range}
+                  onClick={() => { setCampaignTimeRange(range); setCampaignPage(1); }}
+                  className={`px-4 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
+                    campaignTimeRange === range
+                      ? 'bg-white text-blue-600 shadow-sm dark:bg-white/10 dark:text-white'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="h-[500px] overflow-auto">

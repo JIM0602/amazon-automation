@@ -133,6 +133,20 @@ def _days_in_range(start: datetime, end: datetime) -> int:
     return max(delta, 1)
 
 
+def _resolve_custom_or_named_range(
+    time_range: str,
+    start_date: str | None,
+    end_date: str | None,
+) -> tuple[datetime, datetime]:
+    if time_range == "custom" and start_date and end_date:
+        start = datetime.fromisoformat(start_date)
+        end = datetime.fromisoformat(end_date)
+        if end < start:
+            start, end = end, start
+        return start, end
+    return _resolve_time_range(time_range)
+
+
 # ---------------------------------------------------------------------------
 #  Data pool generation (deterministic, cached at module level)
 # ---------------------------------------------------------------------------
@@ -556,34 +570,46 @@ def get_ads_dashboard_trend(
 
 
 def get_campaign_ranking(
+    time_range: str = "site_today",
+    start_date: str | None = None,
+    end_date: str | None = None,
     sort_by: str = "ad_spend",
     sort_order: str = "desc",
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
-    """Campaign ranking for dashboard, 10 columns.
+    """Campaign ranking for dashboard, 10 columns."""
+    start, end = _resolve_custom_or_named_range(time_range, start_date, end_date)
+    days = _days_in_range(start, end)
+    multiplier = min(max(days / 7, 1), 12)
 
-    Columns: campaign_name, ad_clicks, ctr, ad_orders, ad_sales,
-             ad_units, ad_spend, cpc, acos, tacos
-    """
     items = []
+    rng = Random(42)
     for c in _CAMPAIGNS:
+        ad_spend = round(c["ad_spend"] * multiplier * rng.uniform(0.9, 1.1), 2)
+        ad_sales = round(c["ad_sales"] * multiplier * rng.uniform(0.9, 1.1), 2)
+        clicks = round(c["clicks"] * multiplier * rng.uniform(0.9, 1.1))
+        ad_orders = round(c["ad_orders"] * multiplier * rng.uniform(0.9, 1.1))
+        ad_units = round(c["ad_units"] * multiplier * rng.uniform(0.9, 1.1))
+        ctr = round(clicks / max(round(c["impressions"] * multiplier * rng.uniform(0.9, 1.1)), 1), 4)
+        cpc = round(ad_spend / clicks, 2) if clicks else 0.0
+        acos = round(ad_spend / ad_sales, 4) if ad_sales else 0.0
+        tacos = round(c["tacos"] * rng.uniform(0.9, 1.1), 4)
+
         items.append({
-            "campaign_name": c["campaign_name"],
-            "ad_clicks": c["clicks"],
-            "ctr": c["ctr"],
-            "ad_orders": c["ad_orders"],
-            "ad_sales": c["ad_sales"],
-            "ad_units": c["ad_units"],
-            "ad_spend": c["ad_spend"],
-            "cpc": c["cpc"],
-            "acos": c["acos"],
-            "tacos": c["tacos"],
+            "name": c["campaign_name"],
+            "clicks": clicks,
+            "ctr": ctr,
+            "ad_orders": ad_orders,
+            "ad_sales": ad_sales,
+            "ad_units": ad_units,
+            "ad_spend": ad_spend,
+            "cpc": cpc,
+            "acos": min(acos, 1.0),
+            "tacos": min(tacos, 1.0),
         })
 
-    # Sort
-    valid_cols = {"campaign_name", "ad_clicks", "ctr", "ad_orders", "ad_sales",
-                  "ad_units", "ad_spend", "cpc", "acos", "tacos"}
+    valid_cols = {"name", "clicks", "ctr", "ad_orders", "ad_sales", "ad_units", "ad_spend", "cpc", "acos", "tacos"}
     sort_key = sort_by if sort_by in valid_cols else "ad_spend"
     reverse = sort_order == "desc"
     items.sort(key=lambda x: x.get(sort_key) or 0, reverse=reverse)
@@ -593,10 +619,9 @@ def get_campaign_ranking(
     end_idx = start_idx + page_size
     page_items = items[start_idx:end_idx]
 
-    # Summary row
     summary_row = {
-        "campaign_name": "TOTAL",
-        "ad_clicks": sum(it["ad_clicks"] for it in items),
+        "name": "TOTAL",
+        "clicks": sum(it["clicks"] for it in items),
         "ctr": round(sum(it["ctr"] for it in items) / total_count, 4) if total_count else 0.0,
         "ad_orders": sum(it["ad_orders"] for it in items),
         "ad_sales": round(sum(it["ad_sales"] for it in items), 2),

@@ -34,7 +34,7 @@ const METRICS: Record<MetricKey, { label: string; color: string; yAxisId: 'left'
   ad_spend: { label: '广告花费', color: '#ef4444', yAxisId: 'left' },
   ad_sales: { label: '广告销售额', color: '#8b5cf6', yAxisId: 'left' },
   acos: { label: 'ACoS', color: '#f97316', yAxisId: 'right', isPercent: true },
-  tacos: { label: 'TACoS', color: '#06b6d4', yAxisId: 'right', isPercent: true },
+  tacos: { label: 'TACoS / ACoAS', color: '#06b6d4', yAxisId: 'right', isPercent: true },
 };
 
 const TIME_RANGES: Record<TimeRange, string> = {
@@ -132,7 +132,7 @@ export default function TrendChart() {
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-4">
         <h2 className="text-lg font-medium flex items-center gap-2 flex-shrink-0">
           <Activity className="w-5 h-5 text-[var(--color-accent)]" />
-          趋势图
+          综合指标
         </h2>
 
         <div className="flex flex-wrap items-center justify-end gap-3 w-full lg:w-auto">

@@ -25,7 +25,6 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const state: Record<string, boolean> = {};
     state['ads_manage'] = getInitialExpanded('ads_manage', false);
-    state['orders'] = getInitialExpanded('orders', false);
     state['system'] = getInitialExpanded('system', false);
     return state;
   });
@@ -54,7 +53,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const navConfig = [
     { id: 'dashboard', path: '/', label: '数据大盘', icon: LayoutDashboard },
     { id: 'ai_manager', path: '/agents/core_management', label: 'AI主管', icon: Bot },
-    { id: 'agent_matrix', path: '/agents', label: 'AI Agent矩阵', icon: Grid3x3 },
+    { id: 'more_agents', path: '/agents', label: '更多功能', icon: Grid3x3 },
     { id: 'ads_dashboard', path: '/ads', label: '广告数据大盘', icon: BarChart3 },
     {
       id: 'ads_manage',
@@ -65,15 +64,8 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         { path: '/ads/agent', label: '广告优化Agent', icon: Bot },
       ]
     },
-    {
-      id: 'orders',
-      label: '订单',
-      icon: ShoppingCart,
-      subItems: [
-        { path: '/orders', label: '全部订单', icon: ShoppingCart },
-        { path: '/refunds', label: '退货订单', icon: RotateCcw },
-      ]
-    },
+    { id: 'orders', path: '/orders', label: '全部订单', icon: ShoppingCart },
+    { id: 'returns', path: '/returns', label: '退货订单', icon: RotateCcw },
     { id: 'approvals', path: '/approvals', label: '审批中心', icon: CheckCircle },
     ...(role === 'boss' ? [{
       id: 'system',

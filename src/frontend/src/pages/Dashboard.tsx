@@ -47,15 +47,11 @@ export interface SkuRankingItem {
   estimated_days: number;
 }
 
-type TimeRange = 'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year' | 'custom';
+type TimeRange = 'site_today' | 'last_24h';
 
 const TIME_RANGE_LABELS: Record<TimeRange, string> = {
   site_today: '站点今天',
   last_24h: '最近24小时',
-  this_week: '本周',
-  this_month: '本月',
-  this_year: '本年',
-  custom: '自定义',
 };
 
 export default function Dashboard() {
@@ -63,6 +59,8 @@ export default function Dashboard() {
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('site_today');
   const [lastUpdated, setLastUpdated] = useState<string>('');
+
+  const handleMetricTimeRangeChange = (range: TimeRange) => setTimeRange(range);
 
   const [skuRanking, setSkuRanking] = useState<SkuRankingItem[]>([]);
   const [skuSummary, setSkuSummary] = useState<Partial<SkuRankingItem>>({});
@@ -73,7 +71,7 @@ export default function Dashboard() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState('sales');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [skuTimeRange, setSkuTimeRange] = useState<TimeRange>('site_today');
+  const [skuTimeRange, setSkuTimeRange] = useState<'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year' | 'custom'>('site_today');
   const [skuStartDate, setSkuStartDate] = useState('');
   const [skuEndDate, setSkuEndDate] = useState('');
 
@@ -162,7 +160,7 @@ export default function Dashboard() {
     { title: '销售量', icon: <TrendingUp className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.units_sold.value.toLocaleString() : '—', change: metrics?.units_sold.change_percentage },
     { title: '广告花费', icon: <DollarSign className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `$${metrics.ad_spend.value.toLocaleString()}` : '—', change: metrics?.ad_spend.change_percentage },
     { title: '广告订单量', icon: <ShoppingBag className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.ad_orders.value.toLocaleString() : '—', change: metrics?.ad_orders.change_percentage },
-    { title: 'TACoS', icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `${(metrics.tacos.value * 100).toFixed(1)}%` : '—', change: metrics?.tacos.change_percentage },
+    { title: 'TACoS / ACoAS', icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `${(metrics.tacos.value * 100).toFixed(1)}% / ${(metrics.acos.value * 100).toFixed(1)}%` : '—', change: metrics?.tacos.change_percentage },
     { title: 'ACoS', icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `${(metrics.acos.value * 100).toFixed(1)}%` : '—', change: metrics?.acos.change_percentage },
     { title: '退货数量', icon: <Activity className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.returns_count.value.toLocaleString() : '—', change: metrics?.returns_count.change_percentage },
   ];
@@ -187,7 +185,7 @@ export default function Dashboard() {
     { key: 'returns_count', title: '退货量', sortable: true, render: (val) => Number(val).toLocaleString() },
     { key: 'ad_spend', title: '广告花费', sortable: true, render: (val) => `$${Number(val).toLocaleString()}` },
     { key: 'acos', title: 'ACoS', sortable: true, render: (val) => <span>{(Number(val) * 100).toFixed(1)}%</span> },
-    { key: 'tacos', title: 'TACoS', sortable: true, render: (val) => <span>{(Number(val) * 100).toFixed(1)}%</span> },
+    { key: 'tacos', title: 'TACoS / ACoAS', sortable: true, render: (val, record) => <span>{(Number(val) * 100).toFixed(1)}% / {(Number(record.acos) * 100).toFixed(1)}%</span> },
     { key: 'gross_profit', title: '毛利润', sortable: true, render: () => <span className="text-gray-500">-</span> },
     { key: 'gross_margin', title: '毛利率', sortable: true, render: () => <span className="text-gray-500">-</span> },
     { key: 'fba_stock', title: 'FBA可售数', sortable: true, render: (val) => Number(val).toLocaleString() },
@@ -206,17 +204,17 @@ export default function Dashboard() {
             </div>
           )}
           <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10">
-            {(Object.entries(TIME_RANGE_LABELS) as [TimeRange, string][]).map(([range, label]) => (
+            {(['site_today', 'last_24h'] as TimeRange[]).map((range) => (
               <button
                 key={range}
-                onClick={() => setTimeRange(range)}
+                onClick={() => handleMetricTimeRangeChange(range)}
                 className={`px-4 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
                   timeRange === range
                     ? 'bg-white text-blue-600 dark:bg-white/10 dark:text-white shadow-sm'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
                 }`}
               >
-                {label}
+                {TIME_RANGE_LABELS[range]}
               </button>
             ))}
           </div>

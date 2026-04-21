@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/orders", tags=["orders"])
 
 @router.get("")
 async def list_orders(
-    time_range: Optional[str] = Query(default=None, description="Time range filter (reserved)"),
+    time_range: Optional[str] = Query(default=None, description="Time range filter: site_today | last_24h | this_week | this_month | this_year"),
     status: Optional[str] = Query(default=None, description="Filter by status: Pending | Shipped | Delivered | Cancelled | Refunded"),
     search: Optional[str] = Query(default=None, description="Search by order_id, product name, or buyer name"),
     page: int = Query(default=1, ge=1, description="Page number"),

@@ -9,6 +9,14 @@ from datetime import datetime, timedelta, timezone
 from random import Random
 from typing import Any, Optional
 
+from src.utils.timezone import (
+    last_24h_range,
+    month_range,
+    site_today_range,
+    week_range,
+    year_range,
+)
+
 _rng = Random(42)
 
 IMAGE_PLACEHOLDER = "https://placehold.co/80x80?text=SKU"
@@ -212,6 +220,26 @@ _ALL_ORDERS: list[dict[str, Any]] = _generate_orders()
 #  Public API
 # ---------------------------------------------------------------------------
 
+def _match_time_range(order_time: str, time_range: str | None) -> bool:
+    if not time_range:
+        return True
+
+    mapping = {
+        "site_today": site_today_range,
+        "last_24h": last_24h_range,
+        "this_week": week_range,
+        "this_month": month_range,
+        "this_year": year_range,
+    }
+    range_func = mapping.get(time_range)
+    if range_func is None:
+        return True
+
+    start, end = range_func()
+    order_dt = datetime.fromisoformat(order_time)
+    return start <= order_dt.astimezone(start.tzinfo) <= end
+
+
 def get_orders(
     *,
     time_range: Optional[str] = None,
@@ -225,6 +253,9 @@ def get_orders(
     Returns: {total_count, items[], summary_row}
     """
     filtered = list(_ALL_ORDERS)
+
+    if time_range:
+        filtered = [o for o in filtered if _match_time_range(o["order_time"], time_range)]
 
     # Filter by status
     if status:
@@ -260,30 +291,43 @@ def get_orders(
         "refund_time": None,
         "status": None,
         "sales_revenue": round(sum_sales, 2),
-        "product_info": None,
-        "product_name_sku": None,
+        "image_url": None,
+        "asin": None,
+        "msku": None,
+        "product_name": None,
+        "sku": None,
         "quantity": sum_quantity,
-        "refund_qty": sum_refund_qty,
+        "refund_quantity": sum_refund_qty,
         "promo_code": None,
         "product_amount": round(sum_product_amount, 2),
         "order_profit": round(sum_profit, 2),
-        "order_profit_rate": avg_profit_rate,
-        "actions": None,
+        "profit_rate": avg_profit_rate,
     }
 
     # Paginate
     start_idx = (page - 1) * page_size
     end_idx = start_idx + page_size
 
-    # Extract list-view columns only (strip detail-only fields)
-    list_columns = [
-        "order_id", "order_time", "payment_time", "refund_time", "status",
-        "sales_revenue", "product_info", "product_name_sku", "quantity",
-        "refund_qty", "promo_code", "product_amount", "order_profit",
-        "order_profit_rate", "actions",
-    ]
     page_items = [
-        {k: o[k] for k in list_columns}
+        {
+            "order_id": o["order_id"],
+            "order_time": o["order_time"],
+            "payment_time": o["payment_time"],
+            "refund_time": o["refund_time"],
+            "status": o["status"],
+            "sales_revenue": o["sales_revenue"],
+            "image_url": o["product_info"]["image_url"],
+            "asin": o["product_info"]["asin"],
+            "msku": o["product_info"]["msku"],
+            "product_name": o["product_name_sku"].split(" / ")[0],
+            "sku": o["product_info"]["msku"],
+            "quantity": o["quantity"],
+            "refund_quantity": o["refund_qty"],
+            "promo_code": o["promo_code"],
+            "product_amount": o["product_amount"],
+            "order_profit": o["order_profit"],
+            "profit_rate": o["order_profit_rate"],
+        }
         for o in filtered[start_idx:end_idx]
     ]
 

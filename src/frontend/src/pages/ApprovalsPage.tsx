@@ -183,13 +183,13 @@ export default function ApprovalsPage() {
           <button
             onClick={() => setActiveTab('history')}
             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-              ${activeTab === 'history' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
+              ${activeTab === 'history'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
               }
             `}
           >
-            历史记录
+            Agent任务历史
           </button>
         </nav>
       </div>

@@ -49,6 +49,15 @@ export default function ReturnsPage() {
   const [reason, setReason] = useState('');
   const [timeRange, setTimeRange] = useState('');
   const [toastMsg, setToastMsg] = useState('');
+
+  const timeRangeOptions = [
+    { value: '', label: '全部时间' },
+    { value: 'site_today', label: '站点今天' },
+    { value: 'last_24h', label: '最近24小时' },
+    { value: 'this_week', label: '本周' },
+    { value: 'this_month', label: '本月' },
+    { value: 'this_year', label: '本年' },
+  ];
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
 
   const showToast = (msg: string) => {
@@ -290,7 +299,7 @@ export default function ReturnsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">FBA退货</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">退货订单</h1>
         <div className="flex items-center space-x-2">
           <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800">Mock数据</span>
         </div>
@@ -307,10 +316,11 @@ export default function ReturnsPage() {
               onChange={(e) => setTimeRange(e.target.value)}
               className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
-              <option value="">全部时间</option>
-              <option value="today">今天</option>
-              <option value="7days">过去7天</option>
-              <option value="30days">过去30天</option>
+              {timeRangeOptions.map((option) => (
+                <option key={option.value || 'all'} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
           

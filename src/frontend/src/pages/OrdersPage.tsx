@@ -32,6 +32,125 @@ interface OrderSummary {
   [key: string]: unknown;
 }
 
+interface OrderDetailResponse {
+  basic_info: {
+    order_id: string;
+    status: string;
+    store: string;
+    order_time: string;
+    ship_time: string | null;
+    shipping_method: string | null;
+    estimated_delivery: string | null;
+    logistics_provider: string | null;
+    tracking_number: string | null;
+    buyer_name: string | null;
+    buyer_email: string | null;
+    buyer_tax_id: string | null;
+  };
+  shipping_info: {
+    recipient_name: string | null;
+    recipient_phone: string | null;
+    recipient_zip: string | null;
+    recipient_region: string | null;
+    recipient_address: string | null;
+    ioss_tax_id: string | null;
+  };
+  products: Array<{
+    msku: string;
+    fnsku: string | null;
+    asin: string;
+    title: string;
+    item_discount: number;
+    unit_price: number;
+    quantity: number;
+  }>;
+  fee_details: {
+    product_amount: number;
+    promo_discount: number;
+    gift_wrap_fee: number;
+    buyer_shipping_fee: number;
+    tax: number;
+    sales_revenue: number;
+    marketplace_tax: number;
+    fba_shipping_fee: number;
+    sales_commission: number;
+    other_order_fees: number;
+    amazon_payout: number;
+    cogs: number;
+    first_mile_fee: number;
+    review_cost: number;
+    order_profit: number;
+    order_profit_rate: number;
+  };
+}
+
+function normalizeOrderDetail(detail: OrderDetailResponse): OrderItem {
+  const basicInfo = detail.basic_info;
+  const shippingInfo = detail.shipping_info;
+  const product = detail.products[0] ?? {
+    msku: '',
+    fnsku: null,
+    asin: '',
+    title: '',
+    item_discount: 0,
+    unit_price: 0,
+    quantity: 0,
+  };
+  const feeDetails = detail.fee_details;
+
+  return {
+    order_id: basicInfo.order_id,
+    order_time: basicInfo.order_time,
+    payment_time: null,
+    refund_time: null,
+    status: basicInfo.status,
+    sales_revenue: feeDetails.sales_revenue,
+    image_url: '',
+    asin: product.asin,
+    msku: product.msku,
+    product_name: product.title,
+    sku: product.msku,
+    quantity: product.quantity,
+    refund_quantity: 0,
+    promo_code: null,
+    product_amount: feeDetails.product_amount,
+    order_profit: feeDetails.order_profit,
+    profit_rate: feeDetails.order_profit_rate,
+    shop_name: basicInfo.store,
+    ship_time: basicInfo.ship_time,
+    fulfillment_channel: basicInfo.shipping_method,
+    estimated_delivery: basicInfo.estimated_delivery,
+    carrier: basicInfo.logistics_provider,
+    tracking_number: basicInfo.tracking_number,
+    buyer_name: basicInfo.buyer_name,
+    buyer_email: basicInfo.buyer_email,
+    tax_id: basicInfo.buyer_tax_id,
+    recipient_name: shippingInfo.recipient_name,
+    phone: shippingInfo.recipient_phone,
+    postal_code: shippingInfo.recipient_zip,
+    country: '',
+    state: shippingInfo.recipient_region || '',
+    city: '',
+    address_line1: shippingInfo.recipient_address || '',
+    address_line2: '',
+    ioss_number: shippingInfo.ioss_tax_id,
+    fnsku: product.fnsku,
+    item_discount: product.item_discount,
+    promo_discount: Math.abs(feeDetails.promo_discount ?? 0),
+    gift_wrap_fee: feeDetails.gift_wrap_fee,
+    shipping_fee: feeDetails.buyer_shipping_fee,
+    tax_amount: feeDetails.tax,
+    marketplace_tax: feeDetails.marketplace_tax,
+    fba_fee: feeDetails.fba_shipping_fee,
+    commission_fee: feeDetails.sales_commission,
+    other_fee: feeDetails.other_order_fees,
+    amazon_payout: feeDetails.amazon_payout,
+    cogs: feeDetails.cogs,
+    freight_cost: feeDetails.first_mile_fee,
+    review_cost: feeDetails.review_cost,
+  };
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [summary, setSummary] = useState<OrderSummary>({});
@@ -42,6 +161,15 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [timeRange, setTimeRange] = useState('');
+
+  const timeRangeOptions = [
+    { value: '', label: '全部时间' },
+    { value: 'site_today', label: '站点今天' },
+    { value: 'last_24h', label: '最近24小时' },
+    { value: 'this_week', label: '本周' },
+    { value: 'this_month', label: '本月' },
+    { value: 'this_year', label: '本年' },
+  ];
   const [toastMsg, setToastMsg] = useState('');
 
   const showToast = (msg: string) => {
@@ -83,9 +211,9 @@ export default function OrdersPage() {
 
   const fetchOrderDetails = async (id: string) => {
     try {
-      const response = await api.get(`/orders/${id}`);
+      const response = await api.get<OrderDetailResponse>(`/orders/${id}`);
       if (response.data) {
-        setSelectedOrder(response.data);
+        setSelectedOrder(normalizeOrderDetail(response.data));
         setIsModalOpen(true);
       }
     } catch (error) {
@@ -243,10 +371,11 @@ export default function OrdersPage() {
               onChange={(e) => setTimeRange(e.target.value)}
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             >
-              <option value="">全部时间</option>
-              <option value="today">今天</option>
-              <option value="7days">过去7天</option>
-              <option value="30days">过去30天</option>
+              {timeRangeOptions.map((option) => (
+                <option key={option.value || 'all'} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
           

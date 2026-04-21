@@ -9,6 +9,14 @@ from datetime import datetime, timedelta, timezone
 from random import Random
 from typing import Any, Optional
 
+from src.utils.timezone import (
+    last_24h_range,
+    month_range,
+    site_today_range,
+    week_range,
+    year_range,
+)
+
 _rng = Random(42)
 
 IMAGE_PLACEHOLDER = "https://placehold.co/80x80?text=SKU"
@@ -164,6 +172,26 @@ _ALL_RETURNS: list[dict[str, Any]] = _generate_returns()
 #  Public API
 # ---------------------------------------------------------------------------
 
+def _match_time_range(return_time: str, time_range: str | None) -> bool:
+    if not time_range:
+        return True
+
+    mapping = {
+        "site_today": site_today_range,
+        "last_24h": last_24h_range,
+        "this_week": week_range,
+        "this_month": month_range,
+        "this_year": year_range,
+    }
+    range_func = mapping.get(time_range)
+    if range_func is None:
+        return True
+
+    start, end = range_func()
+    return_dt = datetime.fromisoformat(return_time)
+    return start <= return_dt.astimezone(start.tzinfo) <= end
+
+
 def get_returns(
     *,
     time_range: Optional[str] = None,
@@ -178,6 +206,9 @@ def get_returns(
     Returns: {total_count, items[], summary_row}
     """
     filtered = list(_ALL_RETURNS)
+
+    if time_range:
+        filtered = [r for r in filtered if _match_time_range(r["return_time"], time_range)]
 
     # Filter by return reason
     if reason:
@@ -221,7 +252,8 @@ def get_returns(
     summary_row = {
         "order_id": "TOTAL",
         "total_returns": total_count,
-        "return_qty": sum_return_qty,
+        "total_return_quantity": sum_return_qty,
+        "return_quantity": sum_return_qty,
         "status_breakdown": status_counts,
         "reason_breakdown": reason_counts,
     }
@@ -229,7 +261,33 @@ def get_returns(
     # Paginate
     start_idx = (page - 1) * page_size
     end_idx = start_idx + page_size
-    page_items = filtered[start_idx:end_idx]
+    page_items = [
+        {
+            "order_id": r["order_id"],
+            "after_sale_tags": [r["after_sale_label"]],
+            "return_time": r["return_time"],
+            "order_time": r["order_time"],
+            "site_return_time": r["site_return_time"],
+            "store": r["store_site"].rsplit(" ", 1)[0],
+            "site": r["store_site"].rsplit(" ", 1)[-1],
+            "image_url": r["product_info"]["image_url"],
+            "asin": r["product_info"]["asin"],
+            "msku": r["product_info"]["msku"],
+            "product_title": r["product_info"]["title"],
+            "product_name": r["product_info"]["title"],
+            "sku": r["product_info"]["msku"],
+            "parent_asin": r["parent_asin"],
+            "buyer_notes": r["buyer_remarks"] or "",
+            "return_quantity": r["return_qty"],
+            "warehouse_id": r["warehouse_id"],
+            "inventory_property": r["inventory_attribute"],
+            "return_reason": r["return_reason"],
+            "status": r["return_status"]["text"],
+            "lpn_number": r["lpn_number"],
+            "notes": r["remarks"] or "",
+        }
+        for r in filtered[start_idx:end_idx]
+    ]
 
     return {
         "total_count": total_count,

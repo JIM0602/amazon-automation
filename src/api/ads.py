@@ -88,6 +88,9 @@ async def ads_dashboard_trend(
 
 @router.get("/dashboard/campaign_ranking")
 async def ads_campaign_ranking(
+    time_range: str = Query(default="site_today", description="Time range: site_today | last_24h | this_week | this_month | this_year | custom"),
+    start_date: Optional[str] = Query(default=None, description="Custom start date: YYYY-MM-DD"),
+    end_date: Optional[str] = Query(default=None, description="Custom end date: YYYY-MM-DD"),
     sort_by: str = Query(default="ad_spend", description="Sort column"),
     sort_order: str = Query(default="desc", description="Sort order: asc | desc"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -98,7 +101,10 @@ async def ads_campaign_ranking(
 
     Response: {items, total_count, summary_row}
     """
-    return get_campaign_ranking(sort_by, sort_order, page, page_size)
+    if time_range == "custom" and not (start_date and end_date):
+        raise HTTPException(status_code=422, detail="custom time_range requires start_date and end_date")
+
+    return get_campaign_ranking(time_range, start_date, end_date, sort_by, sort_order, page, page_size)
 
 
 @router.get("/portfolio_tree")

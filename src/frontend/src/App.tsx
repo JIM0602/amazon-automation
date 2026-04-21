@@ -5,7 +5,6 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
-import Placeholder from './pages/Placeholder'
 import PlaceholderPage from './pages/PlaceholderPage'
 import ApprovalsPage from './pages/ApprovalsPage'
 import AgentCatalog from './pages/AgentCatalog'
@@ -49,8 +48,8 @@ function App() {
             <Route path="ads/management/ad-group/:id" element={<AdGroupDetail />} />
             <Route path="ads/agent" element={<AdAgentPage />} />
             <Route path="orders" element={<OrdersPage />} />
-            <Route path="refunds" element={<Placeholder />} />
             <Route path="returns" element={<ReturnsPage />} />
+            <Route path="refunds" element={<Navigate to="/returns" replace />} />
             <Route path="approvals" element={<ApprovalsPage />} />
             <Route path="kb-review" element={
               <ProtectedRoute requiredRole="boss">

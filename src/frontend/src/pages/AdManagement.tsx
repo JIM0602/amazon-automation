@@ -15,7 +15,7 @@ interface PortfolioNode {
   campaigns: PortfolioCampaign[]
 }
 
-type TimeRange = 'today' | 'last_24h' | 'this_week' | 'this_month' | 'this_quarter' | 'this_year'
+type TimeRange = 'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year'
 
 const TAB_ITEMS: Array<{ key: TabKey; label: string }> = [
   { key: 'portfolio', label: '广告组合' },
@@ -31,11 +31,10 @@ const TAB_ITEMS: Array<{ key: TabKey; label: string }> = [
 const AD_TYPES: AdType[] = ['SP', 'SB', 'SD', 'ST']
 
 const TIME_RANGE_OPTIONS: Array<{ value: TimeRange; label: string }> = [
-  { value: 'today', label: '今天' },
+  { value: 'site_today', label: '站点今天' },
   { value: 'last_24h', label: '最近24小时' },
   { value: 'this_week', label: '本周' },
   { value: 'this_month', label: '本月' },
-  { value: 'this_quarter', label: '本季度' },
   { value: 'this_year', label: '本年' },
 ]
 
@@ -43,7 +42,7 @@ export default function AdManagement() {
   const [activeTab, setActiveTab] = useState<TabKey>('campaign')
   const [adType, setAdType] = useState<AdType>('SP')
   const [selectedPortfolios, setSelectedPortfolios] = useState<string[]>([])
-  const [timeRange, setTimeRange] = useState<TimeRange>('this_month')
+  const [timeRange, setTimeRange] = useState<TimeRange>('site_today')
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
@@ -58,8 +57,13 @@ export default function AdManagement() {
       if (mounted) setPortfolioLoading(true)
       try {
         const res = await api.get('/ads/portfolio_tree')
-        if (mounted && Array.isArray(res.data)) {
-          setPortfolioTree(res.data)
+        if (mounted) {
+          const items = Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res.data?.items)
+              ? res.data.items
+              : []
+          setPortfolioTree(items)
         }
       } catch (error) {
         if (mounted) setPortfolioTree([])
@@ -112,7 +116,7 @@ export default function AdManagement() {
     <div className="mx-auto max-w-[1600px] p-6 text-gray-900 dark:text-gray-100">
       <div className="mb-6 flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">广告管理</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Portfolio 树 + 多 Tab 管理骨架</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">按 Portfolio、对象层级、广告类型、时间范围和关键词筛选广告对象</p>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">

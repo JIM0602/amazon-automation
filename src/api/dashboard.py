@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.dependencies import get_current_user
 from data.mock.dashboard import get_metrics_data, get_sku_ranking, get_trend_data
@@ -57,6 +57,9 @@ async def dashboard_trend(
 
 @router.get("/sku_ranking")
 async def dashboard_sku_ranking(
+    time_range: str = Query(default="site_today", description="Time range: site_today | last_24h | this_week | this_month | this_year | custom"),
+    start_date: Optional[str] = Query(default=None, description="Custom start date: YYYY-MM-DD"),
+    end_date: Optional[str] = Query(default=None, description="Custom end date: YYYY-MM-DD"),
     sort_by: str = Query(default="sales", description="Sort column"),
     sort_order: str = Query(default="desc", description="Sort order: asc | desc"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -67,5 +70,8 @@ async def dashboard_sku_ranking(
 
     Response: {items: [...], total_count: N, summary_row: {...}}
     """
-    result = get_sku_ranking(sort_by, sort_order, page, page_size)
+    if time_range == "custom" and not (start_date and end_date):
+        raise HTTPException(status_code=422, detail="custom time_range requires start_date and end_date")
+
+    result = get_sku_ranking(time_range, start_date, end_date, sort_by, sort_order, page, page_size)
     return result
