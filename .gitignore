@@ -99,3 +99,7 @@ airbyte-integrations/connectors/**/airbyte-cdk-load/
 # AI
 AGENT.md
 .claude/settings.local.json
+.superpowers/
+
+# Local generated artifacts
+/test_amazon_ai.db
