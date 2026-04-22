@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { AGENTS } from '../data/agents'
 import { ChatWindow } from '../components/ChatWindow'
 import { ConversationList } from '../components/ConversationList'
-import { FilePreviewCard } from '../components/FilePreviewCard'
 import FilePreviewModal from '../components/FilePreviewModal'
 import FileSidebar, { type FileItem } from '../components/FileSidebar'
 import type { AgentType } from '../types'
@@ -133,8 +132,8 @@ export default function AgentChat() {
               <Icon size={20} />
             </div>
             <div>
-              <div className="text-sm font-semibold text-gray-900 dark:text-white">{agentInfo.name}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">{agentInfo.description}</div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">历史对话</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">查看和切换当前 Agent 的历史会话</div>
             </div>
           </div>
         </div>
@@ -164,26 +163,12 @@ export default function AgentChat() {
         <ChatWindow
           agentType={type as AgentType}
           agentName={agentInfo.name}
+          agentDescription={agentInfo.description}
           agentIcon={<Icon size={20} />}
           conversationId={selectedConversationId}
           onConversationChange={setSelectedConversationId}
         />
 
-        {/* AI 生成文件卡片区域（所有 Agent 均显示） */}
-        <div className="px-4 py-3 border-t border-[var(--color-glass-border)] bg-[var(--color-glass)] flex flex-col gap-2 flex-shrink-0">
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">AI 生成文件</div>
-          {MOCK_FILES.map(file => (
-            <FilePreviewCard
-              key={file.id}
-              fileName={file.name}
-              fileType={file.type}
-              fileSize={file.size}
-              fileUrl={file.url}
-              onPreview={() => setPreviewFile(file)}
-              onDownload={() => {}}
-            />
-          ))}
-        </div>
       </div>
 
       {/* 右侧文件侧边栏（仅类型B Agent） */}

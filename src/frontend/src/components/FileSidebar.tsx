@@ -38,7 +38,7 @@ export default function FileSidebar({ isOpen, onToggle, files, onFilePreview }: 
       >
         <div className="w-[280px] h-full flex flex-col absolute left-0 top-0">
           <div className="flex items-center justify-between h-14 px-4 border-b border-[var(--color-glass-border)] dark:border-white/10 shrink-0">
-            <span className="font-semibold text-gray-900 dark:text-white">生成文件</span>
+            <span className="font-semibold text-gray-900 dark:text-white">AI 生成文件</span>
             <button
               onClick={onToggle}
               className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-[var(--color-surface-hover)] dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/10 transition-colors"

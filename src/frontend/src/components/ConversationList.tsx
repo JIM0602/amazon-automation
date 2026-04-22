@@ -42,6 +42,7 @@ export function ConversationList({
   return (
     <div className="flex flex-col h-full w-full glass bg-white dark:bg-[#0a0a1a]">
       <div className="p-4 border-b border-gray-200 dark:border-[rgba(255,255,255,0.1)]">
+        <div className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">历史对话</div>
         <button
           onClick={onNewConversation}
           className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-[var(--color-accent)] hover:opacity-90 transition-opacity text-white font-medium"

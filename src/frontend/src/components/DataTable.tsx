@@ -14,6 +14,7 @@ export interface DataTableProps<T> {
   loading?: boolean;
   emptyText?: string;
   className?: string;
+  stickyHeaderOffset?: number;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -27,6 +28,7 @@ export function DataTable<T extends Record<string, unknown>>({
   loading = false,
   emptyText = '暂无数据',
   className = '',
+  stickyHeaderOffset = 0,
 }: DataTableProps<T>) {
   const [sortState, setSortState] = useState<SortState>({ key: '', order: null });
 
@@ -70,10 +72,10 @@ export function DataTable<T extends Record<string, unknown>>({
   }, [data, sortState]);
 
   return (
-    <div className={`w-full overflow-hidden flex flex-col ${className}`}>
-      <div className="overflow-x-auto">
+    <div className={`w-full min-h-0 overflow-hidden flex flex-col ${className}`}>
+      <div className="min-h-0 flex-1 overflow-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
+          <thead className="sticky z-10 bg-gray-50 dark:bg-gray-800" style={{ top: stickyHeaderOffset }}>
             <tr>
               {columns.map((col) => {
                 const isSorted = sortState.key === col.key && sortState.order;
@@ -106,7 +108,7 @@ export function DataTable<T extends Record<string, unknown>>({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-800">
             {summaryRow && !loading && data.length > 0 && (
-              <tr className="sticky top-[41px] z-[9] bg-gray-100 dark:bg-gray-800 font-bold">
+              <tr className="sticky z-[9] bg-gray-100 dark:bg-gray-800 font-bold" style={{ top: stickyHeaderOffset + 41 }}>
                 {columns.map((col, idx) => (
                   <td
                     key={`summary-${col.key}`}

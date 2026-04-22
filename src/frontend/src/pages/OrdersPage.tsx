@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { DataTable } from '../components/DataTable';
-import { Column } from '../types/table';
+import type { Column } from '../types/table';
 import api from '../api/client';
 import { formatSiteTime } from '../utils/timezone';
 import { Search, Calendar } from 'lucide-react';
@@ -39,7 +39,7 @@ interface OrderDetailResponse {
     store: string;
     order_time: string;
     ship_time: string | null;
-    shipping_method: string | null;
+    shipping_method: string;
     estimated_delivery: string | null;
     logistics_provider: string | null;
     tracking_number: string | null;
@@ -65,38 +65,69 @@ interface OrderDetailResponse {
     quantity: number;
   }>;
   fee_details: {
-    product_amount: number;
-    promo_discount: number;
-    gift_wrap_fee: number;
-    buyer_shipping_fee: number;
-    tax: number;
-    sales_revenue: number;
-    marketplace_tax: number;
-    fba_shipping_fee: number;
-    sales_commission: number;
-    other_order_fees: number;
-    amazon_payout: number;
-    cogs: number;
-    first_mile_fee: number;
-    review_cost: number;
-    order_profit: number;
-    order_profit_rate: number;
+    product_amount?: number;
+    promo_discount?: number;
+    gift_wrap_fee?: number;
+    buyer_shipping_fee?: number;
+    tax?: number;
+    sales_revenue?: number;
+    marketplace_tax?: number;
+    fba_shipping_fee?: number;
+    sales_commission?: number;
+    other_order_fees?: number;
+    amazon_payout?: number;
+    cogs?: number;
+    first_mile_fee?: number;
+    review_cost?: number;
+    order_profit?: number;
+    order_profit_rate?: number;
+    [key: string]: unknown;
   };
 }
 
-function normalizeOrderDetail(detail: OrderDetailResponse): OrderItem {
-  const basicInfo = detail.basic_info;
-  const shippingInfo = detail.shipping_info;
-  const product = detail.products[0] ?? {
-    msku: '',
-    fnsku: null,
-    asin: '',
-    title: '',
-    item_discount: 0,
-    unit_price: 0,
-    quantity: 0,
-  };
-  const feeDetails = detail.fee_details;
+interface NormalizedOrderDetail extends OrderItem {
+  basic_info: OrderDetailResponse['basic_info'];
+  shipping_info: OrderDetailResponse['shipping_info'];
+  fee_details: OrderDetailResponse['fee_details'];
+  shop_name: string;
+  ship_time: string | null;
+  fulfillment_channel: string;
+  estimated_delivery: string | null;
+  carrier: string | null;
+  tracking_number: string | null;
+  buyer_name: string | null;
+  buyer_email: string | null;
+  tax_id: string | null;
+  recipient_name: string | null;
+  phone: string | null;
+  postal_code: string | null;
+  country: string;
+  state: string | null;
+  city: string;
+  address_line1: string | null;
+  address_line2: string;
+  ioss_number: string | null;
+  fnsku: string | null;
+  item_discount: number;
+  promo_discount: number;
+  gift_wrap_fee: number;
+  shipping_fee: number;
+  tax_amount: number;
+  marketplace_tax: number;
+  fba_fee: number;
+  commission_fee: number;
+  other_fee: number;
+  amazon_payout: number;
+  cogs: number;
+  freight_cost: number;
+  review_cost: number;
+}
+
+function normalizeOrderDetail(response: OrderDetailResponse): NormalizedOrderDetail {
+  const basicInfo = response.basic_info;
+  const shippingInfo = response.shipping_info;
+  const product = response.products[0];
+  const feeDetails = response.fee_details;
 
   return {
     order_id: basicInfo.order_id,
@@ -104,18 +135,21 @@ function normalizeOrderDetail(detail: OrderDetailResponse): OrderItem {
     payment_time: null,
     refund_time: null,
     status: basicInfo.status,
-    sales_revenue: feeDetails.sales_revenue,
+    sales_revenue: Number(feeDetails.sales_revenue ?? 0),
     image_url: '',
-    asin: product.asin,
-    msku: product.msku,
-    product_name: product.title,
-    sku: product.msku,
-    quantity: product.quantity,
+    asin: product?.asin ?? '-',
+    msku: product?.msku ?? '-',
+    product_name: product?.title ?? '-',
+    sku: product?.msku ?? '-',
+    quantity: Number(product?.quantity ?? 0),
     refund_quantity: 0,
     promo_code: null,
-    product_amount: feeDetails.product_amount,
-    order_profit: feeDetails.order_profit,
-    profit_rate: feeDetails.order_profit_rate,
+    product_amount: Number(feeDetails.product_amount ?? product?.unit_price ?? 0),
+    order_profit: Number(feeDetails.order_profit ?? 0),
+    profit_rate: Number(feeDetails.order_profit_rate ?? 0),
+    basic_info: response.basic_info,
+    shipping_info: response.shipping_info,
+    fee_details: response.fee_details,
     shop_name: basicInfo.store,
     ship_time: basicInfo.ship_time,
     fulfillment_channel: basicInfo.shipping_method,
@@ -129,25 +163,25 @@ function normalizeOrderDetail(detail: OrderDetailResponse): OrderItem {
     phone: shippingInfo.recipient_phone,
     postal_code: shippingInfo.recipient_zip,
     country: '',
-    state: shippingInfo.recipient_region || '',
+    state: shippingInfo.recipient_region,
     city: '',
-    address_line1: shippingInfo.recipient_address || '',
+    address_line1: shippingInfo.recipient_address,
     address_line2: '',
     ioss_number: shippingInfo.ioss_tax_id,
-    fnsku: product.fnsku,
-    item_discount: product.item_discount,
-    promo_discount: Math.abs(feeDetails.promo_discount ?? 0),
-    gift_wrap_fee: feeDetails.gift_wrap_fee,
-    shipping_fee: feeDetails.buyer_shipping_fee,
-    tax_amount: feeDetails.tax,
-    marketplace_tax: feeDetails.marketplace_tax,
-    fba_fee: feeDetails.fba_shipping_fee,
-    commission_fee: feeDetails.sales_commission,
-    other_fee: feeDetails.other_order_fees,
-    amazon_payout: feeDetails.amazon_payout,
-    cogs: feeDetails.cogs,
-    freight_cost: feeDetails.first_mile_fee,
-    review_cost: feeDetails.review_cost,
+    fnsku: product?.fnsku ?? null,
+    item_discount: Math.abs(Number(product?.item_discount ?? 0)),
+    promo_discount: Math.abs(Number(feeDetails.promo_discount ?? 0)),
+    gift_wrap_fee: Number(feeDetails.gift_wrap_fee ?? 0),
+    shipping_fee: Number(feeDetails.buyer_shipping_fee ?? 0),
+    tax_amount: Number(feeDetails.tax ?? 0),
+    marketplace_tax: Number(feeDetails.marketplace_tax ?? 0),
+    fba_fee: Number(feeDetails.fba_shipping_fee ?? 0),
+    commission_fee: Number(feeDetails.sales_commission ?? 0),
+    other_fee: Number(feeDetails.other_order_fees ?? 0),
+    amazon_payout: Number(feeDetails.amazon_payout ?? 0),
+    cogs: Number(feeDetails.cogs ?? 0),
+    freight_cost: Number(feeDetails.first_mile_fee ?? 0),
+    review_cost: Number(feeDetails.review_cost ?? 0),
   };
 }
 
@@ -161,6 +195,9 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [timeRange, setTimeRange] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<NormalizedOrderDetail | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const timeRangeOptions = [
     { value: '', label: '全部时间' },
@@ -170,16 +207,11 @@ export default function OrdersPage() {
     { value: 'this_month', label: '本月' },
     { value: 'this_year', label: '本年' },
   ];
-  const [toastMsg, setToastMsg] = useState('');
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3000);
   };
-
-  // Modal state
-  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -198,7 +230,7 @@ export default function OrdersPage() {
         setTotal(response.data.total_count || 0);
         setSummary(response.data.summary_row || {});
       }
-    } catch (error) {
+    } catch {
       showToast('获取订单列表失败');
     } finally {
       setLoading(false);
@@ -216,7 +248,7 @@ export default function OrdersPage() {
         setSelectedOrder(normalizeOrderDetail(response.data));
         setIsModalOpen(true);
       }
-    } catch (error) {
+    } catch {
       showToast('获取订单详情失败');
     }
   };
@@ -225,12 +257,16 @@ export default function OrdersPage() {
     showToast('Mock数据模式不可用');
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'shipped': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+  const getStatusColor = (orderStatus: string) => {
+    switch (orderStatus?.toLowerCase()) {
+      case 'shipped':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
   };
 
@@ -239,9 +275,9 @@ export default function OrdersPage() {
       key: 'order_id',
       title: '订单号',
       render: (val, row) => (
-        <button 
+        <button
           onClick={() => fetchOrderDetails(row.order_id)}
-          className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          className="font-medium text-blue-600 hover:underline dark:text-blue-400"
         >
           {val as string}
         </button>
@@ -250,17 +286,17 @@ export default function OrdersPage() {
     {
       key: 'order_time',
       title: '订购时间',
-      render: (val) => val ? formatSiteTime(new Date(val as string)) : '-',
+      render: (val) => (val ? formatSiteTime(new Date(val as string)) : '-'),
     },
     {
       key: 'payment_time',
       title: '付款时间',
-      render: (val) => val ? formatSiteTime(new Date(val as string)) : '-',
+      render: (val) => (val ? formatSiteTime(new Date(val as string)) : '-'),
     },
     {
       key: 'refund_time',
       title: '退款时间',
-      render: (val) => val ? formatSiteTime(new Date(val as string)) : '-',
+      render: (val) => (val ? formatSiteTime(new Date(val as string)) : '-'),
     },
     {
       key: 'status',
@@ -274,7 +310,7 @@ export default function OrdersPage() {
     {
       key: 'sales_revenue',
       title: '销售收益',
-      render: (val) => val != null ? `$${Number(val).toFixed(2)}` : '-',
+      render: (val) => (val != null ? `$${Number(val).toFixed(2)}` : '-'),
     },
     {
       key: 'product_info',
@@ -282,9 +318,9 @@ export default function OrdersPage() {
       render: (_, row) => (
         <div className="flex items-center space-x-3 min-w-[200px]">
           {row.image_url ? (
-             <img src={row.image_url} alt="product" className="w-10 h-10 rounded object-cover border border-gray-200 dark:border-gray-700" />
+            <img src={row.image_url} alt="product" className="w-10 h-10 rounded object-cover border border-gray-200 dark:border-gray-700" />
           ) : (
-             <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-xs text-gray-400">No Img</div>
+            <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-xs text-gray-400">No Img</div>
           )}
           <div className="flex flex-col text-xs">
             <span className="font-medium text-gray-900 dark:text-white truncate max-w-[150px]" title={row.asin}>{row.asin}</span>
@@ -319,7 +355,7 @@ export default function OrdersPage() {
     {
       key: 'product_amount',
       title: '产品金额',
-      render: (val) => val != null ? `$${Number(val).toFixed(2)}` : '-',
+      render: (val) => (val != null ? `$${Number(val).toFixed(2)}` : '-'),
     },
     {
       key: 'profit_info',
@@ -378,7 +414,7 @@ export default function OrdersPage() {
               ))}
             </select>
           </div>
-          
+
           <div className="relative">
             <select
               value={status}
@@ -407,23 +443,27 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <DataTable
-          columns={columns}
-          data={orders}
-          loading={loading}
-          rowKey="order_id"
-          summaryRow={summary}
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: total,
-            onChange: (p, s) => {
-              setPage(p);
-              setPageSize(s);
-            }
-          }}
-        />
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col">
+        <div className="h-[calc(100vh-18rem)] min-h-[420px] overflow-hidden">
+          <DataTable
+            columns={columns}
+            data={orders}
+            loading={loading}
+            rowKey="order_id"
+            summaryRow={summary}
+            className="h-full"
+            stickyHeaderOffset={0}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: (p, s) => {
+                setPage(p);
+                setPageSize(s);
+              },
+            }}
+          />
+        </div>
       </div>
 
       {isModalOpen && selectedOrder && (
@@ -444,9 +484,8 @@ export default function OrdersPage() {
                     </svg>
                   </button>
                 </div>
-                
+
                 <div className="space-y-6">
-                  {/* 基本信息区 */}
                   <div>
                     <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">基本信息</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -465,7 +504,6 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* 收货信息区 */}
                   <div>
                     <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">收货信息</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm bg-gray-50 dark:bg-gray-900 p-4 rounded-md border border-gray-100 dark:border-gray-700">
@@ -478,7 +516,6 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* 产品信息表格 */}
                   <div>
                     <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">产品信息</h4>
                     <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-md">
@@ -511,7 +548,6 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* 费用明细区 */}
                   <div>
                     <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">费用明细</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-y-4 gap-x-6 text-sm bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-md border border-blue-100 dark:border-blue-800">

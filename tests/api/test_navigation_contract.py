@@ -63,3 +63,22 @@ def test_orders_page_normalizes_detail_response() -> None:
     assert "shipping_info" in orders_page
     assert "fee_details" in orders_page
     assert "setSelectedOrder(response.data)" not in orders_page
+
+
+def test_schedules_page_route_contracts() -> None:
+    app = Path("src/frontend/src/App.tsx").read_text(encoding="utf-8")
+    schedules_page = Path("src/frontend/src/pages/system/SchedulesPage.tsx").read_text(encoding="utf-8")
+    system_management = Path("src/frontend/src/pages/SystemManagement.tsx").read_text(encoding="utf-8")
+
+    assert "import SchedulesPage from './pages/system/SchedulesPage'" in app
+    assert 'path="system/schedules" element={' in app
+    assert '<SchedulesPage />' in app
+    assert 'PlaceholderPage title="计划任务"' not in app
+
+    assert '计划任务管理 (Mock)' not in system_management
+    assert "navigate('/system/schedules')" in system_management
+    assert '真实计划任务页' in system_management
+
+    assert "api.get<SchedulerJob[]>('/scheduler/jobs')" in schedules_page
+    assert "api.post(`/scheduler/jobs/${job.id}/${action}`)" in schedules_page
+    assert "api.post(`/scheduler/trigger/${job.id}`)" in schedules_page

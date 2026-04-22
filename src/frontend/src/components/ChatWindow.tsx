@@ -8,6 +8,7 @@ import type { AgentType } from '../types';
 export interface ChatWindowProps {
   agentType: AgentType;
   agentName: string;
+  agentDescription?: string;
   agentIcon: React.ReactNode;
   conversationId?: string | null;
   onConversationChange?: (id: string | null) => void;
@@ -16,6 +17,7 @@ export interface ChatWindowProps {
 export function ChatWindow({
   agentType,
   agentName,
+  agentDescription,
   agentIcon,
   conversationId: externalConvId = null,
   onConversationChange,
@@ -98,11 +100,10 @@ export function ChatWindow({
           {agentIcon}
         </div>
         <div>
-          <h2 className="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
+          <h2 className="text-gray-900 dark:text-white font-semibold">
             {agentName}
-            <span className="flex h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Online</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{agentDescription || '智能助手对话窗口'}</p>
         </div>
       </div>
 

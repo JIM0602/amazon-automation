@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { 
-  Shield, RefreshCw, CheckCircle2, User, Bot, Clock, Key, Settings, Save, AlertCircle
+import { useNavigate } from 'react-router-dom';
+import {
+  Shield, RefreshCw, CheckCircle2, User, Bot, Clock, Key, Settings, Save, AlertCircle, ArrowRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import api from '../api/client';
@@ -31,6 +32,7 @@ const TABS = [
 ];
 
 export default function SystemManagement() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -217,45 +219,26 @@ export default function SystemManagement() {
         {/* Scheduler */}
         {activeTab === 'scheduler' && (
           <div>
-            <div className="p-6 border-b border-[var(--color-glass-border)] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Clock className="text-[#3B82F6]" size={20} />
-                <h3 className="font-bold text-gray-100">计划任务管理 (Mock)</h3>
-              </div>
+            <div className="p-6 border-b border-[var(--color-glass-border)] flex items-center gap-3">
+              <Clock className="text-[#3B82F6]" size={20} />
+              <h3 className="font-bold text-gray-100">计划任务</h3>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[var(--color-surface)]">
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">任务名称</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Cron 表达式</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">上次执行</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">状态</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-glass-border)]">
-                  <tr className="text-sm hover:bg-[var(--color-surface)] transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-200">Daily Report Gen</td>
-                    <td className="px-6 py-4 text-gray-400 font-mono text-xs">0 8 * * *</td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">今天 08:00</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold">
-                        <CheckCircle2 size={14} /> Active
-                      </div>
-                    </td>
-                  </tr>
-                  <tr className="text-sm hover:bg-[var(--color-surface)] transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-200">Data Sync SP-API</td>
-                    <td className="px-6 py-4 text-gray-400 font-mono text-xs">0 */4 * * *</td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">今天 12:00</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold">
-                        <CheckCircle2 size={14} /> Active
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="p-6">
+              <div className="rounded-2xl border border-[var(--color-glass-border)] bg-[var(--color-surface)] p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-gray-100">真实计划任务页</div>
+                  <p className="text-sm text-gray-400 max-w-2xl">
+                    计划任务列表与暂停、恢复、立即触发能力已收口到独立页面，系统管理中仅保留统一入口，避免出现两套口径。
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate('/system/schedules')}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/30 hover:bg-[#3B82F6]/20 transition-colors text-sm font-medium"
+                >
+                  前往计划任务页
+                  <ArrowRight size={16} />
+                </button>
+              </div>
             </div>
           </div>
         )}

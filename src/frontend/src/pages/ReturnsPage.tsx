@@ -136,7 +136,7 @@ export default function ReturnsPage() {
     {
       key: 'order_id',
       title: '订单号',
-      render: (val) => <span className="text-blue-600 dark:text-blue-400 font-medium">{val as string}</span>,
+      render: (val) => <span className="font-medium text-gray-900 dark:text-gray-100">{val as string}</span>,
     },
     {
       key: 'after_sale_tags',
@@ -369,23 +369,27 @@ export default function ReturnsPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-100 dark:border-gray-700">
-        <DataTable
-          columns={columns}
-          data={returns}
-          loading={loading}
-          rowKey="order_id"
-          summaryRow={summary}
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: total,
-            onChange: (p, s) => {
-              setPage(p);
-              setPageSize(s);
-            }
-          }}
-        />
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col">
+        <div className="h-[calc(100vh-18rem)] min-h-[420px] overflow-hidden">
+          <DataTable
+            columns={columns}
+            data={returns}
+            loading={loading}
+            rowKey="order_id"
+            summaryRow={summary}
+            className="h-full"
+            stickyHeaderOffset={0}
+            pagination={{
+              current: page,
+              pageSize: pageSize,
+              total: total,
+              onChange: (p, s) => {
+                setPage(p);
+                setPageSize(s);
+              }
+            }}
+          />
+        </div>
       </div>
 
       {toastMsg && (

@@ -87,23 +87,23 @@ export default function CostMonitor() {
   const isOverLimit = limitPercent >= 100;
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] text-gray-100 p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[var(--color-bg)] p-8 text-gray-900 dark:bg-[#0a0a1a] dark:text-gray-100">
+      <div className="mx-auto max-w-7xl space-y-6">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-100">API 费用监控</h1>
-            <p className="text-gray-400 mt-1">LLM 成本与 Agent 运行消耗追踪</p>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">API 费用监控</h1>
+            <p className="mt-1 text-gray-600 dark:text-gray-400">LLM 成本与 Agent 运行消耗追踪</p>
           </div>
 
-          <div className="flex bg-white/5 border border-[var(--color-glass-border)] rounded-lg p-1">
+          <div className="flex rounded-lg border border-[var(--color-glass-border)] bg-white/70 p-1 shadow-sm dark:bg-white/5">
             <button
               onClick={() => { setPeriod('daily'); setDays(7); }}
               className={`px-4 py-1.5 rounded-md text-sm transition-colors ${
                 period === 'daily' && days === 7 
                   ? 'bg-[var(--color-accent)] text-white' 
-                  : 'text-gray-400 hover:text-gray-200'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
               }`}
             >
               近 7 天
@@ -113,7 +113,7 @@ export default function CostMonitor() {
               className={`px-4 py-1.5 rounded-md text-sm transition-colors ${
                 period === 'daily' && days === 30 
                   ? 'bg-[var(--color-accent)] text-white' 
-                  : 'text-gray-400 hover:text-gray-200'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
               }`}
             >
               近 30 天

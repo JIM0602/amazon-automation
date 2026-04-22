@@ -90,7 +90,7 @@ const CHART_METRICS: Record<MetricKey, { label: string; color: string; yAxisId: 
   cpc: { label: 'CPC', color: '#ec4899', yAxisId: 'left' },
   ad_units: { label: '广告销量', color: '#14b8a6', yAxisId: 'left' },
   ad_orders: { label: '广告订单量', color: '#6366f1', yAxisId: 'left' },
-  tacos: { label: 'TACoS / ACoAS', color: '#a855f7', yAxisId: 'right', isPercent: true },
+  tacos: { label: 'TACoS', color: '#a855f7', yAxisId: 'right', isPercent: true },
 };
 
 const CHART_TIME_RANGES: Record<TimeRangeChart, string> = {
@@ -273,7 +273,7 @@ export default function AdDashboard() {
     { key: 'ad_spend', title: '广告花费', sortable: true, render: (val) => `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
     { key: 'cpc', title: 'CPC', sortable: true, render: (val) => `$${Number(val).toFixed(2)}` },
     { key: 'acos', title: 'ACoS', sortable: true, render: (val) => `${(Number(val) * 100).toFixed(1)}%` },
-    { key: 'tacos', title: 'TACoS / ACoAS', sortable: true, render: (val, row) => `${(Number(val) * 100).toFixed(1)}% / ${(Number(row.acos) * 100).toFixed(1)}%` },
+    { key: 'tacos', title: 'TACoS', sortable: true, render: (val) => `${(Number(val) * 100).toFixed(1)}%` },
   ];
 
   const hasLeftAxis = Array.from(chartMetrics).some(m => CHART_METRICS[m].yAxisId === 'left');
@@ -568,12 +568,14 @@ export default function AdDashboard() {
             </div>
           </div>
         </div>
-        <div className="h-[500px] overflow-auto">
+        <div className="h-[calc(100vh-21rem)] min-h-[420px] overflow-hidden">
           <DataTable
             columns={columns}
             data={campaigns}
             loading={campaignsLoading}
             rowKey="name"
+            stickyHeaderOffset={0}
+            className="h-full"
             pagination={{
               current: campaignPage,
               pageSize: campaignPageSize,

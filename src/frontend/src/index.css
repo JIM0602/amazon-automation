@@ -4,15 +4,15 @@
 
 @layer base {
   :root {
-    --color-bg: #f0f4f8;
-    --color-primary: #F0F4F8;
-    --color-primary-light: #E1E8F0;
-    --color-primary-dark: #D1D8E0;
+    --color-bg: #edf1f5;
+    --color-primary: #e7edf3;
+    --color-primary-light: #f4f7fa;
+    --color-primary-dark: #d7e0e8;
     --color-accent: #2563eb;
-    --color-surface: rgba(255, 255, 255, 0.9);
-    --color-surface-hover: rgba(0, 0, 0, 0.05);
-    --color-glass: rgba(255, 255, 255, 0.8);
-    --color-glass-border: rgba(0, 0, 0, 0.1);
+    --color-surface: rgba(255, 255, 255, 0.82);
+    --color-surface-hover: rgba(148, 163, 184, 0.12);
+    --color-glass: rgba(255, 255, 255, 0.72);
+    --color-glass-border: rgba(148, 163, 184, 0.18);
     --color-text-primary: #1a202c;
     --color-text-secondary: #4a5568;
   }

@@ -323,10 +323,21 @@ async def trigger_scheduler_job(job_id: str) -> Dict[str, Any]:
 # --------------------------------------------------------------------------- #
 @app.on_event("startup")
 async def startup_event():
-    """Initialize LangGraph checkpointer tables on app startup."""
+    """Initialize background services on app startup."""
     import logging
 
     _logger = logging.getLogger(__name__)
+
+    try:
+        from src.scheduler import start_scheduler
+
+        if start_scheduler():
+            _logger.info("Scheduler initialized successfully")
+        else:
+            _logger.warning("Scheduler not available, startup continues without scheduled jobs")
+    except Exception as exc:
+        _logger.warning("Scheduler startup failed (non-fatal): %s", exc)
+
     try:
         from src.agents.checkpointer import setup_checkpointer
 

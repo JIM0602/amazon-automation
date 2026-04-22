@@ -49,7 +49,7 @@ export interface SkuRankingItem {
 
 type TimeRange = 'site_today' | 'last_24h';
 
-const TIME_RANGE_LABELS: Record<TimeRange, string> = {
+const METRIC_TIME_RANGE_LABELS: Record<TimeRange, string> = {
   site_today: '站点今天',
   last_24h: '最近24小时',
 };
@@ -60,8 +60,6 @@ export default function Dashboard() {
   const [timeRange, setTimeRange] = useState<TimeRange>('site_today');
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
-  const handleMetricTimeRangeChange = (range: TimeRange) => setTimeRange(range);
-
   const [skuRanking, setSkuRanking] = useState<SkuRankingItem[]>([]);
   const [skuSummary, setSkuSummary] = useState<Partial<SkuRankingItem>>({});
   const [skuTotal, setSkuTotal] = useState(0);
@@ -71,9 +69,33 @@ export default function Dashboard() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState('sales');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [skuTimeRange, setSkuTimeRange] = useState<'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year' | 'custom'>('site_today');
+  const [skuTimeRange, setSkuTimeRange] = useState('site_today');
   const [skuStartDate, setSkuStartDate] = useState('');
   const [skuEndDate, setSkuEndDate] = useState('');
+
+  const handleMetricTimeRangeChange = (range: TimeRange) => {
+    setTimeRange(range);
+  };
+
+  const skuTimeRangeOptions = [
+    { value: 'site_today', label: '站点今天' },
+    { value: 'last_24h', label: '最近24小时' },
+    { value: 'this_week', label: '本周' },
+    { value: 'this_month', label: '本月' },
+    { value: 'this_year', label: '本年' },
+    { value: 'custom', label: '自定义' },
+  ] as const;
+
+  type SkuTimeRange = typeof skuTimeRangeOptions[number]['value'];
+
+  const isCustomSkuTimeRange = skuTimeRange === 'custom';
+
+  const handleSkuTimeRangeChange = (range: SkuTimeRange) => {
+    setSkuTimeRange(range);
+    setPage(1);
+  };
+
+  const metricRatioLabel = 'TACoS / ACoAS';
 
   // Fetch metrics based on timeRange
   useEffect(() => {
@@ -102,7 +124,7 @@ export default function Dashboard() {
     let mounted = true;
 
     async function fetchSkuRanking() {
-      if (skuTimeRange === 'custom' && (!skuStartDate || !skuEndDate)) {
+      if (isCustomSkuTimeRange && (!skuStartDate || !skuEndDate)) {
         if (mounted) setSkuLoading(false);
         return;
       }
@@ -116,7 +138,7 @@ export default function Dashboard() {
             sort_order: sortOrder || 'desc',
             page,
             page_size: pageSize,
-            ...(skuTimeRange === 'custom'
+            ...(isCustomSkuTimeRange
               ? { start_date: skuStartDate, end_date: skuEndDate }
               : {}),
           }
@@ -160,8 +182,7 @@ export default function Dashboard() {
     { title: '销售量', icon: <TrendingUp className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.units_sold.value.toLocaleString() : '—', change: metrics?.units_sold.change_percentage },
     { title: '广告花费', icon: <DollarSign className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `$${metrics.ad_spend.value.toLocaleString()}` : '—', change: metrics?.ad_spend.change_percentage },
     { title: '广告订单量', icon: <ShoppingBag className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.ad_orders.value.toLocaleString() : '—', change: metrics?.ad_orders.change_percentage },
-    { title: 'TACoS / ACoAS', icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `${(metrics.tacos.value * 100).toFixed(1)}% / ${(metrics.acos.value * 100).toFixed(1)}%` : '—', change: metrics?.tacos.change_percentage },
-    { title: 'ACoS', icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `${(metrics.acos.value * 100).toFixed(1)}%` : '—', change: metrics?.acos.change_percentage },
+    { title: metricRatioLabel, icon: <Percent className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? `${(metrics.tacos.value * 100).toFixed(1)}% / ${(metrics.acos.value * 100).toFixed(1)}%` : '—', change: metrics?.tacos.change_percentage },
     { title: '退货数量', icon: <Activity className="w-5 h-5 text-[var(--color-accent)]" />, value: metrics ? metrics.returns_count.value.toLocaleString() : '—', change: metrics?.returns_count.change_percentage },
   ];
 
@@ -185,7 +206,7 @@ export default function Dashboard() {
     { key: 'returns_count', title: '退货量', sortable: true, render: (val) => Number(val).toLocaleString() },
     { key: 'ad_spend', title: '广告花费', sortable: true, render: (val) => `$${Number(val).toLocaleString()}` },
     { key: 'acos', title: 'ACoS', sortable: true, render: (val) => <span>{(Number(val) * 100).toFixed(1)}%</span> },
-    { key: 'tacos', title: 'TACoS / ACoAS', sortable: true, render: (val, record) => <span>{(Number(val) * 100).toFixed(1)}% / {(Number(record.acos) * 100).toFixed(1)}%</span> },
+    { key: 'tacos', title: 'TACoS', sortable: true, render: (val) => <span>{(Number(val) * 100).toFixed(1)}%</span> },
     { key: 'gross_profit', title: '毛利润', sortable: true, render: () => <span className="text-gray-500">-</span> },
     { key: 'gross_margin', title: '毛利率', sortable: true, render: () => <span className="text-gray-500">-</span> },
     { key: 'fba_stock', title: 'FBA可售数', sortable: true, render: (val) => Number(val).toLocaleString() },
@@ -214,7 +235,7 @@ export default function Dashboard() {
                     : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
                 }`}
               >
-                {TIME_RANGE_LABELS[range]}
+                {METRIC_TIME_RANGE_LABELS[range]}
               </button>
             ))}
           </div>
@@ -263,7 +284,7 @@ export default function Dashboard() {
             SKU排名
           </h2>
           <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
-            {skuTimeRange === 'custom' && (
+            {isCustomSkuTimeRange && (
               <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input
                   type="date"
@@ -281,12 +302,12 @@ export default function Dashboard() {
               </div>
             )}
             <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10 overflow-x-auto max-w-full">
-              {(Object.entries(TIME_RANGE_LABELS) as [TimeRange, string][]).map(([range, label]) => (
+              {skuTimeRangeOptions.map(({ value, label }) => (
                 <button
-                  key={range}
-                  onClick={() => { setSkuTimeRange(range); setPage(1); }}
+                  key={value}
+                  onClick={() => handleSkuTimeRangeChange(value)}
                   className={`px-4 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${
-                    skuTimeRange === range
+                    skuTimeRange === value
                       ? 'bg-white text-blue-600 dark:bg-white/10 dark:text-white shadow-sm'
                       : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
                   }`}
@@ -297,7 +318,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="h-[500px] overflow-auto">
+        <div className="h-[calc(100vh-21rem)] min-h-[420px] overflow-hidden">
           <DataTable
             columns={columns}
             data={skuRanking}
@@ -305,6 +326,8 @@ export default function Dashboard() {
             rowKey="sku"
             summaryRow={skuSummary}
             onSort={handleTableSort}
+            stickyHeaderOffset={0}
+            className="h-full"
             pagination={{
               current: page,
               pageSize: pageSize,

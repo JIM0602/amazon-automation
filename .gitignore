@@ -102,4 +102,9 @@ AGENT.md
 .superpowers/
 
 # Local generated artifacts
+/amazon_ai_dev.db
 /test_amazon_ai.db
+/.playwright-mcp/
+/src/frontend/tsconfig.app.tsbuildinfo
+/ads-dashboard-light.png
+/2026.4.22修改截图/

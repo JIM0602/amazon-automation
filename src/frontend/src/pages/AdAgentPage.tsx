@@ -50,30 +50,30 @@ export default function AdAgentPage() {
   } as CSSProperties;
 
   return (
-    <div className="flex h-full min-h-[calc(100vh-4rem)] flex-col bg-[#0a0a1a] text-white" style={themeVars}>
+    <div className="flex h-full min-h-[calc(100vh-4rem)] flex-col bg-[var(--color-bg)] text-gray-900 dark:bg-[#0a0a1a] dark:text-white" style={themeVars}>
       {/* Header & Tabs */}
       <div className="flex-shrink-0 border-b border-[var(--color-glass-border)] bg-[var(--color-glass)] px-6 py-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/ads/manage')}
-            className="flex items-center justify-center rounded-lg p-2 text-gray-400 transition-colors hover:bg-[rgba(255,255,255,0.1)] hover:text-white"
+            className="flex items-center justify-center rounded-lg p-2 text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[rgba(255,255,255,0.1)] dark:hover:text-white"
             title="返回广告管理"
           >
             <ChevronLeft size={20} />
           </button>
           <div className="h-8 w-[1px] bg-[var(--color-glass-border)]" />
-          <h1 className="text-xl font-semibold tracking-wide text-white flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-wide text-gray-900 dark:text-white">
             <Icon className="text-[var(--color-accent)]" size={24} />
             {agentInfo?.name || '广告优化Agent'}
           </h1>
 
-          <div className="ml-auto flex items-center gap-1 rounded-xl bg-[#0f0f23] p-1 border border-[rgba(255,255,255,0.05)]">
+          <div className="ml-auto flex items-center gap-1 rounded-xl border border-gray-200 bg-white/80 p-1 shadow-sm dark:border-[rgba(255,255,255,0.05)] dark:bg-[#0f0f23]">
             <button
               onClick={() => setActiveTab('chat')}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 activeTab === 'chat'
                   ? 'bg-[var(--color-accent)] text-white shadow-md'
-                  : 'text-gray-400 hover:text-white hover:bg-[rgba(255,255,255,0.05)]'
+                  : 'text-gray-500 hover:bg-black/5 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[rgba(255,255,255,0.05)] dark:hover:text-white'
               }`}
             >
               <Bot size={16} />
@@ -84,7 +84,7 @@ export default function AdAgentPage() {
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 activeTab === 'sandbox'
                   ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                  : 'text-gray-400 hover:text-amber-400 hover:bg-[rgba(255,255,255,0.05)]'
+                  : 'text-gray-500 hover:bg-black/5 hover:text-amber-500 dark:text-gray-400 dark:hover:bg-[rgba(255,255,255,0.05)] dark:hover:text-amber-400'
               }`}
             >
               <FlaskConical size={16} />
@@ -107,7 +107,7 @@ export default function AdAgentPage() {
               className="absolute inset-0 flex"
             >
               {/* Conversation List Sidebar */}
-              <div className="w-[280px] flex-shrink-0 border-r border-[var(--color-glass-border)] bg-[rgba(0,0,0,0.2)] backdrop-blur-md">
+              <div className="w-[280px] flex-shrink-0 border-r border-[var(--color-glass-border)] bg-white/70 dark:bg-[rgba(0,0,0,0.2)] backdrop-blur-md">
                 <ConversationList
                   agentType={agentType}
                   currentConversationId={selectedConversationId}
@@ -120,6 +120,7 @@ export default function AdAgentPage() {
                 <ChatWindow
                   agentType={agentType}
                   agentName={agentInfo?.name || '广告监控Agent'}
+                  agentDescription={agentInfo?.description}
                   agentIcon={<Icon size={20} />}
                   conversationId={selectedConversationId}
                   onConversationChange={setSelectedConversationId}
@@ -164,19 +165,19 @@ function SandboxView() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       {/* Warning Banner */}
-      <div className="flex items-start gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.05)]">
+      <div className="flex items-start gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.05)] dark:text-amber-200">
         <AlertTriangle className="mt-0.5 flex-shrink-0 text-amber-400" size={24} />
         <div>
           <h3 className="text-lg font-semibold text-amber-400">🧪 模拟模式 — 不会执行真实操作</h3>
-          <p className="mt-1 text-sm text-amber-200/80 leading-relaxed">
+          <p className="mt-1 text-sm leading-relaxed text-amber-800/90 dark:text-amber-200/80">
             在此区域内执行的任何广告操作（如调整预算、修改出价、暂停广告等）均仅作为沙箱环境下的模拟。系统将根据历史数据与机器学习模型预估操作后的影响，不会影响 Amazon Ads 真实数据。
           </p>
         </div>
       </div>
 
       {/* Input Area */}
-      <div className="rounded-2xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.02)] p-6 shadow-xl backdrop-blur-sm">
-        <label className="mb-3 block text-sm font-medium text-gray-300">
+      <div className="rounded-2xl border border-gray-200 bg-white/75 p-6 shadow-xl backdrop-blur-sm dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(255,255,255,0.02)]">
+        <label className="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
           描述您要模拟的广告操作
         </label>
         <div className="relative flex flex-col gap-4">
@@ -184,7 +185,7 @@ function SandboxView() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="例如：将 Campaign A 的每日预算从 $50 提高到 $100..."
-            className="h-32 w-full resize-none rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.3)] p-4 text-white placeholder-gray-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all"
+            className="h-32 w-full resize-none rounded-xl border border-gray-200 bg-white p-4 text-gray-900 placeholder-gray-400 transition-all focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(0,0,0,0.3)] dark:text-white dark:placeholder-gray-500"
           />
           <div className="flex justify-end">
             <button
@@ -192,7 +193,7 @@ function SandboxView() {
               disabled={!input.trim() || isSimulating}
               className={`flex items-center gap-2 rounded-lg px-6 py-2.5 font-medium transition-all ${
                 !input.trim() || isSimulating
-                  ? 'cursor-not-allowed bg-[rgba(255,255,255,0.05)] text-gray-500'
+                  ? 'cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-[rgba(255,255,255,0.05)] dark:text-gray-500'
                   : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:shadow-[0_0_25px_rgba(245,158,11,0.5)]'
               }`}
             >
@@ -218,11 +219,11 @@ function SandboxView() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.1)] bg-gradient-to-br from-[rgba(255,255,255,0.05)] to-transparent shadow-2xl backdrop-blur-md"
+            className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white/80 to-white/40 shadow-2xl backdrop-blur-md dark:border-[rgba(255,255,255,0.1)] dark:from-[rgba(255,255,255,0.05)] dark:to-transparent"
           >
-            <div className="border-b border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.02)] px-6 py-4 flex items-center gap-3">
+            <div className="flex items-center gap-3 border-b border-gray-200 bg-white/70 px-6 py-4 dark:border-[rgba(255,255,255,0.1)] dark:bg-[rgba(255,255,255,0.02)]">
               <Info className="text-blue-400" size={20} />
-              <h4 className="font-semibold text-white">预估分析结果</h4>
+              <h4 className="font-semibold text-gray-900 dark:text-white">预估分析结果</h4>
             </div>
             <div className="p-6">
               <div className="space-y-4">
@@ -233,8 +234,8 @@ function SandboxView() {
                       key={idx} 
                       className={`flex items-start gap-3 rounded-xl p-4 ${
                         isAdvice 
-                          ? 'bg-blue-500/10 border border-blue-500/20 text-blue-100' 
-                          : 'bg-[rgba(255,255,255,0.03)] text-gray-200'
+                          ? 'border border-blue-500/20 bg-blue-500/10 text-blue-900 dark:text-blue-100'
+                          : 'bg-gray-100 text-gray-800 dark:bg-[rgba(255,255,255,0.03)] dark:text-gray-200'
                       }`}
                     >
                       {isAdvice ? (
