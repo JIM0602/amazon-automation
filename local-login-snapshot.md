@@ -1,0 +1,18 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - heading "PUDIWIND AI" [level=1] [ref=e6]
+    - paragraph [ref=e7]: Amazon 智能运营平台
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic:
+          - img
+        - textbox "用户名" [ref=e11]
+      - generic [ref=e12]:
+        - generic:
+          - img
+        - textbox "密码" [ref=e13]
+    - button "登录" [ref=e14]
+  - generic [ref=e15]:
+    - paragraph [ref=e16]: 没有账号？请联系管理员添加
+    - paragraph [ref=e17]: © 2026 siqiangshangwu.com 版权所有

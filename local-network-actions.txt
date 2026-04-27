@@ -1,0 +1,2 @@
+[POST] http://127.0.0.1:5176/api/ads/actions => [404] Not Found
+  Request body: {"action_key":"change_status","target_type":"campaign","target_ids":["campaign_001"],"payload":{"nextStatus":"enabled"}}

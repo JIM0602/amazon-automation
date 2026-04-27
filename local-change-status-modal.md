@@ -1,0 +1,273 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: PUDIWIND AI
+        - generic [ref=e23]: Amazon Automation
+      - navigation [ref=e24]:
+        - link "数据大盘" [ref=e26] [cursor=pointer]:
+          - /url: /
+          - img [ref=e27]
+          - generic [ref=e32]: 数据大盘
+        - link "AI主管" [ref=e34] [cursor=pointer]:
+          - /url: /agents/core_management
+          - img [ref=e35]
+          - generic [ref=e38]: AI主管
+        - link "更多功能" [ref=e40] [cursor=pointer]:
+          - /url: /agents
+          - img [ref=e41]
+          - generic [ref=e43]: 更多功能
+        - link "广告数据大盘" [ref=e45] [cursor=pointer]:
+          - /url: /ads
+          - img [ref=e46]
+          - generic [ref=e48]: 广告数据大盘
+        - generic [ref=e49]:
+          - button "广告管理" [ref=e50]:
+            - generic [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e56]: 广告管理
+            - img [ref=e799]
+          - generic [ref=e801]:
+            - link "广告列表" [ref=e802] [cursor=pointer]:
+              - /url: /ads/manage
+              - img [ref=e803]
+              - generic [ref=e804]: 广告列表
+            - link "广告优化Agent" [ref=e805] [cursor=pointer]:
+              - /url: /ads/agent
+              - img [ref=e806]
+              - generic [ref=e809]: 广告优化Agent
+        - link "全部订单" [ref=e61] [cursor=pointer]:
+          - /url: /orders
+          - img [ref=e62]
+          - generic [ref=e66]: 全部订单
+        - link "退货订单" [ref=e68] [cursor=pointer]:
+          - /url: /returns
+          - img [ref=e69]
+          - generic [ref=e72]: 退货订单
+        - link "审批中心" [ref=e74] [cursor=pointer]:
+          - /url: /approvals
+          - img [ref=e75]
+          - generic [ref=e78]: 审批中心
+        - button "系统管理" [ref=e80]:
+          - generic [ref=e81]:
+            - img [ref=e82]
+            - generic [ref=e85]: 系统管理
+          - img [ref=e87]
+      - button [ref=e90]:
+        - img [ref=e91]
+    - generic [ref=e93]:
+      - banner [ref=e94]:
+        - generic [ref=e95]: 广告管理
+        - generic [ref=e96]:
+          - button "Toggle Theme" [ref=e97]:
+            - img [ref=e98]
+          - button "Notifications" [ref=e105]:
+            - img [ref=e106]
+          - generic [ref=e109]:
+            - generic [ref=e110]: B
+            - generic [ref=e111]:
+              - generic [ref=e112]: boss
+              - generic [ref=e113]: boss
+          - button "Logout" [ref=e115]:
+            - img [ref=e116]
+      - main [ref=e119]:
+        - generic [ref=e1489]:
+          - generic [ref=e1490]:
+            - heading "广告管理" [level=1] [ref=e1491]
+            - paragraph [ref=e1492]: 按 Portfolio、对象层级、广告类型、时间范围和关键词筛选广告对象
+          - generic [ref=e1494]:
+            - complementary [ref=e1495]:
+              - generic [ref=e1496]:
+                - heading "广告组合" [level=2] [ref=e1497]
+                - button "全部广告组合" [ref=e1498]:
+                  - img [ref=e1499]
+                  - text: 全部广告组合
+              - generic [ref=e1502]:
+                - img
+                - textbox "搜索广告组合" [ref=e1503]
+              - generic [ref=e1504]:
+                - generic [ref=e1505]:
+                  - generic [ref=e1506]: 可见
+                  - generic [ref=e1507]: 隐藏
+                  - generic [ref=e1508]: 对比
+                - generic [ref=e1509]: 0 已选
+              - generic [ref=e1510]:
+                - generic [ref=e1511]:
+                  - generic [ref=e1512]:
+                    - checkbox [ref=e1513]
+                    - generic [ref=e1514]:
+                      - generic [ref=e1515]: 宠物床品系列
+                      - generic [ref=e1516]: 4 个广告活动
+                  - button "仅筛选此项" [ref=e1517]
+                - generic [ref=e1518]:
+                  - generic [ref=e1519]:
+                    - checkbox [ref=e1520]
+                    - generic [ref=e1521]:
+                      - generic [ref=e1522]: 宠物饮水器系列
+                      - generic [ref=e1523]: 4 个广告活动
+                  - button "仅筛选此项" [ref=e1524]
+                - generic [ref=e1525]:
+                  - generic [ref=e1526]:
+                    - checkbox [ref=e1527]
+                    - generic [ref=e1528]:
+                      - generic [ref=e1529]: 宠物玩具系列
+                      - generic [ref=e1530]: 4 个广告活动
+                  - button "仅筛选此项" [ref=e1531]
+                - generic [ref=e1532]:
+                  - generic [ref=e1533]:
+                    - checkbox [ref=e1534]
+                    - generic [ref=e1535]:
+                      - generic [ref=e1536]: 宠物美容系列
+                      - generic [ref=e1537]: 4 个广告活动
+                  - button "仅筛选此项" [ref=e1538]
+                - generic [ref=e1539]:
+                  - generic [ref=e1540]:
+                    - checkbox [ref=e1541]
+                    - generic [ref=e1542]:
+                      - generic [ref=e1543]: 宠物出行系列
+                      - generic [ref=e1544]: 4 个广告活动
+                  - button "仅筛选此项" [ref=e1545]
+            - main [ref=e1546]:
+              - generic [ref=e1547]:
+                - generic [ref=e1548]:
+                  - button "广告组合" [ref=e1549]
+                  - button "广告活动" [ref=e1550]
+                  - button "广告组" [ref=e1551]
+                  - button "广告产品" [ref=e1552]
+                  - button "投放" [ref=e1553]
+                  - button "搜索词" [ref=e1554]
+                  - button "否定投放" [ref=e1555]
+                  - button "广告日志" [ref=e1556]
+                - generic [ref=e1557]:
+                  - combobox [ref=e1558]:
+                    - option "siqiangshangwu" [selected]
+                  - generic [ref=e1559]:
+                    - button "SP" [ref=e1560]
+                    - button "SB" [ref=e1561]
+                    - button "SD" [ref=e1562]
+                    - button "ST" [ref=e1563]
+                  - combobox [ref=e1564]:
+                    - option "全部状态"
+                    - option "投放中"
+                    - option "已暂停" [selected]
+                    - option "预算不足"
+                    - option "已结束"
+                  - combobox [ref=e1565]:
+                    - option "站点今天" [selected]
+                    - option "最近24小时"
+                    - option "本周"
+                    - option "本月"
+                    - option "本年"
+                  - generic [ref=e1566]:
+                    - img
+                    - textbox "搜索关键词" [ref=e1567]
+                  - button "同步" [ref=e1568]:
+                    - img [ref=e1569]
+                    - text: 同步
+                  - button "重置" [ref=e1574]:
+                    - img [ref=e1575]
+                    - text: 重置
+              - generic [ref=e1578]:
+                - generic [ref=e1579]:
+                  - table [ref=e1581]:
+                    - rowgroup [ref=e1582]:
+                      - row "广告活动 服务状态 广告组合 广告类型 每日预算 广告曝光量 广告点击量 广告花费 ACoS 操作" [ref=e1583]:
+                        - columnheader "广告活动" [ref=e1584]:
+                          - generic [ref=e1586]: 广告活动
+                        - columnheader "服务状态" [ref=e1587]:
+                          - generic [ref=e1589]: 服务状态
+                        - columnheader "广告组合" [ref=e1590]:
+                          - generic [ref=e1592]: 广告组合
+                        - columnheader "广告类型" [ref=e1593]:
+                          - generic [ref=e1595]: 广告类型
+                        - columnheader "每日预算" [ref=e1596]:
+                          - generic [ref=e1598]: 每日预算
+                        - columnheader "广告曝光量" [ref=e1599]:
+                          - generic [ref=e1601]: 广告曝光量
+                        - columnheader "广告点击量" [ref=e1602]:
+                          - generic [ref=e1604]: 广告点击量
+                        - columnheader "广告花费" [ref=e1605]:
+                          - generic [ref=e1607]: 广告花费
+                        - columnheader "ACoS" [ref=e1608]:
+                          - generic [ref=e1610]: ACoS
+                        - columnheader "操作" [ref=e1611]:
+                          - generic [ref=e1613]: 操作
+                    - rowgroup [ref=e1614]:
+                      - row "合计 31251 826 983.51 0.3545" [ref=e1673]:
+                        - cell "合计" [ref=e1674]
+                        - cell [ref=e1675]
+                        - cell [ref=e1676]
+                        - cell [ref=e1677]
+                        - cell [ref=e1678]
+                        - cell "31251" [ref=e1679]
+                        - cell "826" [ref=e1680]
+                        - cell "983.51" [ref=e1681]
+                        - cell "0.3545" [ref=e1682]
+                        - cell [ref=e1683]
+                      - row "SP-Auto-PetBed Paused 宠物床品系列 SP $59.35 1,814 18 $31.14 53.09% 修改状态L1" [ref=e1684]:
+                        - cell "SP-Auto-PetBed" [ref=e1685]:
+                          - button "SP-Auto-PetBed" [ref=e1686]
+                        - cell "Paused" [ref=e1687]
+                        - cell "宠物床品系列" [ref=e1688]
+                        - cell "SP" [ref=e1689]
+                        - cell "$59.35" [ref=e1690]
+                        - cell "1,814" [ref=e1691]
+                        - cell "18" [ref=e1692]
+                        - cell "$31.14" [ref=e1693]
+                        - cell "53.09%" [ref=e1694]
+                        - cell "修改状态L1" [ref=e1695]:
+                          - button "修改状态L1" [ref=e1696]
+                      - row "SP-ASIN-Targeting-Harness Paused 宠物饮水器系列 SP $121.05 29,437 808 $952.37 17.80% 修改状态L1" [ref=e1697]:
+                        - cell "SP-ASIN-Targeting-Harness" [ref=e1698]:
+                          - button "SP-ASIN-Targeting-Harness" [ref=e1699]
+                        - cell "Paused" [ref=e1700]
+                        - cell "宠物饮水器系列" [ref=e1701]
+                        - cell "SP" [ref=e1702]
+                        - cell "$121.05" [ref=e1703]
+                        - cell "29,437" [ref=e1704]
+                        - cell "808" [ref=e1705]
+                        - cell "$952.37" [ref=e1706]
+                        - cell "17.80%" [ref=e1707]
+                        - cell "修改状态L1" [ref=e1708]:
+                          - button "修改状态L1" [ref=e1709]
+                  - generic [ref=e1712]:
+                    - generic [ref=e1714]: 共 2 条
+                    - navigation "Pagination" [ref=e1715]:
+                      - button "Previous" [disabled] [ref=e1716]:
+                        - generic [ref=e1717]: Previous
+                        - img [ref=e1718]
+                      - button "1" [ref=e1720]
+                      - button "Next" [disabled] [ref=e1721]:
+                        - generic [ref=e1722]: Next
+                        - img [ref=e1723]
+                    - generic [ref=e1725]:
+                      - combobox [ref=e1726]:
+                        - option "10条/页"
+                        - option "20条/页" [selected]
+                        - option "50条/页"
+                        - option "100条/页"
+                      - generic [ref=e1727]:
+                        - generic [ref=e1728]: 前往
+                        - textbox [ref=e1729]
+                        - generic [ref=e1730]: 页
+                - generic [ref=e1731]:
+                  - generic [ref=e1733]:
+                    - generic [ref=e1734]:
+                      - generic [ref=e1735]: 当前操作：修改状态
+                      - generic [ref=e1736]: 目标对象：SP-Auto-PetBed · 能力等级：L1 · 目标数量：1
+                    - button "关闭当前操作" [ref=e1737]
+                  - generic [ref=e1738]:
+                    - generic [ref=e1739]: 修改状态
+                    - generic [ref=e1740]: 目标对象：SP-Auto-PetBed · 能力等级：L1
+                    - generic [ref=e1742]:
+                      - generic [ref=e1743]:
+                        - text: 目标状态
+                        - combobox "目标状态" [ref=e1744]:
+                          - option "启用"
+                          - option "暂停" [selected]
+                          - option "归档"
+                      - generic [ref=e1745]: 目标对象：SP-Auto-PetBed，请确认状态切换后再提交。
+                      - generic [ref=e1746]:
+                        - button "取消" [ref=e1747]
+                        - button "确认修改" [ref=e1748]
+  - generic [ref=e798]: "0"

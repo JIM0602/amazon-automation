@@ -266,6 +266,8 @@ def _generate_ad_products(rng: Random, ad_groups: list[dict[str, Any]]) -> list[
         reviews_count = rng.randint(0, 3000)
         rating = round(rng.uniform(3.0, 5.0), 1)
 
+        campaign = next(c for c in _CAMPAIGNS if c["id"] == ad_group["campaign_id"])
+
         products.append({
             "id": f"adproduct_{i + 1:04d}",
             "product_title": _PRODUCT_TITLES[title_idx],
@@ -280,6 +282,9 @@ def _generate_ad_products(rng: Random, ad_groups: list[dict[str, Any]]) -> list[
             "group_name": ad_group["group_name"],
             "campaign_id": ad_group["campaign_id"],
             "campaign_name": ad_group["campaign_name"],
+            "portfolio_id": campaign["portfolio_id"],
+            "portfolio_name": campaign["portfolio_name"],
+            "ad_type": campaign["ad_type"],
         })
     return products
 
@@ -661,10 +666,23 @@ def get_portfolio_tree() -> list[dict[str, Any]]:
 #  Public API: 8 management tabs
 # ---------------------------------------------------------------------------
 
-def get_portfolios(page: int = 1, page_size: int = 20) -> dict[str, Any]:
+def get_portfolios(
+    portfolio_id: str | None = None,
+    portfolio_ids: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict[str, Any]:
     """Portfolios list with campaign count and spend info."""
+    selected_ids: set[str] = set()
+    if portfolio_id:
+        selected_ids.add(portfolio_id)
+    if portfolio_ids:
+        selected_ids.update(pid.strip() for pid in portfolio_ids.split(",") if pid.strip())
+
     items = []
     for p in _PORTFOLIOS:
+        if selected_ids and p["id"] not in selected_ids:
+            continue
         p_campaigns = [c for c in _CAMPAIGNS if c["portfolio_id"] == p["id"]]
         total_spend = sum(c["ad_spend"] for c in p_campaigns)
         total_sales = sum(c["ad_sales"] for c in p_campaigns)
@@ -681,6 +699,7 @@ def get_portfolios(page: int = 1, page_size: int = 20) -> dict[str, Any]:
 def get_campaigns(
     portfolio_id: str | None = None,
     ad_type: str | None = None,
+    service_status: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
@@ -690,6 +709,8 @@ def get_campaigns(
         items = [c for c in items if c["portfolio_id"] == portfolio_id]
     if ad_type:
         items = [c for c in items if c["ad_type"] == ad_type]
+    if service_status:
+        items = [c for c in items if c["service_status"] == service_status]
 
     result = _paginate(items, page, page_size)
 
@@ -714,6 +735,7 @@ def get_campaigns(
 
 def get_ad_groups(
     campaign_id: str | None = None,
+    portfolio_id: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
@@ -721,11 +743,14 @@ def get_ad_groups(
     items = list(_AD_GROUPS)
     if campaign_id:
         items = [g for g in items if g["campaign_id"] == campaign_id]
+    if portfolio_id:
+        items = [g for g in items if g["portfolio_id"] == portfolio_id]
     return _paginate(items, page, page_size)
 
 
 def get_ad_products(
     ad_group_id: str | None = None,
+    ad_type: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
@@ -733,11 +758,14 @@ def get_ad_products(
     items = list(_AD_PRODUCTS)
     if ad_group_id:
         items = [p for p in items if p["group_id"] == ad_group_id]
+    if ad_type:
+        items = [p for p in items if p["ad_type"] == ad_type]
     return _paginate(items, page, page_size)
 
 
 def get_targeting(
     campaign_id: str | None = None,
+    keyword: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
@@ -745,19 +773,28 @@ def get_targeting(
     items = list(_TARGETING)
     if campaign_id:
         items = [t for t in items if t["campaign_id"] == campaign_id]
+    if keyword:
+        normalized_keyword = keyword.strip().lower()
+        items = [t for t in items if normalized_keyword in str(t["keyword"]).lower()]
     return _paginate(items, page, page_size)
 
 
 def get_search_terms(
+    keyword: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
     """Search terms list."""
-    return _paginate(list(_SEARCH_TERMS_DATA), page, page_size)
+    items = list(_SEARCH_TERMS_DATA)
+    if keyword:
+        normalized_keyword = keyword.strip().lower()
+        items = [s for s in items if normalized_keyword in str(s["search_term"]).lower()]
+    return _paginate(items, page, page_size)
 
 
 def get_negative_targeting(
     campaign_id: str | None = None,
+    keyword: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
@@ -765,15 +802,26 @@ def get_negative_targeting(
     items = list(_NEGATIVE_TARGETING)
     if campaign_id:
         items = [n for n in items if n["campaign_id"] == campaign_id]
+    if keyword:
+        normalized_keyword = keyword.strip().lower()
+        items = [n for n in items if normalized_keyword in str(n["keyword"]).lower()]
     return _paginate(items, page, page_size)
 
 
 def get_logs(
+    portfolio_id: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
     """Operation logs list."""
-    return _paginate(list(_LOGS), page, page_size)
+    items = list(_LOGS)
+    if portfolio_id:
+        portfolio = next((p for p in _PORTFOLIOS if p["id"] == portfolio_id), None)
+        if portfolio is None:
+            items = []
+        else:
+            items = [log for log in items if log["portfolio_name"] == portfolio["name"]]
+    return _paginate(items, page, page_size)
 
 
 # ---------------------------------------------------------------------------
@@ -826,4 +874,99 @@ def get_campaign_settings(campaign_id: str) -> dict[str, Any] | None:
         "products_count": len([p for p in _AD_PRODUCTS if p["campaign_id"] == campaign_id]),
         "targeting_count": len([t for t in _TARGETING if t["campaign_id"] == campaign_id]),
         "negative_targeting_count": len([n for n in _NEGATIVE_TARGETING if n["campaign_id"] == campaign_id]),
+    }
+
+
+def get_ad_group_settings(ad_group_id: str) -> dict[str, Any] | None:
+    """Full settings for a single ad group."""
+    ad_group = next((g for g in _AD_GROUPS if g["id"] == ad_group_id), None)
+    if not ad_group:
+        return None
+    return {
+        **ad_group,
+        "ad_group_name": ad_group["group_name"],
+        "status": ad_group["service_status"],
+        "products_count": len([p for p in _AD_PRODUCTS if p["group_id"] == ad_group_id]),
+        "targeting_count": len([t for t in _TARGETING if t["group_id"] == ad_group_id]),
+        "negative_targeting_count": len([n for n in _NEGATIVE_TARGETING if n["group_id"] == ad_group_id]),
+    }
+
+
+def get_ad_group_ad_products(ad_group_id: str, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    """Ad products for a specific ad group."""
+    return get_ad_products(ad_group_id=ad_group_id, page=page, page_size=page_size)
+
+
+def get_ad_group_targeting(ad_group_id: str, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    """Targeting for a specific ad group."""
+    items = [item for item in _TARGETING if item["group_id"] == ad_group_id]
+    return _paginate(items, page, page_size)
+
+
+def get_ad_group_search_terms(ad_group_id: str, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    """Search terms for a specific ad group."""
+    ad_group_keywords = {item["keyword"] for item in _TARGETING if item["group_id"] == ad_group_id}
+    items = [item for item in _SEARCH_TERMS_DATA if item["targeting"] in ad_group_keywords]
+    if not items:
+        items = _SEARCH_TERMS_DATA[: min(10, len(_SEARCH_TERMS_DATA))]
+    return _paginate(items, page, page_size)
+
+
+def get_ad_group_negative_targeting(ad_group_id: str, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    """Negative targeting for a specific ad group."""
+    items = [item for item in _NEGATIVE_TARGETING if item["group_id"] == ad_group_id]
+    return _paginate(items, page, page_size)
+
+
+def get_ad_group_logs(ad_group_id: str, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    """Logs for a specific ad group."""
+    ad_group = next((g for g in _AD_GROUPS if g["id"] == ad_group_id), None)
+    if not ad_group:
+        return {"items": [], "total_count": 0, "summary_row": None}
+    items = [log for log in _LOGS if log["group_name"] == ad_group["group_name"]]
+    return _paginate(items, page, page_size)
+
+
+_SUPPORTED_ACTIONS = {
+    "edit_budget": {
+        "level": "L1",
+        "message": "预算修改已提交到 mock 网关。",
+    },
+    "change_status": {
+        "level": "L1",
+        "message": "状态修改已提交到 mock 网关。",
+    },
+    "edit_bid": {
+        "level": "L1",
+        "message": "竞价修改已提交到 mock 网关。",
+    },
+    "add_negative_keyword": {
+        "level": "L1",
+        "message": "否定词添加已提交到 mock 网关。",
+    },
+}
+
+
+def execute_ads_action(
+    action_key: str,
+    target_type: str,
+    target_ids: list[str],
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Execute a mock ads action and return unified action feedback."""
+    action = _SUPPORTED_ACTIONS.get(action_key)
+    if action is None:
+        raise ValueError(f"Unsupported action: {action_key}")
+
+    return {
+        "result": "success",
+        "action_key": action_key,
+        "target_type": target_type,
+        "target_ids": list(target_ids),
+        "level": action["level"],
+        "committed": True,
+        "is_real_write": False,
+        "should_reload": True,
+        "message": action["message"],
+        "payload": dict(payload or {}),
     }

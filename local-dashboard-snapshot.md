@@ -1,0 +1,162 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: PUDIWIND AI
+        - generic [ref=e23]: Amazon Automation
+      - navigation [ref=e24]:
+        - link "数据大盘" [ref=e26] [cursor=pointer]:
+          - /url: /
+          - img [ref=e27]
+          - generic [ref=e32]: 数据大盘
+        - link "AI主管" [ref=e34] [cursor=pointer]:
+          - /url: /agents/core_management
+          - img [ref=e35]
+          - generic [ref=e38]: AI主管
+        - link "更多功能" [ref=e40] [cursor=pointer]:
+          - /url: /agents
+          - img [ref=e41]
+          - generic [ref=e43]: 更多功能
+        - link "广告数据大盘" [ref=e45] [cursor=pointer]:
+          - /url: /ads
+          - img [ref=e46]
+          - generic [ref=e48]: 广告数据大盘
+        - button "广告管理" [ref=e50]:
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e56]: 广告管理
+          - img [ref=e58]
+        - link "全部订单" [ref=e61] [cursor=pointer]:
+          - /url: /orders
+          - img [ref=e62]
+          - generic [ref=e66]: 全部订单
+        - link "退货订单" [ref=e68] [cursor=pointer]:
+          - /url: /returns
+          - img [ref=e69]
+          - generic [ref=e72]: 退货订单
+        - link "审批中心" [ref=e74] [cursor=pointer]:
+          - /url: /approvals
+          - img [ref=e75]
+          - generic [ref=e78]: 审批中心
+        - button "系统管理" [ref=e80]:
+          - generic [ref=e81]:
+            - img [ref=e82]
+            - generic [ref=e85]: 系统管理
+          - img [ref=e87]
+      - button [ref=e90]:
+        - img [ref=e91]
+    - generic [ref=e93]:
+      - banner [ref=e94]:
+        - generic [ref=e95]: 数据大盘
+        - generic [ref=e96]:
+          - button "Toggle Theme" [ref=e97]:
+            - img [ref=e98]
+          - button "Notifications" [ref=e105]:
+            - img [ref=e106]
+          - generic [ref=e109]:
+            - generic [ref=e110]: B
+            - generic [ref=e111]:
+              - generic [ref=e112]: boss
+              - generic [ref=e113]: boss
+          - button "Logout" [ref=e115]:
+            - img [ref=e116]
+      - main [ref=e119]:
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - heading "数据大盘" [level=1] [ref=e122]
+            - generic [ref=e123]:
+              - generic [ref=e124]: "Mock数据 · 最后更新: 10:38"
+              - generic [ref=e126]:
+                - button "站点今天" [ref=e127]
+                - button "最近24小时" [ref=e128]
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - img [ref=e133]
+              - paragraph [ref=e135]: 总销售额
+              - generic [ref=e136]:
+                - heading "$3,333.85" [level=3] [ref=e137]
+                - generic [ref=e138]
+            - generic [ref=e143]:
+              - img [ref=e146]
+              - paragraph [ref=e149]: 总订单量
+              - generic [ref=e150]:
+                - heading "73" [level=3] [ref=e151]
+                - generic [ref=e152]
+            - generic [ref=e157]:
+              - img [ref=e160]
+              - paragraph [ref=e163]: 销售量
+              - generic [ref=e164]:
+                - heading "112" [level=3] [ref=e165]
+                - generic [ref=e166]
+            - generic [ref=e171]:
+              - img [ref=e174]
+              - paragraph [ref=e176]: 广告花费
+              - generic [ref=e177]:
+                - heading "$412.63" [level=3] [ref=e178]
+                - generic [ref=e179]
+            - generic [ref=e184]:
+              - img [ref=e187]
+              - paragraph [ref=e190]: 广告订单量
+              - generic [ref=e191]:
+                - heading "27" [level=3] [ref=e192]
+                - generic [ref=e193]
+            - generic [ref=e198]:
+              - img [ref=e201]
+              - paragraph [ref=e205]: TACoS / ACoAS
+              - generic [ref=e206]:
+                - heading "12.4% / 33.5%" [level=3] [ref=e207]
+                - generic [ref=e208]
+            - generic [ref=e213]:
+              - img [ref=e216]
+              - paragraph [ref=e218]: 退货数量
+              - generic [ref=e219]:
+                - heading "4" [level=3] [ref=e220]
+                - generic [ref=e221]
+          - generic [ref=e226]:
+            - generic [ref=e227]:
+              - heading "综合指标" [level=2] [ref=e228]:
+                - img [ref=e229]
+                - text: 综合指标
+              - generic [ref=e232]:
+                - button "站点今天" [ref=e233]
+                - button "最近24小时" [ref=e234]
+                - button "本周" [ref=e235]
+                - button "本月" [ref=e236]
+                - button "本年" [ref=e237]
+                - button "自定义" [ref=e238]
+            - generic [ref=e239]:
+              - button "销售额" [ref=e240]: 销售额
+              - button "订单量" [ref=e242]: 订单量
+              - button "销售量" [ref=e244]: 销售量
+              - button "广告花费" [ref=e246]: 广告花费
+              - button "广告销售额" [ref=e248]: 广告销售额
+              - button "ACoS" [ref=e250]: ACoS
+              - button "TACoS / ACoAS" [ref=e252]: TACoS / ACoAS
+            - generic [ref=e256]:
+              - list [ref=e258]:
+                - listitem [ref=e259]
+                - listitem [ref=e262]
+                - listitem [ref=e265]
+              - application [ref=e268]:
+                - generic [ref=e282]
+          - generic [ref=e307]:
+            - generic [ref=e308]:
+              - heading "SKU排名" [level=2] [ref=e309]:
+                - img [ref=e310]
+                - text: SKU排名
+              - generic [ref=e314]:
+                - button "站点今天" [ref=e315]
+                - button "最近24小时" [ref=e316]
+                - button "本周" [ref=e317]
+                - button "本月" [ref=e318]
+                - button "本年" [ref=e319]
+                - button "自定义" [ref=e320]
+            - generic [ref=e322]:
+              - table [ref=e324]:
+                - rowgroup [ref=e325]
+                - rowgroup [ref=e421]
+              - generic [ref=e778]:
+                - generic [ref=e780]: 共 25 条
+                - navigation "Pagination" [ref=e781]
+                - generic [ref=e792]
+  - generic [ref=e798]: "0"

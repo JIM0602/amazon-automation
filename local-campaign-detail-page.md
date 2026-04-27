@@ -1,0 +1,164 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: PUDIWIND AI
+        - generic [ref=e23]: Amazon Automation
+      - navigation [ref=e24]:
+        - link "数据大盘" [ref=e26] [cursor=pointer]:
+          - /url: /
+          - img [ref=e27]
+          - generic [ref=e32]: 数据大盘
+        - link "AI主管" [ref=e34] [cursor=pointer]:
+          - /url: /agents/core_management
+          - img [ref=e35]
+          - generic [ref=e38]: AI主管
+        - link "更多功能" [ref=e40] [cursor=pointer]:
+          - /url: /agents
+          - img [ref=e41]
+          - generic [ref=e43]: 更多功能
+        - link "广告数据大盘" [ref=e45] [cursor=pointer]:
+          - /url: /ads
+          - img [ref=e46]
+          - generic [ref=e48]: 广告数据大盘
+        - generic [ref=e49]:
+          - button "广告管理" [ref=e50]:
+            - generic [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e56]: 广告管理
+            - img [ref=e799]
+          - generic [ref=e801]:
+            - link "广告列表" [ref=e802] [cursor=pointer]:
+              - /url: /ads/manage
+              - img [ref=e803]
+              - generic [ref=e804]: 广告列表
+            - link "广告优化Agent" [ref=e805] [cursor=pointer]:
+              - /url: /ads/agent
+              - img [ref=e806]
+              - generic [ref=e809]: 广告优化Agent
+        - link "全部订单" [ref=e61] [cursor=pointer]:
+          - /url: /orders
+          - img [ref=e62]
+          - generic [ref=e66]: 全部订单
+        - link "退货订单" [ref=e68] [cursor=pointer]:
+          - /url: /returns
+          - img [ref=e69]
+          - generic [ref=e72]: 退货订单
+        - link "审批中心" [ref=e74] [cursor=pointer]:
+          - /url: /approvals
+          - img [ref=e75]
+          - generic [ref=e78]: 审批中心
+        - button "系统管理" [ref=e80]:
+          - generic [ref=e81]:
+            - img [ref=e82]
+            - generic [ref=e85]: 系统管理
+          - img [ref=e87]
+      - button [ref=e90]:
+        - img [ref=e91]
+    - generic [ref=e93]:
+      - banner [ref=e94]:
+        - generic [ref=e95]: 广告管理
+        - generic [ref=e96]:
+          - button "Toggle Theme" [ref=e97]:
+            - img [ref=e98]
+          - button "Notifications" [ref=e105]:
+            - img [ref=e106]
+          - generic [ref=e109]:
+            - generic [ref=e110]: B
+            - generic [ref=e111]:
+              - generic [ref=e112]: boss
+              - generic [ref=e113]: boss
+          - button "Logout" [ref=e115]:
+            - img [ref=e116]
+      - main [ref=e119]:
+        - generic [ref=e1387]:
+          - button "← 返回广告管理" [ref=e1389]
+          - generic [ref=e1390]:
+            - generic [ref=e1391] [cursor=pointer]: 广告管理
+            - generic [ref=e1392]: /
+            - generic [ref=e1393]: 广告活动
+            - generic [ref=e1394]: /
+            - generic [ref=e1395]: SP-Auto-PetBed
+          - generic [ref=e1397]:
+            - generic [ref=e1398]:
+              - generic [ref=e1399]:
+                - heading "SP-Auto-PetBed" [level=1] [ref=e1400]
+                - generic [ref=e1401]: SP
+                - generic [ref=e1402]: unknown
+              - generic [ref=e1403]: 活动详情
+            - generic [ref=e1404]:
+              - generic [ref=e1405]:
+                - generic [ref=e1406]: 广告类型
+                - generic [ref=e1407]: SP
+              - generic [ref=e1408]:
+                - generic [ref=e1409]: 状态
+                - generic [ref=e1410]: unknown
+              - generic [ref=e1411]:
+                - generic [ref=e1412]: 日预算
+                - generic [ref=e1413]: $59.35
+          - generic [ref=e1415]:
+            - button "广告组" [ref=e1416]
+            - button "投放" [ref=e1417]
+            - button "搜索词" [ref=e1418]
+            - button "否定投放" [ref=e1419]
+            - button "广告日志" [ref=e1420]
+            - button "活动设置" [ref=e1421]
+          - generic [ref=e1423]:
+            - table [ref=e1425]:
+              - rowgroup [ref=e1426]:
+                - row "广告组 状态 默认竞价 曝光量 点击量 订单量" [ref=e1427]:
+                  - columnheader "广告组" [ref=e1428]:
+                    - generic [ref=e1430]: 广告组
+                  - columnheader "状态" [ref=e1431]:
+                    - generic [ref=e1433]: 状态
+                  - columnheader "默认竞价" [ref=e1434]:
+                    - generic [ref=e1436]: 默认竞价
+                  - columnheader "曝光量" [ref=e1437]:
+                    - generic [ref=e1439]: 曝光量
+                  - columnheader "点击量" [ref=e1440]:
+                    - generic [ref=e1442]: 点击量
+                  - columnheader "订单量" [ref=e1443]:
+                    - generic [ref=e1445]: 订单量
+              - rowgroup [ref=e1446]:
+                - row "- Delivering $1.88 0 0 0" [ref=e1447]:
+                  - cell "-" [ref=e1448]
+                  - cell "Delivering" [ref=e1449]
+                  - cell "$1.88" [ref=e1450]
+                  - cell "0" [ref=e1451]
+                  - cell "0" [ref=e1452]
+                  - cell "0" [ref=e1453]
+                - row "- Delivering $1.46 0 0 0" [ref=e1454]:
+                  - cell "-" [ref=e1455]
+                  - cell "Delivering" [ref=e1456]
+                  - cell "$1.46" [ref=e1457]
+                  - cell "0" [ref=e1458]
+                  - cell "0" [ref=e1459]
+                  - cell "0" [ref=e1460]
+                - row "- Delivering $1.86 0 0 0" [ref=e1461]:
+                  - cell "-" [ref=e1462]
+                  - cell "Delivering" [ref=e1463]
+                  - cell "$1.86" [ref=e1464]
+                  - cell "0" [ref=e1465]
+                  - cell "0" [ref=e1466]
+                  - cell "0" [ref=e1467]
+            - generic [ref=e1470]:
+              - generic [ref=e1472]: 共 3 条
+              - navigation "Pagination" [ref=e1473]:
+                - button "Previous" [disabled] [ref=e1474]:
+                  - generic [ref=e1475]: Previous
+                  - img [ref=e1476]
+                - button "1" [ref=e1478]
+                - button "Next" [disabled] [ref=e1479]:
+                  - generic [ref=e1480]: Next
+                  - img [ref=e1481]
+              - generic [ref=e1483]:
+                - combobox [ref=e1484]:
+                  - option "10条/页"
+                  - option "20条/页" [selected]
+                  - option "50条/页"
+                  - option "100条/页"
+                - generic [ref=e1485]:
+                  - generic [ref=e1486]: 前往
+                  - textbox [ref=e1487]
+                  - generic [ref=e1488]: 页
+  - generic [ref=e798]: "0"

@@ -1,0 +1,179 @@
+- generic [ref=e1]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: PUDIWIND AI
+        - generic [ref=e23]: Amazon Automation
+      - navigation [ref=e24]:
+        - link "数据大盘" [ref=e26] [cursor=pointer]:
+          - /url: /
+          - img [ref=e27]
+          - generic [ref=e32]: 数据大盘
+        - link "AI主管" [ref=e34] [cursor=pointer]:
+          - /url: /agents/core_management
+          - img [ref=e35]
+          - generic [ref=e38]: AI主管
+        - link "更多功能" [ref=e40] [cursor=pointer]:
+          - /url: /agents
+          - img [ref=e41]
+          - generic [ref=e43]: 更多功能
+        - link "广告数据大盘" [ref=e45] [cursor=pointer]:
+          - /url: /ads
+          - img [ref=e46]
+          - generic [ref=e48]: 广告数据大盘
+        - generic [ref=e49]:
+          - button "广告管理" [ref=e50]:
+            - generic [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e56]: 广告管理
+            - img [ref=e799]
+          - generic [ref=e801]:
+            - link "广告列表" [active] [ref=e802] [cursor=pointer]:
+              - /url: /ads/manage
+              - img [ref=e803]
+              - generic [ref=e804]: 广告列表
+            - link "广告优化Agent" [ref=e805] [cursor=pointer]:
+              - /url: /ads/agent
+              - img [ref=e806]
+              - generic [ref=e809]: 广告优化Agent
+        - link "全部订单" [ref=e61] [cursor=pointer]:
+          - /url: /orders
+          - img [ref=e62]
+          - generic [ref=e66]: 全部订单
+        - link "退货订单" [ref=e68] [cursor=pointer]:
+          - /url: /returns
+          - img [ref=e69]
+          - generic [ref=e72]: 退货订单
+        - link "审批中心" [ref=e74] [cursor=pointer]:
+          - /url: /approvals
+          - img [ref=e75]
+          - generic [ref=e78]: 审批中心
+        - button "系统管理" [ref=e80]:
+          - generic [ref=e81]:
+            - img [ref=e82]
+            - generic [ref=e85]: 系统管理
+          - img [ref=e87]
+      - button [ref=e90]:
+        - img [ref=e91]
+    - generic [ref=e93]:
+      - banner [ref=e94]:
+        - generic [ref=e95]: 广告管理
+        - generic [ref=e96]:
+          - button "Toggle Theme" [ref=e97]:
+            - img [ref=e98]
+          - button "Notifications" [ref=e105]:
+            - img [ref=e106]
+          - generic [ref=e109]:
+            - generic [ref=e110]: B
+            - generic [ref=e111]:
+              - generic [ref=e112]: boss
+              - generic [ref=e113]: boss
+          - button "Logout" [ref=e115]:
+            - img [ref=e116]
+      - main [ref=e119]:
+        - generic [ref=e810]:
+          - generic [ref=e811]:
+            - heading "广告管理" [level=1] [ref=e812]
+            - paragraph [ref=e813]: 按 Portfolio、对象层级、广告类型、时间范围和关键词筛选广告对象
+          - generic [ref=e815]:
+            - complementary [ref=e816]:
+              - generic [ref=e817]:
+                - heading "广告组合" [level=2] [ref=e818]
+                - button "全部广告组合" [ref=e819]:
+                  - img [ref=e820]
+                  - text: 全部广告组合
+              - generic [ref=e823]:
+                - img
+                - textbox "搜索广告组合" [ref=e824]
+              - generic [ref=e825]:
+                - generic [ref=e826]:
+                  - generic [ref=e827]: 可见
+                  - generic [ref=e828]: 隐藏
+                  - generic [ref=e829]: 对比
+                - generic [ref=e830]: 0 已选
+              - generic [ref=e831]:
+                - generic [ref=e832]:
+                  - generic [ref=e833]:
+                    - checkbox [ref=e834]
+                    - generic [ref=e835]
+                  - button "仅筛选此项" [ref=e838]
+                - generic [ref=e839]:
+                  - generic [ref=e840]:
+                    - checkbox [ref=e841]
+                    - generic [ref=e842]
+                  - button "仅筛选此项" [ref=e845]
+                - generic [ref=e846]:
+                  - generic [ref=e847]:
+                    - checkbox [ref=e848]
+                    - generic [ref=e849]
+                  - button "仅筛选此项" [ref=e852]
+                - generic [ref=e853]:
+                  - generic [ref=e854]:
+                    - checkbox [ref=e855]
+                    - generic [ref=e856]
+                  - button "仅筛选此项" [ref=e859]
+                - generic [ref=e860]:
+                  - generic [ref=e861]:
+                    - checkbox [ref=e862]
+                    - generic [ref=e863]
+                  - button "仅筛选此项" [ref=e866]
+            - main [ref=e867]:
+              - generic [ref=e868]:
+                - generic [ref=e869]:
+                  - button "广告组合" [ref=e870]
+                  - button "广告活动" [ref=e871]
+                  - button "广告组" [ref=e872]
+                  - button "广告产品" [ref=e873]
+                  - button "投放" [ref=e874]
+                  - button "搜索词" [ref=e875]
+                  - button "否定投放" [ref=e876]
+                  - button "广告日志" [ref=e877]
+                - generic [ref=e878]:
+                  - combobox [ref=e879]:
+                    - option "siqiangshangwu" [selected]
+                  - generic [ref=e880]:
+                    - button "SP" [ref=e881]
+                    - button "SB" [ref=e882]
+                    - button "SD" [ref=e883]
+                    - button "ST" [ref=e884]
+                  - combobox [ref=e885]:
+                    - option "全部状态" [selected]
+                    - option "投放中"
+                    - option "已暂停"
+                    - option "预算不足"
+                    - option "已结束"
+                  - combobox [ref=e886]:
+                    - option "站点今天" [selected]
+                    - option "最近24小时"
+                    - option "本周"
+                    - option "本月"
+                    - option "本年"
+                  - generic [ref=e887]:
+                    - img
+                    - textbox "搜索关键词" [ref=e888]
+                  - button "同步" [ref=e889]:
+                    - img [ref=e890]
+                    - text: 同步
+                  - button "重置" [ref=e895]:
+                    - img [ref=e896]
+                    - text: 重置
+              - generic [ref=e900]:
+                - table [ref=e902]:
+                  - rowgroup [ref=e903]:
+                    - row "广告组合 广告活动数量 预算 广告活动数 广告花费 广告销售额 ACoS 操作" [ref=e904]
+                  - rowgroup [ref=e929]:
+                    - row "宠物床品系列 4 $6754.84 4 $4184.62 $10948.33 38.22% 编辑预算L1" [ref=e930]
+                    - row "宠物饮水器系列 4 $3475.26 4 $1847.82 $10039.18 18.41% 编辑预算L1" [ref=e942]
+                    - row "宠物玩具系列 4 $7628.24 4 $2447.77 $4582.61 53.41% 编辑预算L1" [ref=e954]
+                    - row "宠物美容系列 4 $9029.62 4 $2318.09 $8332.54 27.82% 编辑预算L1" [ref=e966]
+                    - row "宠物出行系列 4 $4797.30 4 $1626.68 $5410.53 30.07% 编辑预算L1" [ref=e978]
+                - generic [ref=e992]:
+                  - generic [ref=e994]: 共 5 条
+                  - navigation "Pagination" [ref=e995]:
+                    - button "Previous" [disabled] [ref=e996]
+                    - button "1" [ref=e1000]
+                    - button "Next" [disabled] [ref=e1001]
+                  - generic [ref=e1005]:
+                    - combobox [ref=e1006]
+                    - generic [ref=e1007]
+  - generic [ref=e798]: "0"

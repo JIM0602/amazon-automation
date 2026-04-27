@@ -22,6 +22,10 @@ const ReturnsPage = lazy(() => import('./pages/ReturnsPage'))
 const AdAgentPage = lazy(() => import('./pages/AdAgentPage'))
 const CampaignDetail = lazy(() => import('./pages/ad-management/CampaignDetail'))
 const AdGroupDetail = lazy(() => import('./pages/ad-management/AdGroupDetail'))
+const TargetingDetail = lazy(() => import('./pages/ad-management/detail/TargetingDetailPage'))
+const SearchTermDetail = lazy(() => import('./pages/ad-management/detail/SearchTermDetailPage'))
+const NegativeTargetingDetail = lazy(() => import('./pages/ad-management/detail/NegativeTargetingDetailPage'))
+const LogDetail = lazy(() => import('./pages/ad-management/detail/LogDetailPage'))
 const UserManagementPage = lazy(() => import('./pages/system/UserManagementPage'))
 const AgentConfigPage = lazy(() => import('./pages/system/AgentConfigPage'))
 
@@ -49,6 +53,12 @@ function App() {
                 <Route path="ads" element={<AdDashboard />} />
                 <Route path="ads/dashboard" element={<AdDashboard />} />
                 <Route path="ads/manage" element={<AdManagement />} />
+                <Route path="ads/manage/campaign/:id" element={<CampaignDetail />} />
+                <Route path="ads/manage/ad-group/:id" element={<AdGroupDetail />} />
+                <Route path="ads/manage/targeting/:id" element={<TargetingDetail />} />
+                <Route path="ads/manage/search-term/:id" element={<SearchTermDetail />} />
+                <Route path="ads/manage/negative-targeting/:id" element={<NegativeTargetingDetail />} />
+                <Route path="ads/manage/log/:id" element={<LogDetail />} />
                 <Route path="ads/management" element={<AdManagement />} />
                 <Route path="ads/management/campaign/:id" element={<CampaignDetail />} />
                 <Route path="ads/management/ad-group/:id" element={<AdGroupDetail />} />

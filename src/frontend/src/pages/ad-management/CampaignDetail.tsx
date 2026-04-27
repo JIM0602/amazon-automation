@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { DataTable } from '../../components/DataTable';
 import api from '../../api/client';
 import type { Column } from '../../types/table';
+import { getListPayload, getObjectPayload } from './detail/detailData';
 
 type TabKey = 'ad_groups' | 'targeting' | 'search_terms' | 'negative_targeting' | 'logs' | 'settings';
 
@@ -60,38 +61,6 @@ function formatCurrency(value: number | undefined) {
 
 function formatPercent(value: number | undefined) {
   return `${(((value ?? 0) * 100)).toFixed(2)}%`;
-}
-
-function getObjectPayload<T extends Record<string, unknown>>(payload: unknown): T | null {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return null;
-  }
-  const candidate = payload as Record<string, unknown>;
-  if ('data' in candidate && candidate.data && typeof candidate.data === 'object' && !Array.isArray(candidate.data)) {
-    return candidate.data as T;
-  }
-  if ('campaign' in candidate && candidate.campaign && typeof candidate.campaign === 'object' && !Array.isArray(candidate.campaign)) {
-    return candidate.campaign as T;
-  }
-  if ('item' in candidate && candidate.item && typeof candidate.item === 'object' && !Array.isArray(candidate.item)) {
-    return candidate.item as T;
-  }
-  return candidate as T;
-}
-
-function getListPayload<T extends Record<string, unknown>>(payload: unknown): { items: T[]; totalCount: number; summaryRow?: Partial<T> } {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return { items: [], totalCount: 0 };
-  }
-  const candidate = payload as Record<string, unknown>;
-  const rawItems = Array.isArray(candidate.items) ? candidate.items : Array.isArray(candidate.data) ? candidate.data : [];
-  return {
-    items: rawItems.filter((item): item is T => !!item && typeof item === 'object' && !Array.isArray(item)) as T[],
-    totalCount: typeof candidate.total_count === 'number' ? candidate.total_count : rawItems.length,
-    summaryRow: (candidate.summary_row && typeof candidate.summary_row === 'object' && !Array.isArray(candidate.summary_row)
-      ? candidate.summary_row as Partial<T>
-      : undefined),
-  };
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -153,6 +122,7 @@ function CampaignSettingsForm({ campaign }: { campaign: CampaignInfo | null }) {
 
 export default function CampaignDetail() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams();
   const campaignId = params.id ?? '';
   const [activeTab, setActiveTab] = useState<TabKey>('ad_groups');
@@ -185,7 +155,7 @@ export default function CampaignDetail() {
       setCampaignMockMode(false);
       try {
         const response = await api.get(`/ads/campaigns/${campaignId}/settings`);
-        const payload = getObjectPayload<CampaignInfo>(response.data);
+        const payload = getObjectPayload<CampaignInfo>(response.data, ['data', 'campaign', 'item']);
         if (alive && payload) {
           const normalized = Object.assign({}, payload) as CampaignInfo;
           normalized.id = String(payload.id ?? campaignId);
@@ -341,7 +311,7 @@ export default function CampaignDetail() {
       <div className="mb-4 flex items-center justify-between gap-4">
         <button
           type="button"
-          onClick={() => navigate('/ads/management')}
+          onClick={() => navigate(`/ads/manage${location.search}`)}
           className="inline-flex items-center gap-2 text-sm font-medium text-blue-500 hover:underline dark:text-blue-400"
         >
           ← 返回广告管理
@@ -351,7 +321,7 @@ export default function CampaignDetail() {
       <div className="mb-4 flex items-center gap-2 text-sm">
         <span
           className="cursor-pointer text-blue-500 hover:underline dark:text-blue-400"
-          onClick={() => navigate('/ads/management')}
+          onClick={() => navigate(`/ads/manage${location.search}`)}
         >
           广告管理
         </span>
