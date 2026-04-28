@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { DataTable } from '../../components/DataTable';
 import api from '../../api/client';
@@ -6,6 +7,8 @@ import type { Column } from '../../types/table';
 import { getListPayload, getObjectPayload } from './detail/detailData';
 
 type TabKey = 'ad_groups' | 'targeting' | 'search_terms' | 'negative_targeting' | 'logs' | 'settings';
+type StatusFilterValue = 'all' | 'enabled' | 'paused' | 'archived';
+type ActionResult = 'idle' | 'success' | 'error';
 
 interface BaseListRow {
   id: string;
@@ -107,11 +110,56 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CampaignSettingsForm({ campaign }: { campaign: CampaignInfo | null }) {
+interface CampaignSettingsFormProps {
+  campaign: CampaignInfo | null;
+  budgetValue: string;
+  saving: boolean;
+  feedbackMessage: string | null;
+  feedbackResult: ActionResult;
+  onBudgetChange: (value: string) => void;
+  onSave: () => void | Promise<void>;
+}
+
+function CampaignSettingsForm({
+  campaign,
+  budgetValue,
+  saving,
+  feedbackMessage,
+  feedbackResult,
+  onBudgetChange,
+  onSave,
+}: CampaignSettingsFormProps) {
   return (
     <div className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 md:grid-cols-2">
       <ReadOnlyField label="活动名称" value={campaign?.campaign_name || '-'} />
-      <ReadOnlyField label="日预算" value={campaign ? formatCurrency(campaign.daily_budget) : '-'} />
+      <div className="space-y-1">
+        <div className="text-xs text-gray-500 dark:text-gray-400">日预算</div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={budgetValue}
+            onChange={(event) => onBudgetChange(event.target.value)}
+            disabled={!campaign || saving}
+            placeholder="请输入日预算"
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100 sm:max-w-[220px]"
+          />
+          <button
+            type="button"
+            onClick={() => void onSave()}
+            disabled={!campaign || saving}
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-blue-400"
+          >
+            {saving ? '保存中...' : '保存预算'}
+          </button>
+        </div>
+        {feedbackMessage ? (
+          <div className={`text-xs ${feedbackResult === 'error' ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+            {feedbackMessage}
+          </div>
+        ) : null}
+      </div>
       <ReadOnlyField label="竞价策略" value={campaign?.bidding_strategy || '-'} />
       <ReadOnlyField label="开始日期" value={campaign?.start_date || '-'} />
       <ReadOnlyField label="状态" value={campaign?.status || '-'} />
@@ -128,9 +176,15 @@ export default function CampaignDetail() {
   const [activeTab, setActiveTab] = useState<TabKey>('ad_groups');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [adGroupStatusFilter, setAdGroupStatusFilter] = useState<StatusFilterValue>('all');
   const [campaign, setCampaign] = useState<CampaignInfo | null>(null);
   const [campaignLoading, setCampaignLoading] = useState(true);
   const [campaignMockMode, setCampaignMockMode] = useState(false);
+  const [budgetValue, setBudgetValue] = useState('');
+  const [budgetSaving, setBudgetSaving] = useState(false);
+  const [budgetFeedbackMessage, setBudgetFeedbackMessage] = useState<string | null>(null);
+  const [budgetFeedbackResult, setBudgetFeedbackResult] = useState<ActionResult>('idle');
   const [listState, setListState] = useState<Record<Exclude<TabKey, 'settings'>, ListState<BaseListRow>>>(() => ({
     ad_groups: { data: [], total: 0, loading: false, mockMode: false },
     targeting: { data: [], total: 0, loading: false, mockMode: false },
@@ -166,6 +220,9 @@ export default function CampaignDetail() {
           normalized.bidding_strategy = typeof payload.bidding_strategy === 'string' ? payload.bidding_strategy : undefined;
           normalized.start_date = typeof payload.start_date === 'string' ? payload.start_date : undefined;
           setCampaign(normalized);
+          setBudgetValue(typeof normalized.daily_budget === 'number' ? String(normalized.daily_budget) : '');
+          setBudgetFeedbackMessage(null);
+          setBudgetFeedbackResult('idle');
         }
       } catch {
         if (alive) {
@@ -175,6 +232,9 @@ export default function CampaignDetail() {
             status: 'unknown',
             ad_type: '',
           });
+          setBudgetValue('');
+          setBudgetFeedbackMessage(null);
+          setBudgetFeedbackResult('idle');
           setCampaignMockMode(true);
         }
       } finally {
@@ -188,7 +248,7 @@ export default function CampaignDetail() {
     return () => {
       alive = false;
     };
-  }, [campaignId]);
+  }, [campaignId, reloadKey]);
 
   useEffect(() => {
     const listTab = activeTab === 'settings' ? null : activeTab;
@@ -253,11 +313,58 @@ export default function CampaignDetail() {
     return () => {
       alive = false;
     };
-  }, [activeTab, campaignId, page, pageSize]);
+  }, [activeTab, campaignId, page, pageSize, reloadKey]);
 
   useEffect(() => {
     setPage(1);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'ad_groups') {
+      setPage(1);
+    }
+  }, [activeTab, adGroupStatusFilter]);
+
+  const handleRefresh = () => {
+    setReloadKey((value) => value + 1);
+  };
+
+  const handleBudgetSave = async () => {
+    if (!campaign) return;
+
+    const trimmed = budgetValue.trim();
+    if (!trimmed || Number.isNaN(Number(trimmed))) {
+      setBudgetFeedbackMessage('请输入有效的预算金额。');
+      setBudgetFeedbackResult('error');
+      return;
+    }
+
+    setBudgetSaving(true);
+    setBudgetFeedbackMessage(null);
+    setBudgetFeedbackResult('idle');
+
+    try {
+      const response = await api.post('/ads/actions', {
+        action_key: 'edit_budget',
+        target_type: 'campaign',
+        target_ids: [campaign.id],
+        payload: {
+          budgetMode: 'daily',
+          budgetValue: trimmed,
+        },
+      });
+
+      setCampaign((current) => current ? { ...current, daily_budget: Number(trimmed) } : current);
+      setBudgetFeedbackMessage(response.data?.message ?? '预算保存成功。');
+      setBudgetFeedbackResult('success');
+      setReloadKey((value) => value + 1);
+    } catch {
+      setBudgetFeedbackMessage('预算保存失败，请稍后重试。');
+      setBudgetFeedbackResult('error');
+    } finally {
+      setBudgetSaving(false);
+    }
+  };
 
   const adGroupsColumns = useMemo<Column<BaseListRow>[]>(() => [
     { key: 'ad_group_name', title: '广告组', render: (_, row) => String(row.ad_group_name ?? row.name ?? '-') },
@@ -305,6 +412,13 @@ export default function CampaignDetail() {
   ], []);
 
   const activeListState = activeTab === 'settings' ? null : listState[activeTab as Exclude<TabKey, 'settings'>];
+  const filteredActiveData = useMemo(() => {
+    const items = activeListState?.data ?? [];
+    if (activeTab !== 'ad_groups' || adGroupStatusFilter === 'all') {
+      return items;
+    }
+    return items.filter((row) => String(row.status ?? row.service_status ?? '') === adGroupStatusFilter);
+  }, [activeListState?.data, activeTab, adGroupStatusFilter]);
 
   return (
     <div className="mx-auto max-w-[1600px] p-6 text-gray-900 dark:text-gray-100">
@@ -315,6 +429,15 @@ export default function CampaignDetail() {
           className="inline-flex items-center gap-2 text-sm font-medium text-blue-500 hover:underline dark:text-blue-400"
         >
           ← 返回广告管理
+        </button>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={campaignLoading || budgetSaving || (activeListState?.loading ?? false)}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <RefreshCw size={16} className={campaignLoading || budgetSaving || (activeListState?.loading ?? false) ? 'animate-spin' : ''} />
+          刷新
         </button>
       </div>
 
@@ -340,7 +463,7 @@ export default function CampaignDetail() {
               <StatusBadge status={campaign?.status || 'unknown'} />
             </div>
             <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {campaignLoading ? '加载中...' : campaignMockMode ? '暂无数据（Mock模式）' : '活动详情'}
+              {campaignLoading ? '加载中...' : campaignMockMode ? '未读取到活动详情' : '活动详情'}
             </div>
           </div>
 
@@ -369,16 +492,40 @@ export default function CampaignDetail() {
         <div className="space-y-4">
           {campaignMockMode ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-400">
-              暂无数据（Mock模式）
+              未读取到活动详情，请确认该活动已同步或稍后重试。
             </div>
           ) : null}
-          <CampaignSettingsForm campaign={campaign} />
+          <CampaignSettingsForm
+            campaign={campaign}
+            budgetValue={budgetValue}
+            saving={budgetSaving}
+            feedbackMessage={budgetFeedbackMessage}
+            feedbackResult={budgetFeedbackResult}
+            onBudgetChange={setBudgetValue}
+            onSave={handleBudgetSave}
+          />
         </div>
       ) : (
         <div className="space-y-4">
+          {activeTab === 'ad_groups' ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">广告组状态</span>
+              <select
+                value={adGroupStatusFilter}
+                onChange={(event) => setAdGroupStatusFilter(event.target.value as StatusFilterValue)}
+                className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100"
+              >
+                <option value="all">全部状态</option>
+                <option value="enabled">启用</option>
+                <option value="paused">暂停</option>
+                <option value="archived">已归档</option>
+              </select>
+            </div>
+          ) : null}
+
           {activeListState?.mockMode ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-400">
-              暂无数据（Mock模式）
+              接口暂未返回数据，请确认筛选条件或稍后重试。
             </div>
           ) : null}
 
@@ -394,15 +541,15 @@ export default function CampaignDetail() {
                       ? negativeTargetingColumns
                       : logColumns
             }
-            data={activeListState?.data ?? []}
+            data={filteredActiveData}
             rowKey="id"
             loading={activeListState?.loading ?? false}
             summaryRow={activeListState?.summaryRow}
-            emptyText={activeListState?.mockMode ? '暂无数据（Mock模式）' : '暂无数据'}
+            emptyText={activeListState?.mockMode ? '接口暂未返回数据' : '暂无数据'}
             pagination={{
               current: page,
               pageSize,
-              total: activeListState?.total ?? 0,
+              total: activeTab === 'ad_groups' && adGroupStatusFilter !== 'all' ? filteredActiveData.length : (activeListState?.total ?? 0),
               onChange: (nextPage) => setPage(nextPage),
             }}
           />

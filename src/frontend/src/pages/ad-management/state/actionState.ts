@@ -9,6 +9,7 @@ export interface AdsActionState {
   targetLabel: string
   targetType: AdsActionTargetType | null
   targetIds: string[]
+  targetContext: Record<string, unknown>
   level: AdsActionLevel | null
   dirty: boolean
   submitting: boolean
@@ -27,6 +28,7 @@ export function createDefaultActionState(): AdsActionState {
     targetLabel: '-',
     targetType: null,
     targetIds: [],
+    targetContext: {},
     level: null,
     dirty: false,
     submitting: false,

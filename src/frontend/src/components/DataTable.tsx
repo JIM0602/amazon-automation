@@ -3,6 +3,11 @@ import { ArrowUp, ArrowDown } from 'lucide-react';
 import type { Column, PaginationConfig, SortState, SortOrder } from '../types/table';
 import { Pagination } from './Pagination';
 
+export interface DataTableSelection {
+  selectedKeys: Set<string>
+  onSelectionChange: (keys: Set<string>) => void
+}
+
 export interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
@@ -15,6 +20,7 @@ export interface DataTableProps<T> {
   emptyText?: string;
   className?: string;
   stickyHeaderOffset?: number;
+  selection?: DataTableSelection;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -29,6 +35,7 @@ export function DataTable<T extends Record<string, unknown>>({
   emptyText = '暂无数据',
   className = '',
   stickyHeaderOffset = 0,
+  selection,
 }: DataTableProps<T>) {
   const [sortState, setSortState] = useState<SortState>({ key: '', order: null });
 
@@ -54,6 +61,30 @@ export function DataTable<T extends Record<string, unknown>>({
     return `row-${index}`;
   };
 
+  const allVisibleKeys = React.useMemo(() => data.map((row, i) => getRowKey(row, i)), [data, rowKey]);
+  const allSelected = selection && allVisibleKeys.length > 0 && allVisibleKeys.every((k) => selection.selectedKeys.has(k));
+  const someSelected = selection && allVisibleKeys.some((k) => selection.selectedKeys.has(k));
+
+  const handleSelectAll = () => {
+    if (!selection) return;
+    if (allSelected) {
+      selection.onSelectionChange(new Set());
+    } else {
+      selection.onSelectionChange(new Set(allVisibleKeys));
+    }
+  };
+
+  const handleSelectRow = (key: string) => {
+    if (!selection) return;
+    const next = new Set(selection.selectedKeys);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    selection.onSelectionChange(next);
+  };
+
   const sortedData = React.useMemo(() => {
     if (!sortState.key || !sortState.order) return data;
     return [...data].sort((a, b) => {
@@ -77,6 +108,17 @@ export function DataTable<T extends Record<string, unknown>>({
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="sticky z-10 bg-gray-50 dark:bg-gray-800" style={{ top: stickyHeaderOffset }}>
             <tr>
+              {selection && (
+                <th className="w-10 px-3 py-3 bg-gray-50 dark:bg-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={!!allSelected}
+                    ref={(el) => { if (el) el.indeterminate = !allSelected && !!someSelected; }}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900"
+                  />
+                </th>
+              )}
               {columns.map((col) => {
                 const isSorted = sortState.key === col.key && sortState.order;
                 return (
@@ -109,6 +151,7 @@ export function DataTable<T extends Record<string, unknown>>({
           <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-800">
             {summaryRow && !loading && data.length > 0 && (
               <tr className="sticky z-[9] bg-gray-100 dark:bg-gray-800 font-bold" style={{ top: stickyHeaderOffset + 41 }}>
+                {selection && <td className="w-10 px-3 py-4" />}
                 {columns.map((col, idx) => (
                   <td
                     key={`summary-${col.key}`}
@@ -133,33 +176,47 @@ export function DataTable<T extends Record<string, unknown>>({
               ))
             ) : sortedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={columns.length + (selection ? 1 : 0)} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                   {emptyText}
                 </td>
               </tr>
             ) : (
-              sortedData.map((row, index) => (
-                <tr
-                  key={getRowKey(row, index)}
-                  className={`
-                    ${onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : ''}
-                    transition-colors
-                  `}
-                  onClick={() => onRowClick && onRowClick(row, index)}
-                >
-                  {columns.map((col) => (
-                    <td
-                      key={col.key}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
-                      style={{ textAlign: col.align || 'left' }}
-                    >
-                      {col.render
-                        ? col.render(row[col.key as keyof T], row, index)
-                        : (row[col.key as keyof T] as React.ReactNode)}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              sortedData.map((row, index) => {
+                const rk = getRowKey(row, index);
+                return (
+                  <tr
+                    key={rk}
+                    className={`
+                      ${onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : ''}
+                      ${selection && selection.selectedKeys.has(rk) ? 'bg-blue-50 dark:bg-blue-950/30' : ''}
+                      transition-colors
+                    `}
+                    onClick={() => onRowClick && onRowClick(row, index)}
+                  >
+                    {selection && (
+                      <td className="w-10 px-3 py-4" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selection.selectedKeys.has(rk)}
+                          onChange={() => handleSelectRow(rk)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900"
+                        />
+                      </td>
+                    )}
+                    {columns.map((col) => (
+                      <td
+                        key={col.key}
+                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                        style={{ textAlign: col.align || 'left' }}
+                      >
+                        {col.render
+                          ? col.render(row[col.key as keyof T], row, index)
+                          : (row[col.key as keyof T] as React.ReactNode)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

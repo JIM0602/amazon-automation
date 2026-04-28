@@ -33,6 +33,8 @@ export default function AdManagement() {
   const [query, setQuery] = useState<AdsQueryState>(() => parseInitialQuery(searchParams))
   const [actionState, setActionState] = useState(() => createDefaultActionState())
   const [reloadKey, setReloadKey] = useState(0)
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
+  const [pendingActionPayload, setPendingActionPayload] = useState<ChangeStatusFormValue | null>(null)
   const [portfolioTree, setPortfolioTree] = useState<PortfolioNode[]>([])
   const [portfolioLoading, setPortfolioLoading] = useState(true)
 
@@ -47,6 +49,7 @@ export default function AdManagement() {
       targetLabel: currentActionTargetLabel,
       targetType: action.targetType,
       targetIds: [String(row.id ?? '')],
+      targetContext: row,
       level: action.level,
       dirty: false,
       submitting: false,
@@ -60,6 +63,7 @@ export default function AdManagement() {
   }
 
   const handleActionClose = () => {
+    setPendingActionPayload(null)
     setActionState((current) => ({
       ...createDefaultActionState(),
       result: current.result,
@@ -71,6 +75,7 @@ export default function AdManagement() {
   }
 
   const handleActionCancel = () => {
+    setPendingActionPayload(null)
     setActionState((current) => ({
       ...current,
       submitting: false,
@@ -98,7 +103,7 @@ export default function AdManagement() {
         action_key: actionState.actionKey,
         target_type: actionState.targetType,
         target_ids: actionState.targetIds,
-        payload: value,
+        payload: buildActionPayload(value),
       })
       if (response.data?.committed) {
         setActionState((current) => ({
@@ -113,6 +118,7 @@ export default function AdManagement() {
         }))
         if (response.data?.should_reload) {
           setReloadKey((value) => value + 1)
+          setSelectedKeys(new Set())
         }
         if (response.data?.is_real_write === false || response.data?.is_real_write === true) {
           handleActionClose()
@@ -142,7 +148,7 @@ export default function AdManagement() {
     }
   }
 
-  const actionFeedbackLabel = actionState.isRealWrite === null ? '' : actionState.isRealWrite ? '真实写入' : 'Mock 提交'
+  const actionFeedbackLabel = actionState.isRealWrite === null ? '' : actionState.isRealWrite ? '真实写入' : 'Dry-run / 本地记录'
   const actionReloadLabel = actionState.committed === null ? '' : actionState.shouldReload ? '需要刷新' : '无需刷新'
 
   const activeActionName = actionState.actionKey ?? ''
@@ -150,6 +156,39 @@ export default function AdManagement() {
   const currentActionLabel = activeActionName
     ? ADS_ACTION_REGISTRY[activeActionName]?.label ?? actionState.actionName ?? activeActionName
     : ''
+
+  const buildActionPayload = (
+    value: EditBudgetFormValue | ChangeStatusFormValue | EditBidFormValue | NegativeKeywordFormValue,
+  ) => {
+    const context = actionState.targetContext || {}
+    const payload: Record<string, unknown> = { ...value }
+
+    if ('budgetValue' in value) {
+      payload.daily_budget = Number(value.budgetValue)
+    }
+
+    if ('bidValue' in value) {
+      payload.bid = Number(value.bidValue)
+    }
+
+    if ('keywordText' in value) {
+      payload.keyword = value.keywordText
+      payload.keyword_text = value.keywordText
+      payload.match_type = value.matchType
+      payload.campaign_id = context.campaign_id ?? context.campaignId
+      payload.ad_group_id = context.ad_group_id ?? context.adGroupId
+    }
+
+    if (actionState.targetType === 'campaign') {
+      payload.campaign_id = context.campaign_id ?? actionState.targetIds[0]
+    }
+    if (actionState.targetType === 'ad_group') {
+      payload.ad_group_id = context.ad_group_id ?? actionState.targetIds[0]
+      payload.campaign_id = context.campaign_id ?? payload.campaign_id
+    }
+
+    return payload
+  }
 
   useEffect(() => {
     let mounted = true
@@ -258,6 +297,42 @@ export default function AdManagement() {
     }))
   }
 
+  const handleBatchAction = (actionKey: string) => {
+    if (actionKey === 'clear') {
+      setSelectedKeys(new Set())
+      return
+    }
+
+    const ids = Array.from(selectedKeys)
+    if (ids.length === 0) return
+
+    const batchStatusMap: Record<string, ChangeStatusFormValue['nextStatus']> = {
+      change_status_enabled: 'enabled',
+      change_status_paused: 'paused',
+    }
+
+    const nextStatus = batchStatusMap[actionKey]
+    setPendingActionPayload(nextStatus ? { nextStatus } : null)
+
+    setActionState({
+      actionName: actionKey === 'change_status_enabled' ? '批量启用' : actionKey === 'change_status_paused' ? '批量暂停' : '批量修改预算',
+      actionKey: actionKey === 'change_status_enabled' || actionKey === 'change_status_paused' ? 'change_status' : 'edit_budget',
+      targetLabel: `已选 ${ids.length} 项`,
+      targetType: query.activeTab,
+      targetIds: ids,
+      targetContext: {},
+      level: null,
+      dirty: false,
+      submitting: false,
+      confirmOpen: Boolean(nextStatus),
+      committed: null,
+      shouldReload: false,
+      isRealWrite: null,
+      message: null,
+      result: 'idle',
+    })
+  }
+
   return (
     <div className="mx-auto max-w-[1600px] p-6 text-gray-900 dark:text-gray-100">
       <div className="mb-6 flex flex-col gap-2">
@@ -305,6 +380,7 @@ export default function AdManagement() {
                 onSortChange={(key, order) => updateQuery((current) => ({ ...current, sortBy: key, sortOrder: order }))}
                 onDrillToCampaign={handleDrillToCampaign}
                 onActionTrigger={handleActionTrigger}
+                selection={{ selectedKeys, onSelectionChange: setSelectedKeys }}
               />
 
               <div className="mt-4">
@@ -335,11 +411,10 @@ export default function AdManagement() {
                   </section>
                 ) : null}
                 <BatchActionPanel
-                  visible={actionState.targetIds.length > 1}
-                  title="批量操作"
-                  targetLabel={currentActionTargetLabel}
-                  level={actionState.level}
-                  targetCount={actionState.targetIds.length}
+                  visible={selectedKeys.size > 0}
+                  targetCount={selectedKeys.size}
+                  activeTab={query.activeTab}
+                  onBatchAction={handleBatchAction}
                 />
                 <EditBudgetModal
                   open={activeActionName === 'edit_budget'}
@@ -383,6 +458,12 @@ export default function AdManagement() {
                   targetLabel={currentActionTargetLabel}
                   level={actionState.level}
                   targetCount={actionState.targetIds.length}
+                  submitting={actionState.submitting}
+                  onCancel={handleActionCancel}
+                  onConfirm={() => {
+                    if (!pendingActionPayload) return
+                    return handleActionSubmit(pendingActionPayload)
+                  }}
                 />
               </div>
             </div>

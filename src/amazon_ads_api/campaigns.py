@@ -37,6 +37,8 @@ class CampaignsApi:
     """Sponsored Products campaigns API。"""
 
     _CAMPAIGNS_PATH = "/sp/campaigns"
+    _CAMPAIGNS_LIST_PATH = "/sp/campaigns/list"
+    _CAMPAIGNS_V3_CONTENT_TYPE = "application/vnd.spcampaign.v3+json"
 
     def __init__(self, client: AmazonAdsClient):
         self.client = client
@@ -61,12 +63,15 @@ class CampaignsApi:
                 campaigns = [c for c in campaigns if c.get("state") == state_filter]
             return campaigns
 
-        params = {}
+        body: dict[str, Any] = {}
         if state_filter:
-            params["stateFilter"] = state_filter
-        response = self.client.get(self._CAMPAIGNS_PATH, params=params or None)
-        if isinstance(response, list):
-            return cast(list[dict[str, Any]], response)
+            body["stateFilter"] = {"include": [state_filter.upper()]}
+        response = self.client.post(
+            self._CAMPAIGNS_LIST_PATH,
+            json_body=body,
+            content_type=self._CAMPAIGNS_V3_CONTENT_TYPE,
+            accept=self._CAMPAIGNS_V3_CONTENT_TYPE,
+        )
         campaigns = response.get("campaigns", response.get("items", []))
         return cast(list[dict[str, Any]], campaigns)
 

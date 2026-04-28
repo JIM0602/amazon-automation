@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ActionSurface } from './ActionSurface'
 
 export interface ChangeStatusFormValue {
-  nextStatus: 'enabled' | 'paused' | 'archived'
+  nextStatus: 'enabled' | 'paused'
 }
 
 interface ChangeStatusModalProps {
@@ -24,7 +24,7 @@ export function ChangeStatusModal({
   onCancel,
   onSubmit,
 }: ChangeStatusModalProps) {
-  const [nextStatus, setNextStatus] = useState<'enabled' | 'paused' | 'archived'>('paused')
+  const [nextStatus, setNextStatus] = useState<'enabled' | 'paused'>('paused')
 
   useEffect(() => {
     if (open) {
@@ -49,12 +49,11 @@ export function ChangeStatusModal({
           <select
             value={nextStatus}
             disabled={submitting}
-            onChange={(event) => setNextStatus(event.target.value as 'enabled' | 'paused' | 'archived')}
+            onChange={(event) => setNextStatus(event.target.value as 'enabled' | 'paused')}
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           >
             <option value="enabled">启用</option>
             <option value="paused">暂停</option>
-            <option value="archived">归档</option>
           </select>
         </label>
 

@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import type { TabProps } from './TabContent';
 import { DataTable } from '../../components/DataTable';
 import type { Column } from '../../types/table';
 import api from '../../api/client';
-
 interface PortfolioData {
   id: string;
   name: string;
@@ -145,7 +144,7 @@ export default function PortfolioTab({ portfolioIds, page, pageSize, onPageChang
       title: '操作',
       render: () => (
         <button 
-          onClick={() => alert('Mock数据模式不可用')}
+          onClick={() => alert('请使用广告管理主表中的操作按钮')}
           className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
         >
           编辑

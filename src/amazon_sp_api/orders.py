@@ -200,9 +200,13 @@ class OrdersApi:
 
         # 从响应中提取聚合统计
         payload = response.get("payload", [])
-        total_orders = sum(int(item.get("unitCount", 0)) for item in payload)
+        total_orders = sum(int(item.get("orderCount") or item.get("unitCount") or 0) for item in payload)
+        total_units = sum(int(item.get("unitCount") or item.get("orderItemCount") or item.get("orderCount") or 0) for item in payload)
         total_revenue = sum(
-            float(item.get("orderItemCount", 0)) * float(item.get("averageSalesPerOrderItem", {}).get("amount", 0))
+            float(
+                (item.get("totalSales") or {}).get("amount")
+                or float(item.get("orderItemCount", 0)) * float((item.get("averageSalesPerOrderItem") or {}).get("amount", 0))
+            )
             for item in payload
         )
         avg_order_value = (total_revenue / total_orders) if total_orders > 0 else 0.0
@@ -214,6 +218,7 @@ class OrdersApi:
         )
         return {
             "total_orders": total_orders,
+            "total_units": total_units,
             "total_revenue": round(total_revenue, 2),
             "avg_order_value": round(avg_order_value, 2),
             "granularity": granularity,

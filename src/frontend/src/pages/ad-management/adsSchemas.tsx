@@ -52,8 +52,12 @@ const editBudgetAction = ADS_ACTION_REGISTRY.edit_budget
 const changeStatusAction = ADS_ACTION_REGISTRY.change_status
 const editBidAction = ADS_ACTION_REGISTRY.edit_bid
 const addNegativeKeywordAction = ADS_ACTION_REGISTRY.add_negative_keyword
+const changeAdGroupStatusAction: AdsActionConfig = {
+  ...changeStatusAction,
+  targetType: 'ad_group',
+}
 
-function renderActionLabel(action: typeof editBudgetAction, row: AdsTableRow, onActionTrigger: AdsDataPanelContext['onActionTrigger']) {
+function renderActionLabel(action: AdsActionConfig, row: AdsTableRow, onActionTrigger: AdsDataPanelContext['onActionTrigger']) {
   return (
     <button type="button" className="text-blue-500 hover:underline" onClick={() => onActionTrigger(action, row)}>
       {action.label}
@@ -192,6 +196,7 @@ export function createAdsSchemas(context: AdsDataPanelContext): Record<TabKey, A
         { key: 'campaign_name', title: '广告活动', render: (_, row) => String(row.campaign_name ?? '-') },
         { key: 'portfolio_name', title: '广告组合', render: (_, row) => String(row.portfolio_name ?? '-') },
         { key: 'default_bid', title: '默认竞价', render: (_, row) => formatCurrency(row.default_bid) },
+        { key: 'actions', title: '操作', render: (_, row) => renderActionLabel(changeAdGroupStatusAction, row, context.onActionTrigger) },
       ],
     },
     ad_product: {
@@ -237,6 +242,7 @@ export function createAdsSchemas(context: AdsDataPanelContext): Record<TabKey, A
         { key: 'suggested_bid', title: '建议竞价', render: (_, row) => formatCurrency(row.suggested_bid) },
         { key: 'source_bid', title: '源竞价', render: (_, row) => formatCurrency(row.source_bid) },
         { key: 'aba_rank', title: 'ABA排名', render: (_, row) => formatNumber(row.aba_rank) },
+        { key: 'actions', title: '操作', render: (_, row) => renderActionLabel(addNegativeKeywordAction, row, context.onActionTrigger) },
       ],
     },
     negative_targeting: {

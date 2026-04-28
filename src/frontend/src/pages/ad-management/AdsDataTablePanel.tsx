@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/client'
 import { DataTable } from '../../components/DataTable'
+import type { DataTableSelection } from '../../components/DataTable'
 import { createAdsSchemas, type AdsDataResponse } from './adsSchemas'
 import type { AdsQueryState, AdsTableRow } from './types'
 
@@ -12,6 +13,7 @@ interface AdsDataTablePanelProps {
   onSortChange: (key: string, order: 'asc' | 'desc' | null) => void
   onDrillToCampaign: (portfolioId: string) => void
   onActionTrigger: Parameters<typeof createAdsSchemas>[0]['onActionTrigger']
+  selection?: DataTableSelection
 }
 
 export default function AdsDataTablePanel({
@@ -21,6 +23,7 @@ export default function AdsDataTablePanel({
   onSortChange,
   onDrillToCampaign,
   onActionTrigger,
+  selection,
 }: AdsDataTablePanelProps) {
   const navigate = useNavigate()
   const schemas = useMemo(
@@ -82,6 +85,7 @@ export default function AdsDataTablePanel({
       summaryRow={summaryRow}
       emptyText={query.keyword || query.selectedPortfolioIds.length > 0 ? schema.emptyText : '暂无广告数据'}
       onSort={onSortChange}
+      selection={selection}
       pagination={{
         current: query.page,
         pageSize: query.pageSize,

@@ -167,6 +167,7 @@ class ReportsApi:
             self._REPORTS_PATH,
             json_body=body,
             content_type=V3_CONTENT_TYPE,
+            accept=V3_CONTENT_TYPE,
         )
 
     def get_report_status(self, report_id: str) -> dict[str, Any]:

@@ -9,8 +9,7 @@ Create Date: 2026-04-10
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
 from alembic import op
-from sqlalchemy import Boolean, Column, Integer, String, Text, text
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import Boolean, Column, Integer, JSON, String, Text, inspect, text
 
 
 # revision identifiers, used by Alembic.
@@ -39,6 +38,9 @@ INITIAL_AGENT_CONFIGS = [
 
 
 def upgrade() -> None:
+    if inspect(op.get_bind()).has_table("agent_configs"):
+        return
+
     op.create_table(
         "agent_configs",
         Column("agent_type", String(64), primary_key=True),

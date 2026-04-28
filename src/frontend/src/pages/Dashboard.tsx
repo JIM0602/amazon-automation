@@ -47,17 +47,19 @@ export interface SkuRankingItem {
   estimated_days: number;
 }
 
-type TimeRange = 'site_today' | 'last_24h';
+type TimeRange = 'site_today' | 'last_24h' | 'this_month';
 
-const METRIC_TIME_RANGE_LABELS: Record<TimeRange, string> = {
+const METRIC_TIME_RANGE_LABELS: Record<string, string> = {
   site_today: '站点今天',
   last_24h: '最近24小时',
 };
 
+METRIC_TIME_RANGE_LABELS.this_month = '本月';
+
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<TimeRange>('site_today');
+  const [timeRange, setTimeRange] = useState<TimeRange>('this_month');
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
   const [skuRanking, setSkuRanking] = useState<SkuRankingItem[]>([]);
@@ -69,7 +71,7 @@ export default function Dashboard() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState('sales');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [skuTimeRange, setSkuTimeRange] = useState('site_today');
+  const [skuTimeRange, setSkuTimeRange] = useState('this_month');
   const [skuStartDate, setSkuStartDate] = useState('');
   const [skuEndDate, setSkuEndDate] = useState('');
 
@@ -221,11 +223,11 @@ export default function Dashboard() {
           {lastUpdated && (
             <div className="text-xs text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-3 py-1.5 rounded-full flex items-center shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] mr-2 animate-pulse"></span>
-              Mock数据 · 最后更新: {lastUpdated}
+              数据已更新: {lastUpdated}
             </div>
           )}
           <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10">
-            {(['site_today', 'last_24h'] as TimeRange[]).map((range) => (
+            {(['site_today', 'last_24h', 'this_month'] as TimeRange[]).map((range) => (
               <button
                 key={range}
                 onClick={() => handleMetricTimeRangeChange(range)}

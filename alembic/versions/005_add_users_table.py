@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 
 from alembic import op
 from passlib.hash import bcrypt
-from sqlalchemy import Boolean, Column, DateTime, String, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, Column, DateTime, String, inspect, text
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -28,17 +28,30 @@ def _now() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
+def _uuid_type():
+    if op.get_bind().dialect.name == "postgresql":
+        return postgresql.UUID(as_uuid=True)
+    return String(36)
+
+
+def _has_table(table_name: str) -> bool:
+    return inspect(op.get_bind()).has_table(table_name)
+
+
 def upgrade() -> None:
+    if _has_table("users"):
+        return
+
     op.create_table(
         "users",
-        Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
+        Column("id", _uuid_type(), primary_key=True, default=uuid.uuid4),
         Column("username", String(64), nullable=False, unique=True, index=True),
         Column("password_hash", String(256), nullable=False),
         Column("role", String(32), nullable=False, server_default="operator"),
         Column("display_name", String(128), nullable=True),
         Column("is_active", Boolean(), nullable=False, server_default=text("true")),
-        Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
-        Column("updated_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
+        Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")),
+        Column("updated_at", DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")),
     )
 
     conn = op.get_bind()

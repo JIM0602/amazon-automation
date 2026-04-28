@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import type { TabProps } from './TabContent';
 import { DataTable } from '../../components/DataTable';
 import type { Column } from '../../types/table';
@@ -135,7 +135,7 @@ export default function NegativeTargetingTab({ portfolioIds, adType, timeRange, 
       title: '操作',
       render: () => (
         <button 
-          onClick={() => alert('Mock数据模式，操作不可用')}
+          onClick={() => alert('请使用广告管理主表中的操作按钮')}
           className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
         >
           删除

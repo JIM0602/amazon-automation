@@ -106,25 +106,34 @@ class AmazonAdsClient:
         path: str,
         json_body: Optional[dict[str, Any]] = None,
         content_type: str = "application/json",
+        accept: str | None = None,
     ) -> dict[str, Any]:
-        if not self._is_report_creation_path(path):
-            raise AmazonAdsClientError("Only report creation POST requests are allowed")
+        if not self._is_allowed_post_path(path):
+            raise AmazonAdsClientError("Only report creation and read-only list POST requests are allowed")
 
         if self.dry_run:
             logger.debug("AmazonAdsClient.post | dry_run=True path={}", path)
             return {"_mock": True, "path": path, "body": json_body or {}}
 
-        return self._make_request("POST", path, json_body=json_body, content_type=content_type)
+        return self._make_request("POST", path, json_body=json_body, content_type=content_type, accept=accept)
 
     def _is_report_creation_path(self, path: str) -> bool:
         return path.rstrip("/") in {"/reporting/reports", "/v2/reports", "/reports"} or "/reporting/reports" in path
+
+    def _is_allowed_post_path(self, path: str) -> bool:
+        return self._is_report_creation_path(path) or path.rstrip("/") in {
+            "/sp/campaigns/list",
+            "/sp/adGroups/list",
+            "/sp/targets/list",
+            "/sp/negativeTargets/list",
+        }
 
     def _make_request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         if method.upper() not in {"GET", "POST"}:
             raise AmazonAdsClientError(f"Only GET/POST requests are allowed, got {method}")
 
-        if method.upper() == "POST" and not self._is_report_creation_path(path):
-            raise AmazonAdsClientError("POST is only allowed for report creation requests")
+        if method.upper() == "POST" and not self._is_allowed_post_path(path):
+            raise AmazonAdsClientError("POST is only allowed for report creation and read-only list requests")
 
         if rate_limiter_available and get_rate_limiter is not None:
             try:
@@ -148,17 +157,19 @@ class AmazonAdsClient:
 
         # 使用调用者指定的 Content-Type（v3 报告 API 需要特殊头）
         content_type = kwargs.get("content_type", "application/json")
+        accept = kwargs.get("accept") or "application/json"
 
         headers = {
             "Amazon-Advertising-API-ClientId": self.client_id,
             "Amazon-Advertising-API-Scope": self.profile_id,
             "Authorization": f"Bearer {access_token}",
             "Content-Type": content_type,
-            "Accept": "application/json",
+            "Accept": accept,
         }
 
         try:
             import json
+            import urllib.error
             import urllib.parse
             import urllib.request
 
@@ -181,6 +192,10 @@ class AmazonAdsClient:
                 except Exception:
                     return {"raw": raw}
 
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            logger.error("AmazonAdsClient request failed | method={} path={} status={} body={}", method, path, exc.code, body)
+            raise AmazonAdsClientError(f"Request failed: HTTP {exc.code}: {body}") from exc
         except Exception as exc:
             logger.error("AmazonAdsClient request failed | method={} path={} error={}", method, path, exc)
             raise AmazonAdsClientError(f"Request failed: {exc}") from exc

@@ -323,7 +323,7 @@ export default function AdGroupDetail() {
               <StatusBadge status={adGroup?.status || 'unknown'} />
             </div>
             <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {adGroupLoading ? '加载中...' : adGroupMockMode ? '暂无数据（Mock模式）' : '广告组详情'}
+              {adGroupLoading ? '加载中...' : adGroupMockMode ? '未读取到广告组详情' : '广告组详情'}
             </div>
           </div>
 
@@ -358,7 +358,7 @@ export default function AdGroupDetail() {
         <div className="space-y-4">
           {adGroupMockMode ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-400">
-              暂无数据（Mock模式）
+              未读取到广告组详情，请确认该广告组已同步或稍后重试。
             </div>
           ) : null}
           <AdGroupSettingsForm adGroup={adGroup} />
@@ -367,7 +367,7 @@ export default function AdGroupDetail() {
         <div className="space-y-4">
           {activeListState?.mockMode ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-400">
-              暂无数据（Mock模式）
+              接口暂未返回数据，请确认筛选条件或稍后重试。
             </div>
           ) : null}
 
@@ -387,7 +387,7 @@ export default function AdGroupDetail() {
             rowKey="id"
             loading={activeListState?.loading ?? false}
             summaryRow={activeListState?.summaryRow}
-            emptyText={activeListState?.mockMode ? '暂无数据（Mock模式）' : '暂无数据'}
+            emptyText={activeListState?.mockMode ? '接口暂未返回数据' : '暂无数据'}
             pagination={{
               current: page,
               pageSize,

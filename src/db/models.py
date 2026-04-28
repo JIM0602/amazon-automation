@@ -30,7 +30,8 @@ from sqlalchemy import (
     Date,
     ForeignKey,
     JSON,
-    func,
+    UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
@@ -78,7 +79,7 @@ def _uuid_pk():
 
 def _now_utc():
     """Server-side default for created_at / updated_at columns."""
-    return func.now()
+    return text("CURRENT_TIMESTAMP")
 
 
 # ---------------------------------------------------------------------------
@@ -587,3 +588,217 @@ class AgentConfig(Base):
 
     def __repr__(self) -> str:
         return f"<AgentConfig agent_type={self.agent_type!r} display_name_cn={self.display_name_cn!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: sales, inventory and ads management tables
+# ---------------------------------------------------------------------------
+class Sku(Base):
+    """SKU dimension table for phase-1 dashboard aggregation."""
+
+    __tablename__ = "skus"
+
+    id = _uuid_pk()
+    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=True, index=True)
+    sku = Column(String(128), nullable=False, unique=True, index=True)
+    asin = Column(String(32), nullable=True, index=True)
+    marketplace = Column(String(32), nullable=False, default="US", index=True)
+    image_url = Column(Text, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=_now_utc(), onupdate=_now_utc(), nullable=False)
+
+
+class SalesDaily(Base):
+    """Daily sales fact table, grain: sku + date."""
+
+    __tablename__ = "sales_daily"
+    __table_args__ = (
+        UniqueConstraint("date", "sku", "marketplace", "snapshot_type", name="uq_sales_daily_date_sku_marketplace_snapshot"),
+    )
+
+    id = _uuid_pk()
+    date = Column(Date, nullable=False, index=True)
+    sku = Column(String(128), nullable=False, index=True)
+    asin = Column(String(32), nullable=True, index=True)
+    marketplace = Column(String(32), nullable=False, default="US", index=True)
+    sales_amount = Column(Float, nullable=False, default=0.0)
+    order_count = Column(Integer, nullable=False, default=0)
+    units_sold = Column(Integer, nullable=False, default=0)
+    currency = Column(String(8), nullable=False, default="USD")
+    source = Column(String(64), nullable=False, default="sp_api")
+    snapshot_type = Column(String(16), nullable=False, default="t0")
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+
+class InventoryDaily(Base):
+    """Daily inventory fact table, grain: sku + date."""
+
+    __tablename__ = "inventory_daily"
+    __table_args__ = (
+        UniqueConstraint("date", "sku", name="uq_inventory_daily_date_sku"),
+    )
+
+    id = _uuid_pk()
+    date = Column(Date, nullable=False, index=True)
+    sku = Column(String(128), nullable=False, index=True)
+    asin = Column(String(32), nullable=True, index=True)
+    fba_available = Column(Integer, nullable=False, default=0)
+    inbound_quantity = Column(Integer, nullable=False, default=0)
+    reserved_quantity = Column(Integer, nullable=False, default=0)
+    estimated_days = Column(Float, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+
+class AdsCampaign(Base):
+    """Amazon Ads campaign cache."""
+
+    __tablename__ = "ads_campaigns"
+
+    id = _uuid_pk()
+    campaign_id = Column(String(64), nullable=False, unique=True, index=True)
+    portfolio_id = Column(String(64), nullable=True, index=True)
+    campaign_name = Column(String(512), nullable=False)
+    ad_type = Column(String(32), nullable=False, default="SP", index=True)
+    state = Column(String(32), nullable=False, default="enabled", index=True)
+    serving_status = Column(String(64), nullable=True, index=True)
+    daily_budget = Column(Float, nullable=True)
+    budget_currency = Column(String(8), nullable=False, default="USD")
+    bidding_strategy = Column(String(128), nullable=True)
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+    raw_payload = Column(JSON, nullable=True)
+
+
+class AdsAdGroup(Base):
+    """Amazon Ads ad group cache."""
+
+    __tablename__ = "ads_ad_groups"
+
+    id = _uuid_pk()
+    ad_group_id = Column(String(64), nullable=False, unique=True, index=True)
+    campaign_id = Column(String(64), nullable=False, index=True)
+    group_name = Column(String(512), nullable=False)
+    state = Column(String(32), nullable=False, default="enabled", index=True)
+    default_bid = Column(Float, nullable=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+    raw_payload = Column(JSON, nullable=True)
+
+
+class AdsTargeting(Base):
+    """Amazon Ads keyword/product targeting cache."""
+
+    __tablename__ = "ads_targeting"
+
+    id = _uuid_pk()
+    targeting_id = Column(String(64), nullable=False, unique=True, index=True)
+    campaign_id = Column(String(64), nullable=False, index=True)
+    ad_group_id = Column(String(64), nullable=True, index=True)
+    keyword_text = Column(String(512), nullable=True, index=True)
+    match_type = Column(String(64), nullable=True)
+    state = Column(String(32), nullable=False, default="enabled", index=True)
+    bid = Column(Float, nullable=True)
+    suggested_bid = Column(Float, nullable=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+    raw_payload = Column(JSON, nullable=True)
+
+
+class AdsSearchTerm(Base):
+    """Amazon Ads search term report facts."""
+
+    __tablename__ = "ads_search_terms"
+
+    id = _uuid_pk()
+    date = Column(Date, nullable=False, index=True)
+    campaign_id = Column(String(64), nullable=False, index=True)
+    ad_group_id = Column(String(64), nullable=True, index=True)
+    search_term = Column(String(512), nullable=False, index=True)
+    targeting_keyword = Column(String(512), nullable=True)
+    match_type = Column(String(64), nullable=True)
+    impressions = Column(Integer, nullable=False, default=0)
+    clicks = Column(Integer, nullable=False, default=0)
+    cost = Column(Float, nullable=False, default=0.0)
+    ad_orders = Column(Integer, nullable=False, default=0)
+    ad_sales = Column(Float, nullable=False, default=0.0)
+    acos = Column(Float, nullable=False, default=0.0)
+    cvr = Column(Float, nullable=False, default=0.0)
+    suggested_bid = Column(Float, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+
+class AdsNegativeTargeting(Base):
+    """Amazon Ads negative targeting cache."""
+
+    __tablename__ = "ads_negative_targeting"
+
+    id = _uuid_pk()
+    negative_id = Column(String(64), nullable=True, unique=True, index=True)
+    campaign_id = Column(String(64), nullable=False, index=True)
+    ad_group_id = Column(String(64), nullable=True, index=True)
+    keyword_text = Column(String(512), nullable=False, index=True)
+    match_type = Column(String(64), nullable=True)
+    state = Column(String(32), nullable=False, default="enabled", index=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+    raw_payload = Column(JSON, nullable=True)
+
+
+class AdsMetricsDaily(Base):
+    """Daily ads performance facts, grain: campaign/ad_group/date."""
+
+    __tablename__ = "ads_metrics_daily"
+    __table_args__ = (
+        UniqueConstraint("date", "campaign_id", "ad_group_id", "sku", name="uq_ads_metrics_daily_grain"),
+    )
+
+    id = _uuid_pk()
+    date = Column(Date, nullable=False, index=True)
+    campaign_id = Column(String(64), nullable=False, index=True)
+    ad_group_id = Column(String(64), nullable=True, index=True)
+    portfolio_id = Column(String(64), nullable=True, index=True)
+    sku = Column(String(128), nullable=True, index=True)
+    impressions = Column(Integer, nullable=False, default=0)
+    clicks = Column(Integer, nullable=False, default=0)
+    ctr = Column(Float, nullable=False, default=0.0)
+    cost = Column(Float, nullable=False, default=0.0)
+    cpc = Column(Float, nullable=False, default=0.0)
+    ad_orders = Column(Integer, nullable=False, default=0)
+    ad_units = Column(Integer, nullable=False, default=0)
+    ad_sales = Column(Float, nullable=False, default=0.0)
+    acos = Column(Float, nullable=False, default=0.0)
+    tacos = Column(Float, nullable=False, default=0.0)
+    cvr = Column(Float, nullable=False, default=0.0)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+
+class AdsActionLog(Base):
+    """Audit log for every Amazon Ads write attempt."""
+
+    __tablename__ = "ads_action_logs"
+
+    id = _uuid_pk()
+    action_key = Column(String(128), nullable=False, index=True)
+    target_type = Column(String(64), nullable=False, index=True)
+    target_id = Column(String(128), nullable=False, index=True)
+    operator_username = Column(String(128), nullable=False, index=True)
+    request_payload = Column(JSON, nullable=True)
+    response_payload = Column(JSON, nullable=True)
+    success = Column(Boolean, nullable=False, default=False, index=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+
+
+class SyncJob(Base):
+    """Execution log for data sync jobs."""
+
+    __tablename__ = "sync_jobs"
+
+    id = _uuid_pk()
+    job_name = Column(String(128), nullable=False, index=True)
+    job_type = Column(String(64), nullable=False, index=True)
+    started_at = Column(DateTime(timezone=True), server_default=_now_utc(), nullable=False)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(32), nullable=False, default="running", index=True)
+    records_count = Column(Integer, nullable=False, default=0)
+    error_message = Column(Text, nullable=True)
+    extra_payload = Column(JSON, nullable=True)

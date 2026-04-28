@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { TabProps } from './TabContent';
 import { DataTable } from '../../components/DataTable';
@@ -141,7 +141,7 @@ export default function CampaignTab({ portfolioIds, adType, page, pageSize, onPa
       render: (_, row) => (
         <ToggleSwitch 
           checked={row.status === 'enabled'} 
-          onChange={() => alert('Mock数据模式不可用')} 
+          onChange={() => alert('请使用广告管理主表中的操作按钮')}
         />
       )
     },
@@ -240,7 +240,6 @@ export default function CampaignTab({ portfolioIds, adType, page, pageSize, onPa
       )
     }
   ];
-
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <DataTable

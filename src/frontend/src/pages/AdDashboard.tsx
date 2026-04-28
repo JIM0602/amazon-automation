@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import {
   DollarSign,
@@ -59,7 +59,7 @@ export interface CampaignRankingItem {
   tacos: number;
 }
 
-type TimeRangeCard = 'site_today' | 'last_24h';
+type TimeRangeCard = 'site_today' | 'last_24h' | 'this_month';
 type TimeRangeChart = 'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year' | 'custom';
 type TimeRangeRanking = 'site_today' | 'last_24h' | 'this_week' | 'this_month' | 'this_year' | 'custom';
 type MetricKey = 'ad_spend' | 'ad_sales' | 'acos' | 'clicks' | 'impressions' | 'ctr' | 'cvr' | 'cpc' | 'ad_units' | 'ad_orders' | 'tacos';
@@ -104,14 +104,20 @@ const CHART_TIME_RANGES: Record<TimeRangeChart, string> = {
 
 const MAX_METRICS = 6;
 
+function cardTimeLabel(range: TimeRangeCard) {
+  if (range === 'site_today') return '站点今天';
+  if (range === 'last_24h') return '最近24小时';
+  return '本月';
+}
+
 export default function AdDashboard() {
   // Metrics Cards State
   const [metrics, setMetrics] = useState<AdDashboardMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
-  const [cardTime, setCardTime] = useState<TimeRangeCard>('site_today');
+  const [cardTime, setCardTime] = useState<TimeRangeCard>('this_month');
 
   // Trend Chart State
-  const [chartTime, setChartTime] = useState<TimeRangeChart>('this_week');
+  const [chartTime, setChartTime] = useState<TimeRangeChart>('this_month');
   const [chartStartDate, setChartStartDate] = useState<string>('');
   const [chartEndDate, setChartEndDate] = useState<string>('');
   const [chartMetrics, setChartMetrics] = useState<Set<MetricKey>>(new Set(['ad_spend', 'ad_sales', 'acos']));
@@ -123,7 +129,7 @@ export default function AdDashboard() {
   // Campaign Ranking State
   const [campaigns, setCampaigns] = useState<CampaignRankingItem[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
-  const [campaignTimeRange, setCampaignTimeRange] = useState<TimeRangeRanking>('site_today');
+  const [campaignTimeRange, setCampaignTimeRange] = useState<TimeRangeRanking>('this_month');
   const [campaignStartDate, setCampaignStartDate] = useState('');
   const [campaignEndDate, setCampaignEndDate] = useState('');
   const [campaignPage, setCampaignPage] = useState(1);
@@ -177,9 +183,10 @@ export default function AdDashboard() {
           params.end_date = chartEndDate;
         }
         const res = await api.get('/ads/dashboard/trend', { params });
-        if (mounted && res.data && Array.isArray(res.data.data)) {
+        const trendRows = Array.isArray(res.data) ? res.data : res.data?.data;
+        if (mounted && Array.isArray(trendRows)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mappedData = res.data.data.map((item: any) => {
+          const mappedData = trendRows.map((item: any) => {
             const row: any = { ...item };
             ['acos', 'ctr', 'cvr', 'tacos'].forEach(k => {
               if (row[k] !== undefined) row[k] = row[k] * 100;
@@ -284,12 +291,8 @@ export default function AdDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">广告数据大盘</h1>
         <div className="flex flex-wrap items-center gap-4">
-          <div className="text-xs text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/20 px-3 py-1.5 rounded-full flex items-center shadow-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] mr-2 animate-pulse"></span>
-            Mock数据
-          </div>
           <div className="flex bg-gray-100 dark:bg-black/40 rounded-lg p-1 border border-gray-200 dark:border-white/10">
-            {(['site_today', 'last_24h'] as TimeRangeCard[]).map(range => (
+            {(['site_today', 'last_24h', 'this_month'] as TimeRangeCard[]).map(range => (
               <button
                 key={range}
                 onClick={() => setCardTime(range)}
@@ -299,7 +302,7 @@ export default function AdDashboard() {
                     : 'text-gray-500 hover:text-gray-900 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5'
                 }`}
               >
-                {range === 'site_today' ? '站点今天' : '最近24小时'}
+                {cardTimeLabel(range)}
               </button>
             ))}
           </div>

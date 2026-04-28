@@ -234,6 +234,12 @@ app.include_router(ads_router)
 from src.api.ads_oauth import router as ads_oauth_router  # noqa: E402
 app.include_router(ads_oauth_router)
 
+# --------------------------------------------------------------------------- #
+#  第一阶段手动同步入口（Sales / Amazon Ads）
+# --------------------------------------------------------------------------- #
+from src.api.sync import router as sync_router  # noqa: E402
+app.include_router(sync_router)
+
 
 # --------------------------------------------------------------------------- #
 #  调度器 API
