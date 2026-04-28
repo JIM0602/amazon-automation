@@ -66,75 +66,72 @@ function renderActionLabel(action: AdsActionConfig, row: AdsTableRow, onActionTr
   )
 }
 
-function buildCampaignParams(query: AdsQueryState) {
+function buildCommonParams(query: AdsQueryState) {
   return {
     page: query.page,
     page_size: query.pageSize,
     ad_type: query.adType,
     service_status: query.serviceStatus === 'all' ? undefined : query.serviceStatus,
+    campaign_id: query.campaignId || undefined,
+    ad_group_id: query.adGroupId || undefined,
     portfolio_id: query.selectedPortfolioIds[0] || undefined,
+    keyword: query.keyword || undefined,
+    search_field: query.searchField,
+    metric_preset: query.metricPreset || undefined,
+    impressions_min: query.advanced.impressionsMin || undefined,
+    impressions_max: query.advanced.impressionsMax || undefined,
+    clicks_min: query.advanced.clicksMin || undefined,
+    clicks_max: query.advanced.clicksMax || undefined,
+    spend_min: query.advanced.spendMin || undefined,
+    spend_max: query.advanced.spendMax || undefined,
+    orders_min: query.advanced.ordersMin || undefined,
+    orders_max: query.advanced.ordersMax || undefined,
+    acos_min: query.advanced.acosMin ? Number(query.advanced.acosMin) / 100 : undefined,
+    acos_max: query.advanced.acosMax ? Number(query.advanced.acosMax) / 100 : undefined,
     sort_by: query.sortBy || undefined,
     sort_order: query.sortOrder || undefined,
+  }
+}
+
+function buildCampaignParams(query: AdsQueryState) {
+  return {
+    ...buildCommonParams(query),
   }
 }
 
 function buildAdGroupParams(query: AdsQueryState) {
   return {
-    page: query.page,
-    page_size: query.pageSize,
-    portfolio_id: query.selectedPortfolioIds[0] || undefined,
-    sort_by: query.sortBy || undefined,
-    sort_order: query.sortOrder || undefined,
+    ...buildCommonParams(query),
   }
 }
 
 function buildAdProductParams(query: AdsQueryState) {
   return {
-    page: query.page,
-    page_size: query.pageSize,
-    ad_type: query.adType,
-    sort_by: query.sortBy || undefined,
-    sort_order: query.sortOrder || undefined,
+    ...buildCommonParams(query),
   }
 }
 
 function buildTargetingParams(query: AdsQueryState) {
   return {
-    page: query.page,
-    page_size: query.pageSize,
-    keyword: query.keyword || undefined,
-    sort_by: query.sortBy || undefined,
-    sort_order: query.sortOrder || undefined,
+    ...buildCommonParams(query),
   }
 }
 
 function buildSearchTermParams(query: AdsQueryState) {
   return {
-    page: query.page,
-    page_size: query.pageSize,
-    keyword: query.keyword || undefined,
-    sort_by: query.sortBy || undefined,
-    sort_order: query.sortOrder || undefined,
+    ...buildCommonParams(query),
   }
 }
 
 function buildNegativeTargetingParams(query: AdsQueryState) {
   return {
-    page: query.page,
-    page_size: query.pageSize,
-    keyword: query.keyword || undefined,
-    sort_by: query.sortBy || undefined,
-    sort_order: query.sortOrder || undefined,
+    ...buildCommonParams(query),
   }
 }
 
 function buildAdLogParams(query: AdsQueryState) {
   return {
-    page: query.page,
-    page_size: query.pageSize,
-    portfolio_id: query.selectedPortfolioIds[0] || undefined,
-    sort_by: query.sortBy || undefined,
-    sort_order: query.sortOrder || undefined,
+    ...buildCommonParams(query),
   }
 }
 
@@ -155,6 +152,7 @@ export function createAdsSchemas(context: AdsDataPanelContext): Record<TabKey, A
         page: query.page,
         page_size: query.pageSize,
         portfolio_ids: query.selectedPortfolioIds.length > 0 ? query.selectedPortfolioIds.join(',') : undefined,
+        keyword: query.keyword || undefined,
       }),
       columns: [
         { key: 'name', title: '广告组合', render: (_, row) => <button type="button" className="font-medium text-blue-500 hover:underline" onClick={() => context.onDrillToCampaign(String(row.id ?? ''))}>{String(row.name ?? '-')}</button> },
@@ -257,6 +255,21 @@ export function createAdsSchemas(context: AdsDataPanelContext): Record<TabKey, A
         { key: 'group_name', title: '广告组', render: (_, row) => String(row.group_name ?? row.ad_group_name ?? '-') },
         { key: 'campaign_name', title: '广告活动', render: (_, row) => String(row.campaign_name ?? '-') },
         { key: 'actions', title: '操作', render: (_, row) => renderActionLabel(addNegativeKeywordAction, row, context.onActionTrigger) },
+      ],
+    },
+    ad_placement: {
+      endpoint: '/ads/placements',
+      emptyText: '广告位数据将在后续接入 Amazon Ads placement 报告后显示',
+      getRowKey: (row) => String(row.id ?? ''),
+      buildParams: (query) => buildCommonParams(query),
+      columns: [
+        { key: 'placement', title: '广告位', render: (_, row) => String(row.placement ?? '-') },
+        { key: 'campaign_name', title: '广告活动', render: (_, row) => String(row.campaign_name ?? '-') },
+        { key: 'impressions', title: '广告曝光量', render: (_, row) => formatNumber(row.impressions) },
+        { key: 'clicks', title: '广告点击量', render: (_, row) => formatNumber(row.clicks) },
+        { key: 'ad_spend', title: '广告花费', render: (_, row) => formatCurrency(row.ad_spend) },
+        { key: 'ad_orders', title: '广告订单量', render: (_, row) => formatNumber(row.ad_orders) },
+        { key: 'acos', title: 'ACoS', render: (_, row) => formatPercent(row.acos) },
       ],
     },
     ad_log: {

@@ -163,6 +163,19 @@ async def ads_campaigns(
     portfolio_id: Optional[str] = Query(default=None, description="Filter by portfolio ID"),
     ad_type: Optional[str] = Query(default=None, description="Filter by ad type: SP | SB | SD | ST"),
     service_status: Optional[str] = Query(default=None, description="Filter by service status"),
+    keyword: Optional[str] = Query(default=None, description="Search keyword"),
+    campaign_id: Optional[str] = Query(default=None, description="Campaign id/name filter"),
+    metric_preset: Optional[str] = Query(default=None, description="Metric shortcut filter"),
+    impressions_min: Optional[float] = Query(default=None),
+    impressions_max: Optional[float] = Query(default=None),
+    clicks_min: Optional[float] = Query(default=None),
+    clicks_max: Optional[float] = Query(default=None),
+    spend_min: Optional[float] = Query(default=None),
+    spend_max: Optional[float] = Query(default=None),
+    orders_min: Optional[float] = Query(default=None),
+    orders_max: Optional[float] = Query(default=None),
+    acos_min: Optional[float] = Query(default=None),
+    acos_max: Optional[float] = Query(default=None),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -176,13 +189,36 @@ async def ads_campaigns(
 
     Response: {items, total_count, summary_row}
     """
-    return ads_read_service.get_campaigns(db, portfolio_id=portfolio_id, ad_type=ad_type, service_status=service_status, page=page, page_size=page_size)
+    return ads_read_service.get_campaigns(
+        db,
+        portfolio_id=portfolio_id,
+        ad_type=ad_type,
+        service_status=service_status,
+        keyword=keyword,
+        campaign_id=campaign_id,
+        metric_preset=metric_preset,
+        impressions_min=impressions_min,
+        impressions_max=impressions_max,
+        clicks_min=clicks_min,
+        clicks_max=clicks_max,
+        spend_min=spend_min,
+        spend_max=spend_max,
+        orders_min=orders_min,
+        orders_max=orders_max,
+        acos_min=acos_min,
+        acos_max=acos_max,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/ad_groups")
 async def ads_ad_groups(
     campaign_id: Optional[str] = Query(default=None, description="Filter by campaign ID"),
     portfolio_id: Optional[str] = Query(default=None, description="Filter by portfolio ID"),
+    keyword: Optional[str] = Query(default=None, description="Search keyword"),
+    service_status: Optional[str] = Query(default=None, description="Filter by service status"),
+    metric_preset: Optional[str] = Query(default=None, description="Metric shortcut filter"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -195,7 +231,7 @@ async def ads_ad_groups(
 
     Response: {items, total_count, summary_row}
     """
-    return ads_read_service.get_ad_groups(db, campaign_id=campaign_id, portfolio_id=portfolio_id, page=page, page_size=page_size)
+    return ads_read_service.get_ad_groups(db, campaign_id=campaign_id, portfolio_id=portfolio_id, keyword=keyword, service_status=service_status, metric_preset=metric_preset, page=page, page_size=page_size)
 
 
 @router.get("/ad_products")
@@ -220,6 +256,10 @@ async def ads_ad_products(
 @router.get("/targeting")
 async def ads_targeting(
     keyword: Optional[str] = Query(default=None, description="Filter by keyword"),
+    campaign_id: Optional[str] = Query(default=None, description="Filter by campaign ID"),
+    ad_group_id: Optional[str] = Query(default=None, description="Filter by ad group ID"),
+    service_status: Optional[str] = Query(default=None, description="Filter by service status"),
+    metric_preset: Optional[str] = Query(default=None, description="Metric shortcut filter"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -232,12 +272,25 @@ async def ads_targeting(
 
     Response: {items, total_count, summary_row}
     """
-    return ads_read_service.get_targeting(db, keyword=keyword, campaign_id=None, ad_group_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_targeting(db, keyword=keyword, campaign_id=campaign_id, ad_group_id=ad_group_id, service_status=service_status, metric_preset=metric_preset, page=page, page_size=page_size)
 
 
 @router.get("/search_terms")
 async def ads_search_terms(
     keyword: Optional[str] = Query(default=None, description="Filter by keyword"),
+    campaign_id: Optional[str] = Query(default=None, description="Filter by campaign ID"),
+    ad_group_id: Optional[str] = Query(default=None, description="Filter by ad group ID"),
+    metric_preset: Optional[str] = Query(default=None, description="Metric shortcut filter"),
+    impressions_min: Optional[float] = Query(default=None),
+    impressions_max: Optional[float] = Query(default=None),
+    clicks_min: Optional[float] = Query(default=None),
+    clicks_max: Optional[float] = Query(default=None),
+    spend_min: Optional[float] = Query(default=None),
+    spend_max: Optional[float] = Query(default=None),
+    orders_min: Optional[float] = Query(default=None),
+    orders_max: Optional[float] = Query(default=None),
+    acos_min: Optional[float] = Query(default=None),
+    acos_max: Optional[float] = Query(default=None),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -250,12 +303,33 @@ async def ads_search_terms(
 
     Response: {items, total_count, summary_row}
     """
-    return ads_read_service.get_search_terms(db, keyword=keyword, campaign_id=None, ad_group_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_search_terms(
+        db,
+        keyword=keyword,
+        campaign_id=campaign_id,
+        ad_group_id=ad_group_id,
+        metric_preset=metric_preset,
+        impressions_min=impressions_min,
+        impressions_max=impressions_max,
+        clicks_min=clicks_min,
+        clicks_max=clicks_max,
+        spend_min=spend_min,
+        spend_max=spend_max,
+        orders_min=orders_min,
+        orders_max=orders_max,
+        acos_min=acos_min,
+        acos_max=acos_max,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/negative_targeting")
 async def ads_negative_targeting(
     keyword: Optional[str] = Query(default=None, description="Filter by keyword"),
+    campaign_id: Optional[str] = Query(default=None, description="Filter by campaign ID"),
+    ad_group_id: Optional[str] = Query(default=None, description="Filter by ad group ID"),
+    service_status: Optional[str] = Query(default=None, description="Filter by service status"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -267,12 +341,13 @@ async def ads_negative_targeting(
 
     Response: {items, total_count, summary_row}
     """
-    return ads_read_service.get_negative_targeting(db, keyword=keyword, campaign_id=None, ad_group_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_negative_targeting(db, keyword=keyword, campaign_id=campaign_id, ad_group_id=ad_group_id, service_status=service_status, page=page, page_size=page_size)
 
 
 @router.get("/logs")
 async def ads_logs(
     portfolio_id: Optional[str] = Query(default=None, description="Filter by portfolio ID"),
+    keyword: Optional[str] = Query(default=None, description="Search keyword"),
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -285,7 +360,24 @@ async def ads_logs(
 
     Response: {items, total_count, summary_row}
     """
-    return ads_read_service.get_logs(db, portfolio_id=portfolio_id, campaign_id=None, ad_group_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_logs(db, portfolio_id=portfolio_id, campaign_id=None, ad_group_id=None, keyword=keyword, page=page, page_size=page_size)
+
+
+@router.get("/placements")
+async def ads_placements(
+    keyword: Optional[str] = Query(default=None, description="Search keyword"),
+    campaign_id: Optional[str] = Query(default=None, description="Filter by campaign ID"),
+    metric_preset: Optional[str] = Query(default=None, description="Metric shortcut filter"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Ad placement placeholder list.
+
+    Phase 1.1 exposes the tab and filtering contract before placement report sync is added.
+    """
+    return ads_read_service.get_placements(db, keyword=keyword, campaign_id=campaign_id, metric_preset=metric_preset, page=page, page_size=page_size)
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +393,7 @@ async def campaign_drill_ad_groups(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Ad groups for a specific campaign."""
-    return ads_read_service.get_ad_groups(db, campaign_id=campaign_id, portfolio_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_ad_groups(db, campaign_id=campaign_id, portfolio_id=None, keyword=None, service_status=None, metric_preset=None, page=page, page_size=page_size)
 
 
 @router.get("/campaigns/{campaign_id}/targeting")
@@ -313,7 +405,7 @@ async def campaign_drill_targeting(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Targeting for a specific campaign."""
-    return ads_read_service.get_targeting(db, keyword=None, campaign_id=campaign_id, ad_group_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_targeting(db, keyword=None, campaign_id=campaign_id, ad_group_id=None, service_status=None, metric_preset=None, page=page, page_size=page_size)
 
 
 @router.get("/campaigns/{campaign_id}/search_terms")
@@ -325,7 +417,7 @@ async def campaign_drill_search_terms(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Search terms for a specific campaign."""
-    return ads_read_service.get_search_terms(db, keyword=None, campaign_id=campaign_id, ad_group_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_search_terms(db, keyword=None, campaign_id=campaign_id, ad_group_id=None, metric_preset=None, impressions_min=None, impressions_max=None, clicks_min=None, clicks_max=None, spend_min=None, spend_max=None, orders_min=None, orders_max=None, acos_min=None, acos_max=None, page=page, page_size=page_size)
 
 
 @router.get("/campaigns/{campaign_id}/negative_targeting")
@@ -337,7 +429,7 @@ async def campaign_drill_negative_targeting(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Negative targeting for a specific campaign."""
-    return ads_read_service.get_negative_targeting(db, keyword=None, campaign_id=campaign_id, ad_group_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_negative_targeting(db, keyword=None, campaign_id=campaign_id, ad_group_id=None, service_status=None, page=page, page_size=page_size)
 
 
 @router.get("/campaigns/{campaign_id}/logs")
@@ -349,7 +441,7 @@ async def campaign_drill_logs(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Operation logs for a specific campaign."""
-    return ads_read_service.get_logs(db, portfolio_id=None, campaign_id=campaign_id, ad_group_id=None, page=page, page_size=page_size)
+    return ads_read_service.get_logs(db, portfolio_id=None, campaign_id=campaign_id, ad_group_id=None, keyword=None, page=page, page_size=page_size)
 
 
 @router.get("/campaigns/{campaign_id}/settings")
@@ -403,7 +495,7 @@ async def ad_group_drill_targeting(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Targeting for a specific ad group."""
-    return ads_read_service.get_targeting(db, keyword=None, campaign_id=None, ad_group_id=ad_group_id, page=page, page_size=page_size)
+    return ads_read_service.get_targeting(db, keyword=None, campaign_id=None, ad_group_id=ad_group_id, service_status=None, metric_preset=None, page=page, page_size=page_size)
 
 
 @router.get("/ad_groups/{ad_group_id}/search_terms")
@@ -415,7 +507,7 @@ async def ad_group_drill_search_terms(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Search terms for a specific ad group."""
-    return ads_read_service.get_search_terms(db, keyword=None, campaign_id=None, ad_group_id=ad_group_id, page=page, page_size=page_size)
+    return ads_read_service.get_search_terms(db, keyword=None, campaign_id=None, ad_group_id=ad_group_id, metric_preset=None, impressions_min=None, impressions_max=None, clicks_min=None, clicks_max=None, spend_min=None, spend_max=None, orders_min=None, orders_max=None, acos_min=None, acos_max=None, page=page, page_size=page_size)
 
 
 @router.get("/ad_groups/{ad_group_id}/negative_targeting")
@@ -427,7 +519,7 @@ async def ad_group_drill_negative_targeting(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Negative targeting for a specific ad group."""
-    return ads_read_service.get_negative_targeting(db, keyword=None, campaign_id=None, ad_group_id=ad_group_id, page=page, page_size=page_size)
+    return ads_read_service.get_negative_targeting(db, keyword=None, campaign_id=None, ad_group_id=ad_group_id, service_status=None, page=page, page_size=page_size)
 
 
 @router.get("/ad_groups/{ad_group_id}/logs")
@@ -439,4 +531,4 @@ async def ad_group_drill_logs(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Operation logs for a specific ad group."""
-    return ads_read_service.get_logs(db, portfolio_id=None, campaign_id=None, ad_group_id=ad_group_id, page=page, page_size=page_size)
+    return ads_read_service.get_logs(db, portfolio_id=None, campaign_id=None, ad_group_id=ad_group_id, keyword=None, page=page, page_size=page_size)

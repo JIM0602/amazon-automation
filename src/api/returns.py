@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Query
 
 from src.api.dependencies import get_current_user
-from data.mock.returns import get_returns
+from data.mock.returns import get_return_analysis, get_return_analysis_summary, get_returns
 
 router = APIRouter(prefix="/api/returns", tags=["returns"])
 
@@ -38,3 +38,69 @@ async def list_returns(
         page_size=page_size,
     )
     return result
+
+
+@router.get("/analysis")
+async def returns_analysis(
+    dimension: str = Query(default="order", description="Analysis dimension: parent_asin | asin | msku | order"),
+    site: Optional[str] = Query(default=None, description="Marketplace/site filter, e.g. US"),
+    shop: Optional[str] = Query(default=None, description="Shop/store fuzzy filter"),
+    owner: Optional[str] = Query(default=None, description="Owner/salesperson fuzzy filter"),
+    tag: Optional[str] = Query(default=None, description="After-sale tag fuzzy filter"),
+    time_range: Optional[str] = Query(default=None, description="Time range filter"),
+    search_type: Optional[str] = Query(default=None, description="Search field: order_id | asin | parent_asin | msku | sku | product_name"),
+    search: Optional[str] = Query(default=None, description="Search keyword"),
+    reason: Optional[str] = Query(default=None, description="Return reason"),
+    status: Optional[str] = Query(default=None, description="Return handling status"),
+    disposition: Optional[str] = Query(default=None, description="Inventory disposition/property fuzzy filter"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Return Saihu-style return analysis rows for order/product dimensions."""
+    return get_return_analysis(
+        dimension=dimension,
+        site=site,
+        shop=shop,
+        owner=owner,
+        tag=tag,
+        time_range=time_range,
+        search_type=search_type,
+        search=search,
+        reason=reason,
+        status=status,
+        disposition=disposition,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/analysis/summary")
+async def returns_analysis_summary(
+    dimension: str = Query(default="order", description="Analysis dimension: parent_asin | asin | msku | order"),
+    site: Optional[str] = Query(default=None, description="Marketplace/site filter, e.g. US"),
+    shop: Optional[str] = Query(default=None, description="Shop/store fuzzy filter"),
+    owner: Optional[str] = Query(default=None, description="Owner/salesperson fuzzy filter"),
+    tag: Optional[str] = Query(default=None, description="After-sale tag fuzzy filter"),
+    time_range: Optional[str] = Query(default=None, description="Time range filter"),
+    search_type: Optional[str] = Query(default=None, description="Search field"),
+    search: Optional[str] = Query(default=None, description="Search keyword"),
+    reason: Optional[str] = Query(default=None, description="Return reason"),
+    status: Optional[str] = Query(default=None, description="Return handling status"),
+    disposition: Optional[str] = Query(default=None, description="Inventory disposition/property fuzzy filter"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Return aggregate metrics for return analysis filters."""
+    return get_return_analysis_summary(
+        dimension=dimension,
+        site=site,
+        shop=shop,
+        owner=owner,
+        tag=tag,
+        time_range=time_range,
+        search_type=search_type,
+        search=search,
+        reason=reason,
+        status=status,
+        disposition=disposition,
+    )

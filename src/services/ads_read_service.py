@@ -54,6 +54,95 @@ def _campaign_metrics_subquery():
     )
 
 
+def _matches_keyword(item: dict[str, Any], keyword: str | None) -> bool:
+    if not keyword:
+        return True
+    needle = keyword.lower()
+    fields = (
+        "name",
+        "campaign_name",
+        "group_name",
+        "ad_group_name",
+        "keyword",
+        "keyword_text",
+        "search_term",
+        "targeting",
+        "asin",
+        "product_title",
+        "portfolio_name",
+    )
+    return any(needle in str(item.get(field) or "").lower() for field in fields)
+
+
+def _matches_metric_preset(item: dict[str, Any], metric_preset: str | None) -> bool:
+    impressions = safe_float(item.get("impressions"))
+    clicks = safe_float(item.get("clicks"))
+    orders = safe_float(item.get("ad_orders"))
+    if metric_preset == "has_orders":
+        return orders > 0
+    if metric_preset == "clicks_no_orders":
+        return clicks > 0 and orders <= 0
+    if metric_preset == "impressions_no_clicks":
+        return impressions > 0 and clicks <= 0
+    if metric_preset == "no_impressions":
+        return impressions <= 0
+    return True
+
+
+def _range_ok(value: Any, min_value: float | None, max_value: float | None) -> bool:
+    current = safe_float(value)
+    if min_value is not None and current < min_value:
+        return False
+    if max_value is not None and current > max_value:
+        return False
+    return True
+
+
+def _apply_management_filters(
+    items: list[dict[str, Any]],
+    *,
+    keyword: str | None = None,
+    service_status: str | None = None,
+    campaign_id: str | None = None,
+    ad_group_id: str | None = None,
+    metric_preset: str | None = None,
+    impressions_min: float | None = None,
+    impressions_max: float | None = None,
+    clicks_min: float | None = None,
+    clicks_max: float | None = None,
+    spend_min: float | None = None,
+    spend_max: float | None = None,
+    orders_min: float | None = None,
+    orders_max: float | None = None,
+    acos_min: float | None = None,
+    acos_max: float | None = None,
+) -> list[dict[str, Any]]:
+    filtered = []
+    for item in items:
+        if keyword and not _matches_keyword(item, keyword):
+            continue
+        if service_status and item.get("service_status") != service_status:
+            continue
+        if campaign_id and campaign_id.lower() not in str(item.get("campaign_id") or item.get("campaign_name") or "").lower():
+            continue
+        if ad_group_id and ad_group_id.lower() not in str(item.get("ad_group_id") or item.get("group_name") or item.get("ad_group_name") or "").lower():
+            continue
+        if not _matches_metric_preset(item, metric_preset):
+            continue
+        if not _range_ok(item.get("impressions"), impressions_min, impressions_max):
+            continue
+        if not _range_ok(item.get("clicks"), clicks_min, clicks_max):
+            continue
+        if not _range_ok(item.get("ad_spend"), spend_min, spend_max):
+            continue
+        if not _range_ok(item.get("ad_orders"), orders_min, orders_max):
+            continue
+        if not _range_ok(item.get("acos"), acos_min, acos_max):
+            continue
+        filtered.append(item)
+    return filtered
+
+
 def get_portfolios(db: Session, portfolio_id: str | None, portfolio_ids: str | None, page: int, page_size: int) -> dict[str, Any]:
     query = select(AdsCampaign.portfolio_id, func.count(AdsCampaign.campaign_id).label("campaign_count"))
     ids = [item.strip() for item in (portfolio_ids or "").split(",") if item.strip()]
@@ -73,6 +162,20 @@ def get_portfolios(db: Session, portfolio_id: str | None, portfolio_ids: str | N
     ]
     paged, total = paginate(items, page, page_size)
     return {"items": paged, "total_count": total, "summary_row": {"campaign_count": sum(i["campaign_count"] for i in items)}}
+
+
+def get_placements(
+    db: Session,
+    keyword: str | None,
+    campaign_id: str | None,
+    metric_preset: str | None,
+    page: int,
+    page_size: int,
+) -> dict[str, Any]:
+    items: list[dict[str, Any]] = []
+    items = _apply_management_filters(items, keyword=keyword, campaign_id=campaign_id, metric_preset=metric_preset)
+    paged, total = paginate(items, page, page_size)
+    return {"items": paged, "total_count": total, "summary_row": {}}
 
 
 def get_portfolio_tree(db: Session) -> list[dict[str, Any]]:
@@ -96,6 +199,19 @@ def get_campaigns(
     portfolio_id: str | None,
     ad_type: str | None,
     service_status: str | None,
+    keyword: str | None,
+    campaign_id: str | None,
+    metric_preset: str | None,
+    impressions_min: float | None,
+    impressions_max: float | None,
+    clicks_min: float | None,
+    clicks_max: float | None,
+    spend_min: float | None,
+    spend_max: float | None,
+    orders_min: float | None,
+    orders_max: float | None,
+    acos_min: float | None,
+    acos_max: float | None,
     page: int,
     page_size: int,
 ) -> dict[str, Any]:
@@ -105,6 +221,8 @@ def get_campaigns(
         query = query.where(AdsCampaign.portfolio_id == portfolio_id)
     if ad_type:
         query = query.where(AdsCampaign.ad_type == ad_type)
+    if campaign_id:
+        query = query.where(or_(AdsCampaign.campaign_id.ilike(f"%{campaign_id}%"), AdsCampaign.campaign_name.ilike(f"%{campaign_id}%")))
     if service_status:
         status_map = {"Delivering": "enabled", "Paused": "paused", "Ended": "archived"}
         mapped_state = status_map.get(service_status)
@@ -143,11 +261,35 @@ def get_campaigns(
             "acos": ratio(spend, sales),
             "start_date": campaign.start_date.isoformat() if campaign.start_date else None,
         })
+    items = _apply_management_filters(
+        items,
+        keyword=keyword,
+        metric_preset=metric_preset,
+        impressions_min=impressions_min,
+        impressions_max=impressions_max,
+        clicks_min=clicks_min,
+        clicks_max=clicks_max,
+        spend_min=spend_min,
+        spend_max=spend_max,
+        orders_min=orders_min,
+        orders_max=orders_max,
+        acos_min=acos_min,
+        acos_max=acos_max,
+    )
     paged, total = paginate(items, page, page_size)
     return {"items": paged, "total_count": total, "summary_row": _summary(items)}
 
 
-def get_ad_groups(db: Session, campaign_id: str | None, portfolio_id: str | None, page: int, page_size: int) -> dict[str, Any]:
+def get_ad_groups(
+    db: Session,
+    campaign_id: str | None,
+    portfolio_id: str | None,
+    keyword: str | None,
+    service_status: str | None,
+    metric_preset: str | None,
+    page: int,
+    page_size: int,
+) -> dict[str, Any]:
     query = select(AdsAdGroup, AdsCampaign).join(AdsCampaign, AdsAdGroup.campaign_id == AdsCampaign.campaign_id)
     if campaign_id:
         query = query.where(AdsAdGroup.campaign_id == campaign_id)
@@ -173,6 +315,13 @@ def get_ad_groups(db: Session, campaign_id: str | None, portfolio_id: str | None
         }
         for ad_group, campaign in rows
     ]
+    items = _apply_management_filters(
+        items,
+        keyword=keyword,
+        service_status=service_status,
+        campaign_id=campaign_id,
+        metric_preset=metric_preset,
+    )
     paged, total = paginate(items, page, page_size)
     return {"items": paged, "total_count": total, "summary_row": {"product_count": 0}}
 
@@ -181,7 +330,16 @@ def get_ad_products(db: Session, ad_group_id: str | None, ad_type: str | None, p
     return {"items": [], "total_count": 0, "summary_row": {}}
 
 
-def get_targeting(db: Session, keyword: str | None, campaign_id: str | None, ad_group_id: str | None, page: int, page_size: int) -> dict[str, Any]:
+def get_targeting(
+    db: Session,
+    keyword: str | None,
+    campaign_id: str | None,
+    ad_group_id: str | None,
+    service_status: str | None,
+    metric_preset: str | None,
+    page: int,
+    page_size: int,
+) -> dict[str, Any]:
     query = select(AdsTargeting, AdsAdGroup, AdsCampaign).outerjoin(AdsAdGroup, AdsTargeting.ad_group_id == AdsAdGroup.ad_group_id).outerjoin(AdsCampaign, AdsTargeting.campaign_id == AdsCampaign.campaign_id)
     if keyword:
         query = query.where(AdsTargeting.keyword_text.ilike(f"%{keyword}%"))
@@ -208,11 +366,30 @@ def get_targeting(db: Session, keyword: str | None, campaign_id: str | None, ad_
             "bid": targeting.bid,
             "suggested_bid": targeting.suggested_bid,
         })
+    items = _apply_management_filters(items, service_status=service_status, metric_preset=metric_preset)
     paged, total = paginate(items, page, page_size)
     return {"items": paged, "total_count": total, "summary_row": {}}
 
 
-def get_search_terms(db: Session, keyword: str | None, campaign_id: str | None, ad_group_id: str | None, page: int, page_size: int) -> dict[str, Any]:
+def get_search_terms(
+    db: Session,
+    keyword: str | None,
+    campaign_id: str | None,
+    ad_group_id: str | None,
+    metric_preset: str | None,
+    impressions_min: float | None,
+    impressions_max: float | None,
+    clicks_min: float | None,
+    clicks_max: float | None,
+    spend_min: float | None,
+    spend_max: float | None,
+    orders_min: float | None,
+    orders_max: float | None,
+    acos_min: float | None,
+    acos_max: float | None,
+    page: int,
+    page_size: int,
+) -> dict[str, Any]:
     query = select(AdsSearchTerm, AdsCampaign).outerjoin(AdsCampaign, AdsSearchTerm.campaign_id == AdsCampaign.campaign_id)
     if keyword:
         query = query.where(or_(AdsSearchTerm.search_term.ilike(f"%{keyword}%"), AdsSearchTerm.targeting_keyword.ilike(f"%{keyword}%")))
@@ -246,11 +423,33 @@ def get_search_terms(db: Session, keyword: str | None, campaign_id: str | None, 
         }
         for term, campaign in rows
     ]
+    items = _apply_management_filters(
+        items,
+        metric_preset=metric_preset,
+        impressions_min=impressions_min,
+        impressions_max=impressions_max,
+        clicks_min=clicks_min,
+        clicks_max=clicks_max,
+        spend_min=spend_min,
+        spend_max=spend_max,
+        orders_min=orders_min,
+        orders_max=orders_max,
+        acos_min=acos_min,
+        acos_max=acos_max,
+    )
     paged, total = paginate(items, page, page_size)
     return {"items": paged, "total_count": total, "summary_row": _summary(items)}
 
 
-def get_negative_targeting(db: Session, keyword: str | None, campaign_id: str | None, ad_group_id: str | None, page: int, page_size: int) -> dict[str, Any]:
+def get_negative_targeting(
+    db: Session,
+    keyword: str | None,
+    campaign_id: str | None,
+    ad_group_id: str | None,
+    service_status: str | None,
+    page: int,
+    page_size: int,
+) -> dict[str, Any]:
     query = select(AdsNegativeTargeting, AdsAdGroup, AdsCampaign).outerjoin(AdsAdGroup, AdsNegativeTargeting.ad_group_id == AdsAdGroup.ad_group_id).outerjoin(AdsCampaign, AdsNegativeTargeting.campaign_id == AdsCampaign.campaign_id)
     if keyword:
         query = query.where(AdsNegativeTargeting.keyword_text.ilike(f"%{keyword}%"))
@@ -277,11 +476,12 @@ def get_negative_targeting(db: Session, keyword: str | None, campaign_id: str | 
         }
         for neg, ad_group, campaign in rows
     ]
+    items = _apply_management_filters(items, service_status=service_status)
     paged, total = paginate(items, page, page_size)
     return {"items": paged, "total_count": total, "summary_row": {}}
 
 
-def get_logs(db: Session, portfolio_id: str | None, campaign_id: str | None, ad_group_id: str | None, page: int, page_size: int) -> dict[str, Any]:
+def get_logs(db: Session, portfolio_id: str | None, campaign_id: str | None, ad_group_id: str | None, keyword: str | None, page: int, page_size: int) -> dict[str, Any]:
     query = select(AdsActionLog).order_by(AdsActionLog.created_at.desc())
     if campaign_id:
         query = query.where(AdsActionLog.target_id == campaign_id)
@@ -309,6 +509,7 @@ def get_logs(db: Session, portfolio_id: str | None, campaign_id: str | None, ad_
         }
         for log in rows
     ]
+    items = _apply_management_filters(items, keyword=keyword)
     paged, total = paginate(items, page, page_size)
     return {"items": paged, "total_count": total, "summary_row": {}}
 

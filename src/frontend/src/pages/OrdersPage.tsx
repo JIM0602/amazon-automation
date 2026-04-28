@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type React from 'react';
+import { Download, FileText, MoreHorizontal, RefreshCw, Search, Upload, X } from 'lucide-react';
+import api from '../api/client';
 import { DataTable } from '../components/DataTable';
 import type { Column } from '../types/table';
-import api from '../api/client';
 import { formatSiteTime } from '../utils/timezone';
-import { Search, Calendar } from 'lucide-react';
 
 interface OrderItem {
   order_id: string;
@@ -11,6 +12,13 @@ interface OrderItem {
   payment_time: string | null;
   refund_time: string | null;
   status: string;
+  site: string;
+  shop: string;
+  store: string;
+  owner: string;
+  fulfillment: string;
+  currency: string;
+  order_type: string;
   sales_revenue: number;
   image_url: string;
   asin: string;
@@ -29,6 +37,10 @@ interface OrderItem {
 interface OrderSummary {
   sales_revenue?: number;
   total_orders?: number;
+  product_amount?: number;
+  order_profit?: number;
+  quantity?: number;
+  refund_quantity?: number;
   [key: string]: unknown;
 }
 
@@ -37,7 +49,14 @@ interface OrderDetailResponse {
     order_id: string;
     status: string;
     store: string;
+    shop?: string;
+    site?: string;
+    owner?: string;
+    currency?: string;
+    order_type?: string;
     order_time: string;
+    payment_time?: string | null;
+    refund_time?: string | null;
     ship_time: string | null;
     shipping_method: string;
     estimated_delivery: string | null;
@@ -46,6 +65,18 @@ interface OrderDetailResponse {
     buyer_name: string | null;
     buyer_email: string | null;
     buyer_tax_id: string | null;
+  };
+  buyer_info?: {
+    buyer_name: string | null;
+    buyer_email: string | null;
+    buyer_tax_id: string | null;
+  };
+  fulfillment_info?: {
+    shipping_method: string | null;
+    ship_time: string | null;
+    estimated_delivery: string | null;
+    logistics_provider: string | null;
+    tracking_number: string | null;
   };
   shipping_info: {
     recipient_name: string | null;
@@ -85,104 +116,98 @@ interface OrderDetailResponse {
   };
 }
 
-interface NormalizedOrderDetail extends OrderItem {
-  basic_info: OrderDetailResponse['basic_info'];
-  shipping_info: OrderDetailResponse['shipping_info'];
-  fee_details: OrderDetailResponse['fee_details'];
-  shop_name: string;
-  ship_time: string | null;
-  fulfillment_channel: string;
-  estimated_delivery: string | null;
-  carrier: string | null;
-  tracking_number: string | null;
-  buyer_name: string | null;
-  buyer_email: string | null;
-  tax_id: string | null;
-  recipient_name: string | null;
-  phone: string | null;
-  postal_code: string | null;
-  country: string;
-  state: string | null;
-  city: string;
-  address_line1: string | null;
-  address_line2: string;
-  ioss_number: string | null;
-  fnsku: string | null;
-  item_discount: number;
-  promo_discount: number;
-  gift_wrap_fee: number;
-  shipping_fee: number;
-  tax_amount: number;
-  marketplace_tax: number;
-  fba_fee: number;
-  commission_fee: number;
-  other_fee: number;
-  amazon_payout: number;
-  cogs: number;
-  freight_cost: number;
-  review_cost: number;
+type OrderDetail = OrderDetailResponse & {
+  order_id: string;
+  status: string;
+  store: string;
+  order_time: string;
+};
+
+const platformTabs = ['Amazon', '全部平台'];
+const yearTabs = ['今年', '2025', '2024', '历史订单'];
+
+const timeRangeOptions = [
+  { value: '', label: '全部时间' },
+  { value: 'site_today', label: '站点今天' },
+  { value: 'last_24h', label: '最近24小时' },
+  { value: 'this_week', label: '本周' },
+  { value: 'this_month', label: '本月' },
+  { value: 'this_year', label: '本年' },
+];
+
+const statusOptions = [
+  { value: '', label: '全部状态' },
+  { value: 'Pending', label: 'Pending 待处理' },
+  { value: 'Shipped', label: 'Shipped 已发货' },
+  { value: 'Delivered', label: 'Delivered 已送达' },
+  { value: 'Cancelled', label: 'Cancelled 已取消' },
+  { value: 'Refunded', label: 'Refunded 已退款' },
+];
+
+const searchTypeOptions = [
+  { value: '', label: '全部字段' },
+  { value: 'order_id', label: '订单号' },
+  { value: 'asin', label: 'ASIN' },
+  { value: 'msku', label: 'MSKU' },
+  { value: 'buyer', label: '买家' },
+  { value: 'product_name', label: '品名' },
+];
+
+function money(value: unknown) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? `$${n.toFixed(2)}` : '-';
 }
 
-function normalizeOrderDetail(response: OrderDetailResponse): NormalizedOrderDetail {
-  const basicInfo = response.basic_info;
-  const shippingInfo = response.shipping_info;
-  const product = response.products[0];
-  const feeDetails = response.fee_details;
+function percent(value: unknown) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? `${(n * 100).toFixed(2)}%` : '-';
+}
 
+function fmtTime(value: unknown) {
+  return value ? formatSiteTime(new Date(String(value))) : '-';
+}
+
+function statusClass(status: string) {
+  const normalized = status?.toLowerCase();
+  if (normalized === 'shipped' || normalized === 'delivered') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (normalized === 'pending') return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (normalized === 'cancelled' || normalized === 'refunded') return 'bg-rose-50 text-rose-700 border-rose-200';
+  return 'bg-gray-50 text-gray-700 border-gray-200';
+}
+
+function normalizeOrderDetail(response: OrderDetailResponse): OrderDetail {
   return {
-    order_id: basicInfo.order_id,
-    order_time: basicInfo.order_time,
-    payment_time: null,
-    refund_time: null,
-    status: basicInfo.status,
-    sales_revenue: Number(feeDetails.sales_revenue ?? 0),
-    image_url: '',
-    asin: product?.asin ?? '-',
-    msku: product?.msku ?? '-',
-    product_name: product?.title ?? '-',
-    sku: product?.msku ?? '-',
-    quantity: Number(product?.quantity ?? 0),
-    refund_quantity: 0,
-    promo_code: null,
-    product_amount: Number(feeDetails.product_amount ?? product?.unit_price ?? 0),
-    order_profit: Number(feeDetails.order_profit ?? 0),
-    profit_rate: Number(feeDetails.order_profit_rate ?? 0),
-    basic_info: response.basic_info,
-    shipping_info: response.shipping_info,
-    fee_details: response.fee_details,
-    shop_name: basicInfo.store,
-    ship_time: basicInfo.ship_time,
-    fulfillment_channel: basicInfo.shipping_method,
-    estimated_delivery: basicInfo.estimated_delivery,
-    carrier: basicInfo.logistics_provider,
-    tracking_number: basicInfo.tracking_number,
-    buyer_name: basicInfo.buyer_name,
-    buyer_email: basicInfo.buyer_email,
-    tax_id: basicInfo.buyer_tax_id,
-    recipient_name: shippingInfo.recipient_name,
-    phone: shippingInfo.recipient_phone,
-    postal_code: shippingInfo.recipient_zip,
-    country: '',
-    state: shippingInfo.recipient_region,
-    city: '',
-    address_line1: shippingInfo.recipient_address,
-    address_line2: '',
-    ioss_number: shippingInfo.ioss_tax_id,
-    fnsku: product?.fnsku ?? null,
-    item_discount: Math.abs(Number(product?.item_discount ?? 0)),
-    promo_discount: Math.abs(Number(feeDetails.promo_discount ?? 0)),
-    gift_wrap_fee: Number(feeDetails.gift_wrap_fee ?? 0),
-    shipping_fee: Number(feeDetails.buyer_shipping_fee ?? 0),
-    tax_amount: Number(feeDetails.tax ?? 0),
-    marketplace_tax: Number(feeDetails.marketplace_tax ?? 0),
-    fba_fee: Number(feeDetails.fba_shipping_fee ?? 0),
-    commission_fee: Number(feeDetails.sales_commission ?? 0),
-    other_fee: Number(feeDetails.other_order_fees ?? 0),
-    amazon_payout: Number(feeDetails.amazon_payout ?? 0),
-    cogs: Number(feeDetails.cogs ?? 0),
-    freight_cost: Number(feeDetails.first_mile_fee ?? 0),
-    review_cost: Number(feeDetails.review_cost ?? 0),
+    ...response,
+    order_id: response.basic_info.order_id,
+    status: response.basic_info.status,
+    store: response.basic_info.store,
+    order_time: response.basic_info.order_time,
   };
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex items-center gap-2 text-xs text-gray-600">
+      <span className="shrink-0">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-8 min-w-[118px] rounded border border-gray-300 bg-white px-2 text-xs text-gray-800 outline-none focus:border-blue-500"
+      >
+        {children}
+      </select>
+    </label>
+  );
 }
 
 export default function OrdersPage() {
@@ -193,43 +218,50 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
+  const [searchType, setSearchType] = useState('');
   const [status, setStatus] = useState('');
   const [timeRange, setTimeRange] = useState('');
+  const [site, setSite] = useState('');
+  const [shop, setShop] = useState('');
+  const [owner, setOwner] = useState('');
+  const [fulfillment, setFulfillment] = useState('');
+  const [currency, setCurrency] = useState('');
+  const [orderType, setOrderType] = useState('');
+  const [timeField, setTimeField] = useState('order_time');
   const [toastMsg, setToastMsg] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState<NormalizedOrderDetail | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const timeRangeOptions = [
-    { value: '', label: '全部时间' },
-    { value: 'site_today', label: '站点今天' },
-    { value: 'last_24h', label: '最近24小时' },
-    { value: 'this_week', label: '本周' },
-    { value: 'this_month', label: '本月' },
-    { value: 'this_year', label: '本年' },
-  ];
+  const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
+    window.setTimeout(() => setToastMsg(''), 2600);
+  };
+
+  const buildParams = () => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+    if (search) params.append('search', search);
+    if (searchType) params.append('search_type', searchType);
+    if (status) params.append('status', status);
+    if (timeRange) params.append('time_range', timeRange);
+    if (timeField) params.append('time_field', timeField);
+    if (site) params.append('site', site);
+    if (shop) params.append('shop', shop);
+    if (owner) params.append('owner', owner);
+    if (fulfillment) params.append('fulfillment', fulfillment);
+    if (currency) params.append('currency', currency);
+    if (orderType) params.append('order_type', orderType);
+    return params;
   };
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        page_size: pageSize.toString(),
-      });
-      if (search) params.append('search', search);
-      if (status) params.append('status', status);
-      if (timeRange) params.append('time_range', timeRange);
-
-      const response = await api.get(`/orders?${params.toString()}`);
-      if (response.data) {
-        setOrders(response.data.items || []);
-        setTotal(response.data.total_count || 0);
-        setSummary(response.data.summary_row || {});
-      }
+      const response = await api.get(`/orders?${buildParams().toString()}`);
+      setOrders(response.data?.items || []);
+      setTotal(response.data?.total_count || 0);
+      setSummary(response.data?.summary_row || {});
     } catch {
       showToast('获取订单列表失败');
     } finally {
@@ -239,218 +271,215 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-  }, [page, pageSize, search, status, timeRange]);
+  }, [page, pageSize, search, searchType, status, timeRange, timeField, site, shop, owner, fulfillment, currency, orderType]);
 
   const fetchOrderDetails = async (id: string) => {
     try {
       const response = await api.get<OrderDetailResponse>(`/orders/${id}`);
-      if (response.data) {
-        setSelectedOrder(normalizeOrderDetail(response.data));
-        setIsModalOpen(true);
-      }
+      setSelectedOrder(normalizeOrderDetail(response.data));
     } catch {
       showToast('获取订单详情失败');
     }
   };
 
-  const handleMockAction = () => {
-    showToast('Mock数据模式不可用');
+  const resetFilters = () => {
+    setSearch('');
+    setSearchType('');
+    setStatus('');
+    setTimeRange('');
+    setSite('');
+    setShop('');
+    setOwner('');
+    setFulfillment('');
+    setCurrency('');
+    setOrderType('');
+    setTimeField('order_time');
+    setPage(1);
   };
 
-  const getStatusColor = (orderStatus: string) => {
-    switch (orderStatus?.toLowerCase()) {
-      case 'shipped':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-    }
-  };
+  const disabledAction = (label: string) => () => showToast(`${label}为批量工具占位，当前 Phase 1.1 暂不执行写操作`);
 
-  const columns: Column<OrderItem>[] = [
+  const columns = useMemo<Column<OrderItem>[]>(() => [
     {
       key: 'order_id',
       title: '订单号',
+      width: 178,
+      sortable: true,
       render: (val, row) => (
-        <button
-          onClick={() => fetchOrderDetails(row.order_id)}
-          className="font-medium text-blue-600 hover:underline dark:text-blue-400"
-        >
-          {val as string}
+        <button className="text-left text-xs font-medium text-blue-600 hover:underline" onClick={() => fetchOrderDetails(row.order_id)}>
+          {String(val)}
         </button>
       ),
     },
-    {
-      key: 'order_time',
-      title: '订购时间',
-      render: (val) => (val ? formatSiteTime(new Date(val as string)) : '-'),
-    },
-    {
-      key: 'payment_time',
-      title: '付款时间',
-      render: (val) => (val ? formatSiteTime(new Date(val as string)) : '-'),
-    },
-    {
-      key: 'refund_time',
-      title: '退款时间',
-      render: (val) => (val ? formatSiteTime(new Date(val as string)) : '-'),
-    },
+    { key: 'order_time', title: '订购时间', width: 148, sortable: true, render: fmtTime },
+    { key: 'payment_time', title: '付款时间', width: 148, render: fmtTime },
+    { key: 'refund_time', title: '退款时间', width: 148, render: fmtTime },
     {
       key: 'status',
       title: '订单状态',
-      render: (val) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(val as string)}`}>
-          {val as string}
-        </span>
-      ),
+      width: 112,
+      render: (val) => <span className={`rounded border px-2 py-0.5 text-[11px] ${statusClass(String(val))}`}>{String(val || '-')}</span>,
     },
     {
-      key: 'sales_revenue',
-      title: '销售收益',
-      render: (val) => (val != null ? `$${Number(val).toFixed(2)}` : '-'),
+      key: 'store_site',
+      title: '店铺/站点',
+      width: 132,
+      render: (_, row) => <div className="text-xs"><div className="font-medium">{row.store || row.shop || '-'}</div><div className="text-gray-500">{row.site || '-'}</div></div>,
     },
+    { key: 'owner', title: '业务员', width: 86, render: (val) => String(val || '-') },
+    { key: 'fulfillment', title: '履约方式', width: 88, render: (val) => String(val || '-') },
+    { key: 'order_type', title: '订单类型', width: 96, render: (val) => String(val || '-') },
+    { key: 'sales_revenue', title: '销售收入', width: 112, sortable: true, align: 'right', render: money },
     {
       key: 'product_info',
       title: '商品/ASIN/MSKU',
+      width: 250,
       render: (_, row) => (
-        <div className="flex items-center space-x-3 min-w-[200px]">
-          {row.image_url ? (
-            <img src={row.image_url} alt="product" className="w-10 h-10 rounded object-cover border border-gray-200 dark:border-gray-700" />
-          ) : (
-            <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-xs text-gray-400">No Img</div>
-          )}
-          <div className="flex flex-col text-xs">
-            <span className="font-medium text-gray-900 dark:text-white truncate max-w-[150px]" title={row.asin}>{row.asin}</span>
-            <span className="text-gray-500 dark:text-gray-400 truncate max-w-[150px]" title={row.msku}>{row.msku}</span>
+        <div className="flex min-w-[220px] items-center gap-2">
+          {row.image_url ? <img src={row.image_url} alt="" className="h-10 w-10 rounded border border-gray-200 object-cover" /> : <div className="h-10 w-10 rounded border bg-gray-50" />}
+          <div className="min-w-0 text-xs">
+            <div className="truncate font-medium text-gray-900" title={row.product_name}>{row.product_name || '-'}</div>
+            <div className="text-gray-500">ASIN: {row.asin || '-'}</div>
+            <div className="text-gray-500">MSKU: {row.msku || '-'}</div>
           </div>
         </div>
       ),
     },
-    {
-      key: 'product_name',
-      title: '品名/SKU',
-      render: (_, row) => (
-        <div className="flex flex-col text-xs min-w-[150px]">
-          <span className="font-medium text-gray-900 dark:text-white truncate max-w-[200px]" title={row.product_name}>{row.product_name}</span>
-          <span className="text-gray-500 dark:text-gray-400 truncate max-w-[200px]" title={row.sku}>{row.sku}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'quantity',
-      title: '销量',
-    },
-    {
-      key: 'refund_quantity',
-      title: '退款量',
-    },
-    {
-      key: 'promo_code',
-      title: '促销编码',
-      render: (val) => (val as string) || '-',
-    },
-    {
-      key: 'product_amount',
-      title: '产品金额',
-      render: (val) => (val != null ? `$${Number(val).toFixed(2)}` : '-'),
-    },
+    { key: 'quantity', title: '销量', width: 76, align: 'right', sortable: true },
+    { key: 'refund_quantity', title: '退款量', width: 82, align: 'right' },
+    { key: 'currency', title: '币种', width: 72, render: (val) => String(val || '-') },
+    { key: 'promo_code', title: '促销编码', width: 112, render: (val) => String(val || '-') },
+    { key: 'product_amount', title: '产品金额', width: 108, align: 'right', render: money },
     {
       key: 'profit_info',
       title: '订单利润/利润率',
+      width: 132,
+      align: 'right',
       render: (_, row) => (
-        <div className="flex flex-col text-xs">
-          <span className={`font-medium ${row.order_profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            ${Number(row.order_profit || 0).toFixed(2)}
-          </span>
-          <span className="text-gray-500 dark:text-gray-400">
-            {(Number(row.profit_rate || 0) * 100).toFixed(2)}%
-          </span>
+        <div className="text-right text-xs">
+          <div className={Number(row.order_profit) >= 0 ? 'font-medium text-emerald-600' : 'font-medium text-rose-600'}>{money(row.order_profit)}</div>
+          <div className="text-gray-500">{percent(row.profit_rate)}</div>
         </div>
       ),
     },
     {
       key: 'actions',
       title: '操作',
-      render: () => (
-        <div className="flex flex-wrap gap-2 min-w-[180px]">
-          <button onClick={handleMockAction} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">录入费用</button>
-          <button onClick={handleMockAction} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">标记跟评</button>
-          <button onClick={handleMockAction} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">上传发票</button>
-          <button onClick={handleMockAction} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">同步订单</button>
-          <button onClick={handleMockAction} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">导入成本</button>
-          <button onClick={handleMockAction} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">联系买家</button>
+      width: 142,
+      render: (_, row) => (
+        <div className="flex min-w-[130px] items-center gap-2 text-xs">
+          <button className="text-blue-600 hover:underline" onClick={() => fetchOrderDetails(row.order_id)}>详情</button>
+          <button className="text-blue-600 hover:underline" onClick={disabledAction('录入费用')}>录入费用</button>
+          <button className="text-blue-600 hover:underline" onClick={disabledAction('更多操作')}>更多</button>
         </div>
       ),
     },
-  ];
+  ], []);
+
+  const summaryRow = {
+    ...summary,
+    order_id: `合计 ${summary.total_orders ?? total} 单`,
+    sales_revenue: money(summary.sales_revenue),
+    product_amount: money(summary.product_amount),
+    order_profit: money(summary.order_profit),
+  } as unknown as Partial<OrderItem>;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">全部订单</h1>
-        <div className="flex items-center space-x-2">
-          <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">Mock数据</span>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Calendar className="h-5 w-5 text-gray-400" />
-            </div>
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              {timeRangeOptions.map((option) => (
-                <option key={option.value || 'all'} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
+    <div className="min-h-[calc(100vh-64px)] bg-[#eef0f5] p-3 text-gray-900">
+      <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-200 bg-white px-3 pt-2">
+          <div className="flex items-center gap-5 text-sm">
+            {platformTabs.map((tab, index) => (
+              <button key={tab} className={`border-b-2 px-1 pb-2 ${index === 0 ? 'border-blue-600 font-medium text-blue-600' : 'border-transparent text-gray-600'}`}>
+                {tab}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 py-2">
+            {yearTabs.map((tab, index) => (
+              <button key={tab} className={`h-7 rounded border px-3 text-xs ${index === 0 ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 bg-white text-gray-600'}`}>
+                {tab}
+              </button>
+            ))}
+            <span className="mx-1 h-5 w-px bg-gray-200" />
+            <FilterSelect label="业务员" value={owner} onChange={(value) => { setOwner(value); setPage(1); }}>
+              <option value="">全部业务员</option>
+              <option value="Alice">Alice</option>
+              <option value="Bob">Bob</option>
+              <option value="Cindy">Cindy</option>
+              <option value="David">David</option>
+            </FilterSelect>
+            <FilterSelect label="站点" value={site} onChange={(value) => { setSite(value); setPage(1); }}>
+              <option value="">全部站点</option>
+              <option value="US">美国站</option>
+              <option value="EU">欧洲站</option>
+              <option value="JP">日本站</option>
+            </FilterSelect>
+            <FilterSelect label="店铺" value={shop} onChange={(value) => { setShop(value); setPage(1); }}>
+              <option value="">全部店铺</option>
+              <option value="PUDIWIND">PUDIWIND</option>
+            </FilterSelect>
+            <FilterSelect label="状态" value={status} onChange={(value) => { setStatus(value); setPage(1); }}>
+              {statusOptions.map((option) => <option key={option.value || 'all'} value={option.value}>{option.label}</option>)}
+            </FilterSelect>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 py-2">
+            <FilterSelect label="履约" value={fulfillment} onChange={(value) => { setFulfillment(value); setPage(1); }}>
+              <option value="">全部履约</option>
+              <option value="FBA">FBA</option>
+              <option value="FBM">FBM</option>
+              <option value="SFP">SFP</option>
+            </FilterSelect>
+            <FilterSelect label="时间" value={timeField} onChange={(value) => { setTimeField(value); setPage(1); }}>
+              <option value="order_time">订购时间</option>
+              <option value="payment_time">付款时间</option>
+              <option value="refund_time">退款时间</option>
+            </FilterSelect>
+            <select value={timeRange} onChange={(event) => { setTimeRange(event.target.value); setPage(1); }} className="h-8 rounded border border-gray-300 bg-white px-2 text-xs outline-none focus:border-blue-500">
+              {timeRangeOptions.map((option) => <option key={option.value || 'all'} value={option.value}>{option.label}</option>)}
             </select>
-          </div>
-
-          <div className="relative">
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              <option value="">全部状态</option>
-              <option value="shipped">已发货</option>
-              <option value="pending">待发货</option>
-              <option value="cancelled">已取消</option>
+            <FilterSelect label="币种" value={currency} onChange={(value) => { setCurrency(value); setPage(1); }}>
+              <option value="">全部币种</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="JPY">JPY</option>
+            </FilterSelect>
+            <FilterSelect label="订单类型" value={orderType} onChange={(value) => { setOrderType(value); setPage(1); }}>
+              <option value="">全部类型</option>
+              <option value="Normal">Normal</option>
+              <option value="Replacement">Replacement</option>
+            </FilterSelect>
+            <select value={searchType} onChange={(event) => setSearchType(event.target.value)} className="h-8 rounded border border-gray-300 bg-white px-2 text-xs outline-none focus:border-blue-500">
+              {searchTypeOptions.map((option) => <option key={option.value || 'all'} value={option.value}>{option.label}</option>)}
             </select>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+            <div className="flex h-8 min-w-[300px] items-center rounded border border-gray-300 bg-white px-2">
+              <Search className="mr-2 h-4 w-4 text-gray-400" />
+              <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="搜索订单号 / ASIN / MSKU / 买家" className="min-w-0 flex-1 text-xs outline-none" />
             </div>
-            <input
-              type="text"
-              placeholder="搜索 ASIN / 订单号"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
+            <button className="h-8 rounded border border-gray-300 px-3 text-xs text-gray-700" onClick={resetFilters}>重置</button>
+            <button className="h-8 rounded bg-blue-600 px-3 text-xs text-white" onClick={fetchOrders}>查询</button>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col">
-        <div className="h-[calc(100vh-18rem)] min-h-[420px] overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-[#f7f8fa] px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="inline-flex h-8 items-center gap-1 rounded border border-gray-300 bg-white px-3 text-xs text-gray-700" onClick={disabledAction('录入费用')}><FileText className="h-4 w-4" />录入费用</button>
+            <button className="h-8 rounded border border-gray-300 bg-white px-3 text-xs text-gray-700" onClick={disabledAction('标记测评')}>标记测评</button>
+            <button className="inline-flex h-8 items-center gap-1 rounded border border-gray-300 bg-white px-3 text-xs text-gray-700" onClick={disabledAction('上传发票')}><Upload className="h-4 w-4" />上传发票</button>
+            <button className="inline-flex h-8 items-center gap-1 rounded border border-gray-300 bg-white px-3 text-xs text-gray-700" onClick={fetchOrders}><RefreshCw className="h-4 w-4" />同步订单</button>
+            <button className="h-8 rounded border border-gray-300 bg-white px-3 text-xs text-gray-700" onClick={disabledAction('导入成本')}>导入成本</button>
+            <button className="inline-flex h-8 items-center gap-1 rounded border border-gray-300 bg-white px-2 text-xs text-gray-700" onClick={disabledAction('更多操作')}><MoreHorizontal className="h-4 w-4" />更多</button>
+          </div>
+          <button className="inline-flex h-8 items-center gap-1 rounded border border-gray-300 bg-white px-3 text-xs text-gray-700" onClick={disabledAction('导出订单')}><Download className="h-4 w-4" />导出</button>
+        </div>
+
+        <div className="h-[calc(100vh-250px)] min-h-[480px]">
           <DataTable
             columns={columns}
             data={orders}
             loading={loading}
             rowKey="order_id"
-            summaryRow={summary}
+            summaryRow={summaryRow}
             className="h-full"
             stickyHeaderOffset={0}
             pagination={{
@@ -466,140 +495,127 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {isModalOpen && selectedOrder && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setIsModalOpen(false)}></div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-              <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4 max-h-[80vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-5 border-b pb-4 dark:border-gray-700">
-                  <h3 className="text-xl leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
-                    订单详情 - {selectedOrder.order_id}
-                  </h3>
-                  <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-500">
-                    <span className="sr-only">Close</span>
-                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">基本信息</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div><span className="text-gray-500 block">订单号</span><span className="font-medium dark:text-white">{selectedOrder.order_id}</span></div>
-                      <div><span className="text-gray-500 block">状态</span><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(selectedOrder.status)}`}>{selectedOrder.status}</span></div>
-                      <div><span className="text-gray-500 block">店铺</span><span className="dark:text-white">{String(selectedOrder.shop_name || 'Mock Store')}</span></div>
-                      <div><span className="text-gray-500 block">订购时间</span><span className="dark:text-white">{selectedOrder.order_time ? formatSiteTime(new Date(selectedOrder.order_time)) : '-'}</span></div>
-                      <div><span className="text-gray-500 block">发货时间</span><span className="dark:text-white">{String(selectedOrder.ship_time || '-')}</span></div>
-                      <div><span className="text-gray-500 block">配送方式</span><span className="dark:text-white">{String(selectedOrder.fulfillment_channel || 'FBA')}</span></div>
-                      <div><span className="text-gray-500 block">预计最晚送达</span><span className="dark:text-white">{String(selectedOrder.estimated_delivery || '-')}</span></div>
-                      <div><span className="text-gray-500 block">物流商</span><span className="dark:text-white">{String(selectedOrder.carrier || '-')}</span></div>
-                      <div><span className="text-gray-500 block">运单号</span><span className="dark:text-white">{String(selectedOrder.tracking_number || '-')}</span></div>
-                      <div><span className="text-gray-500 block">买家姓名</span><span className="dark:text-white">{String(selectedOrder.buyer_name || '-')}</span></div>
-                      <div><span className="text-gray-500 block">买家邮箱</span><span className="dark:text-white">{String(selectedOrder.buyer_email || '-')}</span></div>
-                      <div><span className="text-gray-500 block">税号</span><span className="dark:text-white">{String(selectedOrder.tax_id || '-')}</span></div>
-                    </div>
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 bg-black/35" role="dialog" aria-modal="true">
+          <div className="absolute right-0 top-0 flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl">
+            <div className="flex h-12 items-center justify-between border-b border-gray-200 px-4">
+              <div className="text-sm font-semibold">订单详情 - {selectedOrder.order_id}</div>
+              <button className="rounded p-1 text-gray-500 hover:bg-gray-100" onClick={() => setSelectedOrder(null)}><X className="h-5 w-5" /></button>
+            </div>
+            <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_300px] overflow-hidden">
+              <div className="min-h-0 space-y-4 overflow-auto p-4 text-xs">
+                <section className="rounded border border-gray-200">
+                  <div className="border-b bg-gray-50 px-3 py-2 font-medium">订单基础信息</div>
+                  <div className="grid grid-cols-4 gap-x-4 gap-y-3 p-3">
+                    <Info label="订单号" value={selectedOrder.basic_info.order_id} />
+                    <Info label="状态" value={selectedOrder.basic_info.status} />
+                    <Info label="店铺" value={selectedOrder.basic_info.store} />
+                    <Info label="站点" value={selectedOrder.basic_info.site || '-'} />
+                    <Info label="业务员" value={selectedOrder.basic_info.owner || '-'} />
+                    <Info label="币种" value={selectedOrder.basic_info.currency || '-'} />
+                    <Info label="订单类型" value={selectedOrder.basic_info.order_type || '-'} />
+                    <Info label="订购时间" value={fmtTime(selectedOrder.basic_info.order_time)} />
+                    <Info label="付款时间" value={fmtTime(selectedOrder.basic_info.payment_time)} />
+                    <Info label="退款时间" value={fmtTime(selectedOrder.basic_info.refund_time)} />
                   </div>
-
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">收货信息</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm bg-gray-50 dark:bg-gray-900 p-4 rounded-md border border-gray-100 dark:border-gray-700">
-                      <div><span className="text-gray-500 block">收件人</span><span className="dark:text-white">{String(selectedOrder.recipient_name || '-')}</span></div>
-                      <div><span className="text-gray-500 block">电话</span><span className="dark:text-white">{String(selectedOrder.phone || '-')}</span></div>
-                      <div><span className="text-gray-500 block">邮编</span><span className="dark:text-white">{String(selectedOrder.postal_code || '-')}</span></div>
-                      <div><span className="text-gray-500 block">收件地区</span><span className="dark:text-white">{String(selectedOrder.country || '')} {String(selectedOrder.state || '')} {String(selectedOrder.city || '')}</span></div>
-                      <div className="col-span-2"><span className="text-gray-500 block">收件地址</span><span className="dark:text-white">{String(selectedOrder.address_line1 || '-')} {String(selectedOrder.address_line2 || '')}</span></div>
-                      <div><span className="text-gray-500 block">IOSS税号</span><span className="dark:text-white">{String(selectedOrder.ioss_number || '-')}</span></div>
-                    </div>
+                </section>
+                <section className="rounded border border-gray-200">
+                  <div className="border-b bg-gray-50 px-3 py-2 font-medium">买家信息</div>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-3 p-3">
+                    <Info label="买家姓名" value={selectedOrder.buyer_info?.buyer_name || selectedOrder.basic_info.buyer_name || '-'} />
+                    <Info label="买家邮箱" value={selectedOrder.buyer_info?.buyer_email || selectedOrder.basic_info.buyer_email || '-'} />
+                    <Info label="税号" value={selectedOrder.buyer_info?.buyer_tax_id || selectedOrder.basic_info.buyer_tax_id || '-'} />
                   </div>
-
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">产品信息</h4>
-                    <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-md">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-800">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">MSKU / FNSKU</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">ASIN / 产品标题</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">商品折扣</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">产品金额</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">销量</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                          <tr>
-                            <td className="px-4 py-3 text-sm dark:text-white">
-                              <div>{selectedOrder.msku}</div>
-                              <div className="text-gray-500 text-xs">{String(selectedOrder.fnsku || '-')}</div>
-                            </td>
-                            <td className="px-4 py-3 text-sm dark:text-white">
-                              <div>{selectedOrder.asin}</div>
-                              <div className="text-gray-500 text-xs truncate max-w-xs">{selectedOrder.product_name}</div>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right text-red-500">-${Number(selectedOrder.item_discount || 0).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-right dark:text-white">${Number(selectedOrder.product_amount || 0).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-right dark:text-white">{selectedOrder.quantity}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                </section>
+                <section className="rounded border border-gray-200">
+                  <div className="border-b bg-gray-50 px-3 py-2 font-medium">物流/履约信息</div>
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-3 p-3">
+                    <Info label="履约方式" value={selectedOrder.fulfillment_info?.shipping_method || selectedOrder.basic_info.shipping_method} />
+                    <Info label="发货时间" value={fmtTime(selectedOrder.fulfillment_info?.ship_time || selectedOrder.basic_info.ship_time)} />
+                    <Info label="预计送达" value={fmtTime(selectedOrder.fulfillment_info?.estimated_delivery || selectedOrder.basic_info.estimated_delivery)} />
+                    <Info label="物流商" value={selectedOrder.fulfillment_info?.logistics_provider || selectedOrder.basic_info.logistics_provider || '-'} />
+                    <Info label="运单号" value={selectedOrder.fulfillment_info?.tracking_number || selectedOrder.basic_info.tracking_number || '-'} />
+                    <Info label="收件人" value={selectedOrder.shipping_info.recipient_name || '-'} />
+                    <Info label="电话" value={selectedOrder.shipping_info.recipient_phone || '-'} />
+                    <Info label="邮编" value={selectedOrder.shipping_info.recipient_zip || '-'} />
+                    <Info label="地区" value={selectedOrder.shipping_info.recipient_region || '-'} />
+                    <Info label="地址" value={selectedOrder.shipping_info.recipient_address || '-'} wide />
+                    <Info label="IOSS税号" value={selectedOrder.shipping_info.ioss_tax_id || '-'} />
                   </div>
-
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">费用明细</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-y-4 gap-x-6 text-sm bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-md border border-blue-100 dark:border-blue-800">
-                      <div><span className="text-gray-500 block">产品金额</span><span className="font-medium text-gray-900 dark:text-white">${Number(selectedOrder.product_amount || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">促销折扣</span><span className="font-medium text-red-600 dark:text-red-400">-${Number(selectedOrder.promo_discount || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">礼品包装费</span><span className="font-medium text-gray-900 dark:text-white">${Number(selectedOrder.gift_wrap_fee || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">买家运费</span><span className="font-medium text-gray-900 dark:text-white">${Number(selectedOrder.shipping_fee || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">税费</span><span className="font-medium text-gray-900 dark:text-white">${Number(selectedOrder.tax_amount || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">销售收益</span><span className="font-medium text-green-600 dark:text-green-400">${Number(selectedOrder.sales_revenue || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">商城征税</span><span className="font-medium text-red-600 dark:text-red-400">-${Number(selectedOrder.marketplace_tax || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">FBA运费</span><span className="font-medium text-red-600 dark:text-red-400">-${Number(selectedOrder.fba_fee || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">销售佣金</span><span className="font-medium text-red-600 dark:text-red-400">-${Number(selectedOrder.commission_fee || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">订单其他费</span><span className="font-medium text-red-600 dark:text-red-400">-${Number(selectedOrder.other_fee || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">亚马逊回款</span><span className="font-medium text-green-600 dark:text-green-400">${Number(selectedOrder.amazon_payout || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">采购成本</span><span className="font-medium text-red-600 dark:text-red-400">-${Number(selectedOrder.cogs || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">头程费用</span><span className="font-medium text-red-600 dark:text-red-400">-${Number(selectedOrder.freight_cost || 0).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 block">测评费用</span><span className="font-medium text-red-600 dark:text-red-400">-${Number(selectedOrder.review_cost || 0).toFixed(2)}</span></div>
-                      <div className="bg-white dark:bg-gray-800 p-2 -m-2 rounded shadow-sm border border-gray-100 dark:border-gray-700">
-                        <span className="text-gray-500 block">订单利润</span>
-                        <span className={`font-bold text-lg ${Number(selectedOrder.order_profit) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          ${Number(selectedOrder.order_profit || 0).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="bg-white dark:bg-gray-800 p-2 -m-2 rounded shadow-sm border border-gray-100 dark:border-gray-700">
-                        <span className="text-gray-500 block">订单利润率</span>
-                        <span className={`font-bold text-lg ${Number(selectedOrder.profit_rate) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {(Number(selectedOrder.profit_rate || 0) * 100).toFixed(2)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                </section>
+                <section className="rounded border border-gray-200">
+                  <div className="border-b bg-gray-50 px-3 py-2 font-medium">商品多行</div>
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 text-gray-500">
+                      <tr>
+                        <th className="px-3 py-2 text-left">MSKU / FNSKU</th>
+                        <th className="px-3 py-2 text-left">ASIN / 标题</th>
+                        <th className="px-3 py-2 text-right">商品折扣</th>
+                        <th className="px-3 py-2 text-right">单价</th>
+                        <th className="px-3 py-2 text-right">销量</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedOrder.products.map((product) => (
+                        <tr key={`${product.asin}-${product.msku}`} className="border-t">
+                          <td className="px-3 py-2"><div>{product.msku}</div><div className="text-gray-500">{product.fnsku || '-'}</div></td>
+                          <td className="px-3 py-2"><div>{product.asin}</div><div className="max-w-xl truncate text-gray-500">{product.title}</div></td>
+                          <td className="px-3 py-2 text-right text-rose-600">-{money(product.item_discount)}</td>
+                          <td className="px-3 py-2 text-right">{money(product.unit_price)}</td>
+                          <td className="px-3 py-2 text-right">{product.quantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </section>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t dark:border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm dark:focus:ring-offset-gray-800"
-                >
-                  关闭
-                </button>
-              </div>
+              <aside className="min-h-0 overflow-auto border-l border-gray-200 bg-[#fafafa] p-4 text-xs">
+                <div className="mb-3 text-sm font-semibold">费用字段</div>
+                <Fee label="产品金额" value={selectedOrder.fee_details.product_amount} positive />
+                <Fee label="促销折扣" value={selectedOrder.fee_details.promo_discount} />
+                <Fee label="礼品包装费" value={selectedOrder.fee_details.gift_wrap_fee} positive />
+                <Fee label="买家运费" value={selectedOrder.fee_details.buyer_shipping_fee} positive />
+                <Fee label="税费" value={selectedOrder.fee_details.tax} positive />
+                <Fee label="销售收入" value={selectedOrder.fee_details.sales_revenue} positive strong />
+                <Fee label="商城征税" value={selectedOrder.fee_details.marketplace_tax} />
+                <Fee label="FBA运费" value={selectedOrder.fee_details.fba_shipping_fee} />
+                <Fee label="销售佣金" value={selectedOrder.fee_details.sales_commission} />
+                <Fee label="订单其他费" value={selectedOrder.fee_details.other_order_fees} />
+                <Fee label="亚马逊回款" value={selectedOrder.fee_details.amazon_payout} positive strong />
+                <Fee label="采购成本" value={selectedOrder.fee_details.cogs} />
+                <Fee label="头程费用" value={selectedOrder.fee_details.first_mile_fee} />
+                <Fee label="测评费用" value={selectedOrder.fee_details.review_cost} />
+                <div className="mt-4 rounded border border-blue-200 bg-blue-50 p-3">
+                  <div className="flex justify-between font-semibold text-blue-900"><span>订单利润</span><span>{money(selectedOrder.fee_details.order_profit)}</span></div>
+                  <div className="mt-1 flex justify-between text-blue-700"><span>订单利润率</span><span>{percent(selectedOrder.fee_details.order_profit_rate)}</span></div>
+                </div>
+              </aside>
             </div>
           </div>
         </div>
       )}
 
-      {toastMsg && (
-        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 transition-opacity">
-          {toastMsg}
-        </div>
-      )}
+      {toastMsg && <div className="fixed bottom-4 right-4 z-50 rounded bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">{toastMsg}</div>}
+    </div>
+  );
+}
+
+function Info({ label, value, wide = false }: { label: string; value: React.ReactNode; wide?: boolean }) {
+  return (
+    <div className={wide ? 'col-span-2' : ''}>
+      <div className="mb-1 text-gray-500">{label}</div>
+      <div className="break-words text-gray-900">{value}</div>
+    </div>
+  );
+}
+
+function Fee({ label, value, positive = false, strong = false }: { label: string; value: unknown; positive?: boolean; strong?: boolean }) {
+  const amount = Number(value ?? 0);
+  const text = positive || amount === 0 ? money(amount) : `-${money(Math.abs(amount))}`;
+  return (
+    <div className={`flex justify-between border-b border-gray-200 py-2 ${strong ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+      <span>{label}</span>
+      <span className={positive ? 'text-emerald-600' : 'text-rose-600'}>{text}</span>
     </div>
   );
 }

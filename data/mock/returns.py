@@ -294,3 +294,201 @@ def get_returns(
         "items": page_items,
         "summary_row": summary_row,
     }
+
+
+def _normalize_return_record(r: dict[str, Any]) -> dict[str, Any]:
+    stable_rng = Random(str(r["order_id"]))
+    sales_quantity = int(r["return_qty"]) + stable_rng.randint(1, 8)
+    return {
+        "order_id": r["order_id"],
+        "after_sale_tags": [r["after_sale_label"]],
+        "return_time": r["return_time"],
+        "order_time": r["order_time"],
+        "site_return_time": r["site_return_time"],
+        "store": r["store_site"].rsplit(" ", 1)[0],
+        "site": r["store_site"].rsplit(" ", 1)[-1],
+        "image_url": r["product_info"]["image_url"],
+        "asin": r["product_info"]["asin"],
+        "msku": r["product_info"]["msku"],
+        "product_title": r["product_info"]["title"],
+        "product_name": r["product_info"]["title"],
+        "sku": r["product_info"]["msku"],
+        "parent_asin": r["parent_asin"],
+        "buyer_notes": r["buyer_remarks"] or "",
+        "return_quantity": r["return_qty"],
+        "refund_quantity": r["return_qty"] if r["return_status"]["text"] == "Refunded" else 0,
+        "sales_quantity": sales_quantity,
+        "warehouse_id": r["warehouse_id"],
+        "inventory_property": r["inventory_attribute"],
+        "disposition": r["inventory_attribute"],
+        "return_reason": r["return_reason"],
+        "status": r["return_status"]["text"],
+        "lpn_number": r["lpn_number"],
+        "notes": r["remarks"] or "",
+        "owner": "-",
+        "main_return_reason": r["return_reason"],
+    }
+
+
+def _filter_analysis_records(
+    *,
+    site: Optional[str] = None,
+    shop: Optional[str] = None,
+    owner: Optional[str] = None,
+    tag: Optional[str] = None,
+    reason: Optional[str] = None,
+    status: Optional[str] = None,
+    disposition: Optional[str] = None,
+    search_type: Optional[str] = None,
+    search: Optional[str] = None,
+    time_range: Optional[str] = None,
+) -> list[dict[str, Any]]:
+    records = [_normalize_return_record(r) for r in _ALL_RETURNS]
+    if time_range:
+        records = [r for r in records if _match_time_range(r["return_time"], time_range)]
+    if site:
+        records = [r for r in records if r["site"].lower() == site.lower()]
+    if shop:
+        records = [r for r in records if shop.lower() in r["store"].lower()]
+    if owner:
+        records = [r for r in records if owner.lower() in r["owner"].lower()]
+    if tag:
+        records = [r for r in records if any(tag.lower() in t.lower() for t in r["after_sale_tags"])]
+    if reason:
+        records = [r for r in records if r["return_reason"].lower() == reason.lower()]
+    if status:
+        records = [r for r in records if r["status"].lower() == status.lower()]
+    if disposition:
+        records = [r for r in records if disposition.lower() in r["disposition"].lower()]
+    if search:
+        needle = search.lower()
+        field_map = {
+            "order_id": ["order_id"],
+            "asin": ["asin"],
+            "parent_asin": ["parent_asin"],
+            "msku": ["msku"],
+            "sku": ["sku"],
+            "product_name": ["product_name", "product_title"],
+        }
+        fields = field_map.get(search_type or "", ["order_id", "asin", "parent_asin", "msku", "sku", "product_name", "product_title"])
+        records = [r for r in records if any(needle in str(r.get(field, "")).lower() for field in fields)]
+    return records
+
+
+def get_return_analysis(
+    *,
+    dimension: str = "order",
+    site: Optional[str] = None,
+    shop: Optional[str] = None,
+    owner: Optional[str] = None,
+    tag: Optional[str] = None,
+    reason: Optional[str] = None,
+    status: Optional[str] = None,
+    disposition: Optional[str] = None,
+    search_type: Optional[str] = None,
+    search: Optional[str] = None,
+    time_range: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict[str, Any]:
+    records = _filter_analysis_records(
+        site=site,
+        shop=shop,
+        owner=owner,
+        tag=tag,
+        reason=reason,
+        status=status,
+        disposition=disposition,
+        search_type=search_type,
+        search=search,
+        time_range=time_range,
+    )
+    records.sort(key=lambda item: item["return_time"], reverse=True)
+
+    if dimension != "order":
+        group_key = {
+            "parent_asin": "parent_asin",
+            "asin": "asin",
+            "msku": "msku",
+        }.get(dimension, "parent_asin")
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for record in records:
+            grouped.setdefault(record[group_key] or "-", []).append(record)
+        rows = []
+        for key, group in grouped.items():
+            first = group[0]
+            return_qty = sum(int(item["return_quantity"]) for item in group)
+            refund_qty = sum(int(item["refund_quantity"]) for item in group)
+            sales_qty = sum(int(item["sales_quantity"]) for item in group)
+            rows.append({
+                "id": key,
+                "dimension_value": key,
+                "image_url": first["image_url"],
+                "parent_asin": first["parent_asin"],
+                "asin": first["asin"],
+                "msku": first["msku"],
+                "product_title": first["product_title"],
+                "product_name": first["product_name"],
+                "sku": first["sku"],
+                "store": first["store"],
+                "site": first["site"],
+                "owner": first["owner"],
+                "return_order_count": len(group),
+                "return_quantity": return_qty,
+                "refund_quantity": refund_qty,
+                "sales_quantity": sales_qty,
+                "return_rate": return_qty / sales_qty if sales_qty else 0,
+                "refund_rate": refund_qty / sales_qty if sales_qty else 0,
+                "return_quantity_mom": 0,
+                "main_return_reason": first["return_reason"],
+            })
+        rows.sort(key=lambda item: item["return_rate"], reverse=True)
+    else:
+        rows = [{"id": item["order_id"], **item} for item in records]
+
+    total_count = len(rows)
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    return {
+        "total_count": total_count,
+        "items": rows[start_idx:end_idx],
+        "summary_row": get_return_analysis_summary(
+            dimension=dimension,
+            site=site,
+            shop=shop,
+            owner=owner,
+            tag=tag,
+            reason=reason,
+            status=status,
+            disposition=disposition,
+            search_type=search_type,
+            search=search,
+            time_range=time_range,
+        ),
+    }
+
+
+def get_return_analysis_summary(**filters: Any) -> dict[str, Any]:
+    records = _filter_analysis_records(
+        site=filters.get("site"),
+        shop=filters.get("shop"),
+        owner=filters.get("owner"),
+        tag=filters.get("tag"),
+        reason=filters.get("reason"),
+        status=filters.get("status"),
+        disposition=filters.get("disposition"),
+        search_type=filters.get("search_type"),
+        search=filters.get("search"),
+        time_range=filters.get("time_range"),
+    )
+    return_qty = sum(int(item["return_quantity"]) for item in records)
+    refund_qty = sum(int(item["refund_quantity"]) for item in records)
+    sales_qty = sum(int(item["sales_quantity"]) for item in records)
+    return {
+        "total_return_orders": len(records),
+        "total_return_quantity": return_qty,
+        "total_refund_quantity": refund_qty,
+        "total_sales_quantity": sales_qty,
+        "return_rate": return_qty / sales_qty if sales_qty else 0,
+        "refund_rate": refund_qty / sales_qty if sales_qty else 0,
+    }

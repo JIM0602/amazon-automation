@@ -870,6 +870,7 @@ def get_campaign_settings(campaign_id: str) -> dict[str, Any] | None:
         return None
     return {
         **campaign,
+        "status": campaign["service_status"],
         "ad_groups_count": len([g for g in _AD_GROUPS if g["campaign_id"] == campaign_id]),
         "products_count": len([p for p in _AD_PRODUCTS if p["campaign_id"] == campaign_id]),
         "targeting_count": len([t for t in _TARGETING if t["campaign_id"] == campaign_id]),
@@ -958,6 +959,56 @@ def execute_ads_action(
     if action is None:
         raise ValueError(f"Unsupported action: {action_key}")
 
+    payload = dict(payload or {})
+
+    if action_key == "edit_budget":
+        budget_value_raw = payload.get("budgetValue")
+        try:
+            budget_value = round(float(budget_value_raw), 2)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Invalid budget value") from exc
+
+        updated = False
+        for target_id in target_ids:
+            campaign = next((c for c in _CAMPAIGNS if c["id"] == target_id), None)
+            if campaign is not None:
+                campaign["daily_budget"] = budget_value
+                campaign["budget_remaining"] = min(campaign.get("budget_remaining", budget_value), budget_value)
+                updated = True
+            portfolio = next((p for p in _PORTFOLIOS if p["id"] == target_id), None)
+            if portfolio is not None:
+                portfolio["budget"] = budget_value
+                updated = True
+        if not updated:
+            raise ValueError(f"Unsupported edit_budget target_ids: {target_ids}")
+
+    if action_key == "change_status":
+        next_status_raw = str(payload.get("nextStatus") or "").strip().lower()
+        status_map = {
+            "enabled": "Delivering",
+            "paused": "Paused",
+            "archived": "Ended",
+        }
+        service_status = status_map.get(next_status_raw)
+        if service_status is None:
+            raise ValueError("Invalid next status")
+
+        updated = False
+        for target_id in target_ids:
+            campaign = next((c for c in _CAMPAIGNS if c["id"] == target_id), None)
+            if campaign is not None:
+                campaign["service_status"] = service_status
+                campaign["is_active"] = service_status == "Delivering"
+                updated = True
+            portfolio_campaigns = [c for c in _CAMPAIGNS if c["portfolio_id"] == target_id]
+            if portfolio_campaigns:
+                for campaign_item in portfolio_campaigns:
+                    campaign_item["service_status"] = service_status
+                    campaign_item["is_active"] = service_status == "Delivering"
+                updated = True
+        if not updated:
+            raise ValueError(f"Unsupported change_status target_ids: {target_ids}")
+
     return {
         "result": "success",
         "action_key": action_key,
@@ -968,5 +1019,5 @@ def execute_ads_action(
         "is_real_write": False,
         "should_reload": True,
         "message": action["message"],
-        "payload": dict(payload or {}),
+        "payload": payload,
     }

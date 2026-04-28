@@ -24,8 +24,26 @@ const TAB_ITEMS: Array<{ key: TabKey; label: string }> = [
   { key: 'targeting', label: '投放' },
   { key: 'search_term', label: '搜索词' },
   { key: 'negative_targeting', label: '否定投放' },
+  { key: 'ad_placement', label: '广告位' },
   { key: 'ad_log', label: '广告日志' },
 ]
+
+const TAB_LABELS: Record<TabKey, string> = {
+  portfolio: '广告组合',
+  campaign: '广告活动',
+  ad_group: '广告组',
+  ad_product: '广告产品',
+  targeting: '投放',
+  search_term: '搜索词',
+  negative_targeting: '否定投放',
+  ad_placement: '广告位',
+  ad_log: '广告日志',
+}
+
+const DISPLAY_TAB_ITEMS: Array<{ key: TabKey; label: string }> = TAB_ITEMS.map((item) => ({
+  ...item,
+  label: TAB_LABELS[item.key],
+}))
 
 
 export default function AdManagement() {
@@ -334,14 +352,46 @@ export default function AdManagement() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] p-6 text-gray-900 dark:text-gray-100">
-      <div className="mb-6 flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">广告管理</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">按 Portfolio、对象层级、广告类型、时间范围和关键词筛选广告对象</p>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <div className="grid min-h-[760px] grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="min-h-[calc(100vh-64px)] bg-[#eef0f5] p-3 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+      <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="border-b border-gray-200 bg-white px-3 pt-2 dark:border-gray-800 dark:bg-gray-900">
+          <AdsObjectTabs items={DISPLAY_TAB_ITEMS} activeTab={query.activeTab} onChange={handleTabChange} />
+          <AdsTopToolbar
+            shopId={query.shopId}
+            adType={query.adType}
+            serviceStatus={query.serviceStatus}
+            campaignId={query.campaignId}
+            adGroupId={query.adGroupId}
+            strategy={query.strategy}
+            owner={query.owner}
+            dateRange={query.dateRange}
+            compareEnabled={query.compareEnabled}
+            searchField={query.searchField}
+            keyword={query.keyword}
+            metricPreset={query.metricPreset}
+            filterTemplateId={query.filterTemplateId}
+            advancedOpen={query.advancedOpen}
+            advanced={query.advanced}
+            onShopChange={(value) => handleFilterChange('shopId', value)}
+            onAdTypeChange={(value) => handleFilterChange('adType', value)}
+            onServiceStatusChange={(value) => handleFilterChange('serviceStatus', value)}
+            onCampaignChange={(value) => handleFilterChange('campaignId', value)}
+            onAdGroupChange={(value) => handleFilterChange('adGroupId', value)}
+            onStrategyChange={(value) => handleFilterChange('strategy', value)}
+            onOwnerChange={(value) => handleFilterChange('owner', value)}
+            onDateRangeChange={(value) => handleFilterChange('dateRange', value)}
+            onCompareChange={(value) => handleFilterChange('compareEnabled', value)}
+            onSearchFieldChange={(value) => handleFilterChange('searchField', value)}
+            onKeywordChange={(value) => handleFilterChange('keyword', value)}
+            onMetricPresetChange={(value) => handleFilterChange('metricPreset', value)}
+            onFilterTemplateChange={(value) => handleFilterChange('filterTemplateId', value)}
+            onAdvancedOpenChange={(value) => handleFilterChange('advancedOpen', value)}
+            onAdvancedChange={(key, value) => handleFilterChange('advanced', { ...query.advanced, [key]: value })}
+            onSync={handleSync}
+            onReset={handleReset}
+          />
+        </div>
+        <div className="grid min-h-[720px] grid-cols-1 lg:grid-cols-[212px_minmax(0,1fr)]">
           <AdsLeftFilterPanel
             portfolioTree={filteredPortfolios}
             portfolioLoading={portfolioLoading}
@@ -353,26 +403,8 @@ export default function AdManagement() {
             onPortfolioClear={handlePortfolioClear}
           />
 
-          <main className="min-w-0 p-4 sm:p-6">
-            <div className="mb-4 flex flex-col gap-4 border-b border-gray-200 pb-4 dark:border-gray-800">
-              <AdsObjectTabs items={TAB_ITEMS} activeTab={query.activeTab} onChange={handleTabChange} />
-              <AdsTopToolbar
-                shopId={query.shopId}
-                adType={query.adType}
-                serviceStatus={query.serviceStatus}
-                dateRange={query.dateRange}
-                keyword={query.keyword}
-                onShopChange={(value) => handleFilterChange('shopId', value)}
-                onAdTypeChange={(value) => handleFilterChange('adType', value)}
-                onServiceStatusChange={(value) => handleFilterChange('serviceStatus', value)}
-                onDateRangeChange={(value) => handleFilterChange('dateRange', value)}
-                onKeywordChange={(value) => handleFilterChange('keyword', value)}
-                onSync={handleSync}
-                onReset={handleReset}
-              />
-            </div>
-
-            <div className="min-h-[620px] rounded-2xl border border-gray-200 bg-gray-50/60 p-4 dark:border-gray-800 dark:bg-gray-950">
+          <main className="min-w-0 bg-[#eef0f5] p-3 dark:bg-gray-950">
+            <div className="min-h-[690px]">
               <AdsDataTablePanel
                 query={query}
                 reloadKey={reloadKey}

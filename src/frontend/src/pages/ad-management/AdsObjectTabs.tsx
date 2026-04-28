@@ -13,19 +13,22 @@ interface AdsObjectTabsProps {
 
 export default function AdsObjectTabs({ items, activeTab, onChange }: AdsObjectTabsProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-7 border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
       {items.map((item) => (
         <button
           key={item.key}
           type="button"
           onClick={() => onChange(item.key)}
-          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+          className={`relative inline-flex h-11 items-center text-sm font-medium transition-colors ${
             activeTab === item.key
-              ? 'bg-[var(--color-accent)] text-white shadow-sm'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+              ? 'text-orange-500'
+              : 'text-gray-900 hover:text-orange-500 dark:text-gray-200 dark:hover:text-orange-400'
           }`}
         >
           {item.label}
+          {activeTab === item.key ? (
+            <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-orange-500" />
+          ) : null}
         </button>
       ))}
     </div>

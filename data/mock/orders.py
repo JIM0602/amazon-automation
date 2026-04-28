@@ -55,6 +55,7 @@ _status_rng = Random(42)
 _status_rng.shuffle(_STATUS_POOL)
 
 _STORES = ["PUDIWIND US", "PUDIWIND EU", "PUDIWIND JP"]
+_OWNERS = ["Alice", "Bob", "Cindy", "David"]
 
 _SHIPPING_METHODS = ["FBA", "FBM", "SFP"]
 
@@ -88,6 +89,10 @@ def _generate_orders() -> list[dict[str, Any]]:
         product = rng.choice(_PRODUCTS)
         status = _STATUS_POOL[i]
         store = rng.choice(_STORES)
+        site = store.rsplit(" ", 1)[-1]
+        currency = "USD" if site == "US" else "EUR" if site == "EU" else "JPY"
+        order_type = "Replacement" if status == "Refunded" and rng.random() > 0.5 else "Normal"
+        owner = rng.choice(_OWNERS)
         quantity = rng.randint(1, 5)
         unit_price: float = float(product["price"])
 
@@ -160,6 +165,11 @@ def _generate_orders() -> list[dict[str, Any]]:
 
             # Detail-only fields
             "store": store,
+            "site": site,
+            "shop": store.rsplit(" ", 1)[0],
+            "owner": owner,
+            "currency": currency,
+            "order_type": order_type,
             "shipping_method": shipping_method,
             "ship_time": ship_time.isoformat() if ship_time else None,
             "estimated_delivery": estimated_delivery.isoformat() if estimated_delivery else None,
@@ -207,6 +217,19 @@ def _generate_orders() -> list[dict[str, Any]]:
                 "order_profit_rate": order_profit_rate,
             },
         }
+        if rng.random() > 0.72:
+            second_product = rng.choice(_PRODUCTS)
+            if second_product["asin"] != product["asin"]:
+                second_quantity = rng.randint(1, 2)
+                order["product_detail_2"] = {
+                    "msku": second_product["msku"],
+                    "fnsku": f"X00{rng.randint(10000, 99999)}FN",
+                    "asin": second_product["asin"],
+                    "title": second_product["title"],
+                    "item_discount": 0.0,
+                    "unit_price": float(second_product["price"]),
+                    "quantity": second_quantity,
+                }
         orders.append(order)
 
     return orders
@@ -240,9 +263,25 @@ def _match_time_range(order_time: str, time_range: str | None) -> bool:
     return start <= order_dt.astimezone(start.tzinfo) <= end
 
 
+def _field_matches_time_range(order: dict[str, Any], time_field: str | None, time_range: str | None) -> bool:
+    if not time_range:
+        return True
+    field = time_field or "order_time"
+    value = order.get(field) or order.get("order_time")
+    return _match_time_range(str(value), time_range) if value else False
+
+
 def get_orders(
     *,
     time_range: Optional[str] = None,
+    time_field: Optional[str] = None,
+    site: Optional[str] = None,
+    shop: Optional[str] = None,
+    owner: Optional[str] = None,
+    fulfillment: Optional[str] = None,
+    currency: Optional[str] = None,
+    order_type: Optional[str] = None,
+    search_type: Optional[str] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
     page: int = 1,
@@ -255,7 +294,25 @@ def get_orders(
     filtered = list(_ALL_ORDERS)
 
     if time_range:
-        filtered = [o for o in filtered if _match_time_range(o["order_time"], time_range)]
+        filtered = [o for o in filtered if _field_matches_time_range(o, time_field, time_range)]
+
+    if site:
+        filtered = [o for o in filtered if o["site"].lower() == site.lower()]
+
+    if shop:
+        filtered = [o for o in filtered if shop.lower() in o["shop"].lower() or shop.lower() in o["store"].lower()]
+
+    if owner:
+        filtered = [o for o in filtered if owner.lower() in o["owner"].lower()]
+
+    if fulfillment:
+        filtered = [o for o in filtered if o["shipping_method"].lower() == fulfillment.lower()]
+
+    if currency:
+        filtered = [o for o in filtered if o["currency"].lower() == currency.lower()]
+
+    if order_type:
+        filtered = [o for o in filtered if o["order_type"].lower() == order_type.lower()]
 
     # Filter by status
     if status:
@@ -264,11 +321,24 @@ def get_orders(
     # Filter by search (order_id, product name, buyer name)
     if search:
         search_lower = search.lower()
+        field_map = {
+            "order_id": ["order_id"],
+            "asin": ["product_info.asin"],
+            "msku": ["product_info.msku"],
+            "sku": ["product_info.msku"],
+            "buyer": ["buyer_name", "buyer_email"],
+            "product_name": ["product_name_sku"],
+        }
+        fields = field_map.get(search_type or "", ["order_id", "product_name_sku", "buyer_name", "buyer_email", "product_info.asin", "product_info.msku"])
+
+        def matches_field(order: dict[str, Any], field: str) -> bool:
+            if field.startswith("product_info."):
+                return search_lower in str(order["product_info"].get(field.split(".", 1)[1], "")).lower()
+            return search_lower in str(order.get(field, "")).lower()
+
         filtered = [
             o for o in filtered
-            if search_lower in o["order_id"].lower()
-            or search_lower in o["product_name_sku"].lower()
-            or search_lower in o["buyer_name"].lower()
+            if any(matches_field(o, field) for field in fields)
         ]
 
     # Sort by order_time desc
@@ -315,6 +385,13 @@ def get_orders(
             "payment_time": o["payment_time"],
             "refund_time": o["refund_time"],
             "status": o["status"],
+            "site": o["site"],
+            "shop": o["shop"],
+            "store": o["store"],
+            "owner": o["owner"],
+            "fulfillment": o["shipping_method"],
+            "currency": o["currency"],
+            "order_type": o["order_type"],
             "sales_revenue": o["sales_revenue"],
             "image_url": o["product_info"]["image_url"],
             "asin": o["product_info"]["asin"],
@@ -334,7 +411,7 @@ def get_orders(
     return {
         "total_count": total_count,
         "items": page_items,
-        "summary_row": summary_row,
+        "summary_row": {**summary_row, "total_orders": total_count},
     }
 
 
@@ -358,12 +435,23 @@ def get_order_detail(order_id: str) -> Optional[dict[str, Any]]:
     if order is None:
         return None
 
+    products = [order["product_detail"]]
+    if order.get("product_detail_2"):
+        products.append(order["product_detail_2"])
+
     return {
         "basic_info": {
             "order_id": order["order_id"],
             "status": order["status"],
             "store": order["store"],
+            "shop": order["shop"],
+            "site": order["site"],
+            "owner": order["owner"],
+            "currency": order["currency"],
+            "order_type": order["order_type"],
             "order_time": order["order_time"],
+            "payment_time": order["payment_time"],
+            "refund_time": order["refund_time"],
             "ship_time": order["ship_time"],
             "shipping_method": order["shipping_method"],
             "estimated_delivery": order["estimated_delivery"],
@@ -373,6 +461,18 @@ def get_order_detail(order_id: str) -> Optional[dict[str, Any]]:
             "buyer_email": order["buyer_email"],
             "buyer_tax_id": order["buyer_tax_id"],
         },
+        "buyer_info": {
+            "buyer_name": order["buyer_name"],
+            "buyer_email": order["buyer_email"],
+            "buyer_tax_id": order["buyer_tax_id"],
+        },
+        "fulfillment_info": {
+            "shipping_method": order["shipping_method"],
+            "ship_time": order["ship_time"],
+            "estimated_delivery": order["estimated_delivery"],
+            "logistics_provider": order["logistics_provider"],
+            "tracking_number": order["tracking_number"],
+        },
         "shipping_info": {
             "recipient_name": order["recipient_name"],
             "recipient_phone": order["recipient_phone"],
@@ -381,6 +481,6 @@ def get_order_detail(order_id: str) -> Optional[dict[str, Any]]:
             "recipient_address": order["recipient_address"],
             "ioss_tax_id": order["ioss_tax_id"],
         },
-        "products": [order["product_detail"]],
+        "products": products,
         "fee_details": order["fee_details"],
     }

@@ -109,7 +109,7 @@ export function DataTable<T extends Record<string, unknown>>({
           <thead className="sticky z-10 bg-gray-50 dark:bg-gray-800" style={{ top: stickyHeaderOffset }}>
             <tr>
               {selection && (
-                <th className="w-10 px-3 py-3 bg-gray-50 dark:bg-gray-800">
+                <th className="w-9 px-2 py-2 bg-gray-50 dark:bg-gray-800">
                   <input
                     type="checkbox"
                     checked={!!allSelected}
@@ -124,7 +124,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 return (
                   <th
                     key={col.key}
-                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800
+                    className={`px-4 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800
                       ${col.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : ''}
                       ${isSorted ? 'font-bold text-gray-900 dark:text-white' : ''}
                     `}
@@ -150,12 +150,12 @@ export function DataTable<T extends Record<string, unknown>>({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-800">
             {summaryRow && !loading && data.length > 0 && (
-              <tr className="sticky z-[9] bg-gray-100 dark:bg-gray-800 font-bold" style={{ top: stickyHeaderOffset + 41 }}>
-                {selection && <td className="w-10 px-3 py-4" />}
+              <tr className="sticky z-[9] bg-gray-100 dark:bg-gray-800 font-bold" style={{ top: stickyHeaderOffset + 33 }}>
+                {selection && <td className="w-9 px-2 py-2" />}
                 {columns.map((col, idx) => (
                   <td
                     key={`summary-${col.key}`}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800"
+                    className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800"
                     style={{ textAlign: col.align || 'left' }}
                   >
                     {idx === 0 ? '合计' : (summaryRow[col.key as keyof Partial<T>] as React.ReactNode) ?? ''}
@@ -168,7 +168,7 @@ export function DataTable<T extends Record<string, unknown>>({
               Array.from({ length: 5 }).map((_, rowIndex) => (
                 <tr key={`skeleton-${rowIndex}`}>
                   {columns.map((col) => (
-                    <td key={`skeleton-${rowIndex}-${col.key}`} className="px-6 py-4 whitespace-nowrap">
+                    <td key={`skeleton-${rowIndex}-${col.key}`} className="px-4 py-3 whitespace-nowrap">
                       <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
                     </td>
                   ))}
@@ -176,7 +176,7 @@ export function DataTable<T extends Record<string, unknown>>({
               ))
             ) : sortedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (selection ? 1 : 0)} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={columns.length + (selection ? 1 : 0)} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                   {emptyText}
                 </td>
               </tr>
@@ -194,7 +194,7 @@ export function DataTable<T extends Record<string, unknown>>({
                     onClick={() => onRowClick && onRowClick(row, index)}
                   >
                     {selection && (
-                      <td className="w-10 px-3 py-4" onClick={(e) => e.stopPropagation()}>
+                      <td className="w-9 px-2 py-2" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selection.selectedKeys.has(rk)}
@@ -206,7 +206,7 @@ export function DataTable<T extends Record<string, unknown>>({
                     {columns.map((col) => (
                       <td
                         key={col.key}
-                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
+                        className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300"
                         style={{ textAlign: col.align || 'left' }}
                       >
                         {col.render
