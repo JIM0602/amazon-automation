@@ -13,6 +13,16 @@ from src.config import settings
 from src.db.models import AdsAdGroup, AdsCampaign, AdsMetricsDaily, AdsNegativeTargeting, AdsSearchTerm, AdsTargeting, SyncJob
 from src.services.phase1_common import first_value, safe_float, safe_int
 
+MAX_V3_LIST_PAGES = 500
+
+
+class AdsSyncIncompleteError(RuntimeError):
+    """Raised when a list endpoint may have returned incomplete data."""
+
+    def __init__(self, message: str, payload: dict[str, Any]):
+        super().__init__(message)
+        self.payload = payload
+
 
 def _ads_client() -> AmazonAdsClient:
     has_credentials = all([
@@ -42,6 +52,7 @@ def sync_ads(db: Session, start_date: str | None = None, end_date: str | None = 
     db.add(job)
     db.flush()
     records = 0
+    list_diagnostics: list[dict[str, Any]] = []
     try:
         client = _ads_client()
         campaigns_api = CampaignsApi(client)
@@ -51,15 +62,15 @@ def sync_ads(db: Session, start_date: str | None = None, end_date: str | None = 
             _upsert_campaign(db, payload, now)
             records += 1
 
-        for payload in _list_v3_items(client, "/sp/adGroups/list", "adGroups", "application/vnd.spadGroup.v3+json"):
+        for payload in _list_v3_items(client, "/sp/adGroups/list", "adGroups", "application/vnd.spadGroup.v3+json", list_diagnostics):
             _upsert_ad_group(db, payload, now)
             records += 1
 
-        for payload in _list_v3_items(client, "/sp/targets/list", "targetingClauses", "application/vnd.sptargetingClause.v3+json"):
+        for payload in _list_v3_items(client, "/sp/targets/list", "targetingClauses", "application/vnd.sptargetingClause.v3+json", list_diagnostics):
             _upsert_targeting(db, payload, now)
             records += 1
 
-        for payload in _list_v3_items(client, "/sp/negativeTargets/list", "negativeTargetingClauses", "application/vnd.spnegativeTargetingClause.v3+json"):
+        for payload in _list_v3_items(client, "/sp/negativeTargets/list", "negativeTargetingClauses", "application/vnd.spnegativeTargetingClause.v3+json", list_diagnostics):
             _upsert_negative(db, payload, now)
             records += 1
 
@@ -80,8 +91,16 @@ def sync_ads(db: Session, start_date: str | None = None, end_date: str | None = 
         job.status = "success"
         job.records_count = records
         job.finished_at = datetime.now(timezone.utc)
-        job.extra_payload = {"dry_run": client.dry_run, "start_date": start, "end_date": end}
+        job.extra_payload = {"dry_run": client.dry_run, "start_date": start, "end_date": end, "list_diagnostics": list_diagnostics}
         return {"status": "success", "records_count": records, "dry_run": client.dry_run}
+    except AdsSyncIncompleteError as exc:
+        job.status = "failed"
+        job.error_message = str(exc)
+        job.records_count = records
+        job.finished_at = datetime.now(timezone.utc)
+        job.extra_payload = {"reason": "pagination_incomplete", **exc.payload, "records_count_before_failure": records}
+        db.commit()
+        raise
     except Exception as exc:
         job.status = "failed"
         job.error_message = str(exc)
@@ -90,18 +109,40 @@ def sync_ads(db: Session, start_date: str | None = None, end_date: str | None = 
         raise
 
 
-def _list_v3_items(client: AmazonAdsClient, path: str, key: str, content_type: str) -> list[dict[str, Any]]:
+def _list_v3_items(
+    client: AmazonAdsClient,
+    path: str,
+    key: str,
+    content_type: str,
+    diagnostics: list[dict[str, Any]],
+    max_pages: int = MAX_V3_LIST_PAGES,
+) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     next_token: str | None = None
-    for _ in range(20):
+    page_count = 0
+    while True:
+        if page_count >= max_pages:
+            payload = {
+                "path": path,
+                "key": key,
+                "pages_read": page_count,
+                "items_read": len(items),
+                "max_pages": max_pages,
+                "has_next_token": bool(next_token),
+            }
+            diagnostics.append({**payload, "complete": False})
+            raise AdsSyncIncompleteError(f"{path} exceeded pagination safety limit after {page_count} pages", payload)
+
         body = {"nextToken": next_token} if next_token else {}
         response = client.post(path, json_body=body, content_type=content_type, accept=content_type)
+        page_count += 1
         value = response.get(key) or response.get("items") or []
         if isinstance(value, list):
             items.extend(value)
         next_token = response.get("nextToken")
         if not next_token:
             break
+    diagnostics.append({"path": path, "key": key, "pages_read": page_count, "items_read": len(items), "complete": True})
     return items
 
 

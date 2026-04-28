@@ -92,7 +92,14 @@ def sync_sales(db: Session, start_date: str | None = None, end_date: str | None 
         job.status = "success"
         job.records_count = records
         job.finished_at = datetime.now(timezone.utc)
-        job.extra_payload = {"dry_run": client.dry_run, "start_date": start.isoformat(), "end_date": end.isoformat()}
+        job.extra_payload = {
+            "dry_run": client.dry_run,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "grain": "store_total",
+            "sku_level_sales_available": False,
+            "note": "sales/v1/orderMetrics returns marketplace aggregate metrics; SKU ranking excludes __store_total__ until SKU-level sales source is connected.",
+        }
         return {"status": "success", "records_count": records, "dry_run": client.dry_run}
     except Exception as exc:
         job.status = "failed"

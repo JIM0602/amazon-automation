@@ -59,7 +59,8 @@ async def dashboard_sku_ranking(
 ) -> Dict[str, Any]:
     """Return paginated SKU ranking with 12 data columns.
 
-    Response: {items: [...], total_count: N, summary_row: {...}}
+    Response: {items: [...], total_count: N, summary_row: {...}, data_quality: {...}}
+    Store-level SP-API orderMetrics aggregates are never returned as a fake SKU row.
     """
     if time_range == "custom" and not (start_date and end_date):
         raise HTTPException(status_code=422, detail="custom time_range requires start_date and end_date")

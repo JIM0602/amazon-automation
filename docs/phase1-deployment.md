@@ -143,7 +143,9 @@ curl -X POST "http://127.0.0.1:8000/api/sync/sales?start_date=2026-04-01&end_dat
 curl -X POST "http://127.0.0.1:8000/api/sync/ads?start_date=2026-04-01&end_date=2026-04-02" -H "Authorization: Bearer <token>"
 ```
 
-The first ads sync can take several minutes because Phase 1 pulls campaigns, ad groups, targets, negative targets, campaign performance, and search term reports. Keep the backend process running until the sync endpoint returns and then check `sync_jobs` for status and record count.
+The first ads sync can take several minutes because Phase 1 pulls campaigns, ad groups, targets, negative targets, campaign performance, and search term reports. Keep the backend process running until the sync endpoint returns and then check `sync_jobs` for status, record count, and `extra_payload.list_diagnostics`.
+
+Ads v3 list pagination now continues until `nextToken` is exhausted. A safety limit is still present to avoid an infinite loop; if that limit is reached, the sync job is marked `failed` and `sync_jobs.extra_payload` records the endpoint, pages read, items read, and incomplete status.
 
 Minimum DB checks after the first sync:
 
@@ -189,6 +191,14 @@ Operator-trial checklist:
 9. Keyword bid update submits.
 10. Negative keyword creation submits.
 11. ads_action_logs shows every write action.
+```
+
+SKU ranking behavior for the current Phase 1 sync:
+
+```text
+sales/v1/orderMetrics provides store-level sales totals, not SKU-level sales rows.
+The backend stores that aggregate as __store_total__ for dashboard metric cards, but SKU ranking explicitly excludes it.
+If no real SKU-level sales rows exist in sales_daily, /api/dashboard/sku_ranking returns an empty items list plus data_quality.is_degraded=true and an explanatory message for the frontend.
 ```
 
 ## Credential notes

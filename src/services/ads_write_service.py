@@ -46,10 +46,12 @@ def execute_ads_action(
 
     for target_id in target_ids:
         try:
-            response = _execute_one(db, action_key, target_type, target_id, payload, dry_run)
+            response = _execute_one(action_key, target_type, target_id, payload, dry_run)
             if _ads_response_has_errors(response):
                 raise AdsWriteError(f"Amazon Ads returned item errors: {response}")
             responses.append(response)
+            if not dry_run:
+                _apply_successful_local_cache(db, normalized_action_key, target_type, target_id, payload, response)
             _record_log(db, normalized_action_key, target_type, target_id, operator_username, payload, response, True, None)
         except Exception as exc:
             success = False
@@ -80,7 +82,6 @@ def execute_ads_action(
 
 
 def _execute_one(
-    db: Session,
     action_key: str,
     target_type: str,
     target_id: str,
@@ -91,38 +92,26 @@ def _execute_one(
     if action_key in {"pause_campaign", "resume_campaign"}:
         state = "PAUSED" if action_key == "pause_campaign" else "ENABLED"
         body = {"campaigns": [{"campaignId": target_id, "state": state}]}
-        response = _ads_request("PUT", "/sp/campaigns", body, dry_run, "application/vnd.spcampaign.v3+json")
-        _update_campaign_state(db, target_id, state)
-        return response
+        return _ads_request("PUT", "/sp/campaigns", body, dry_run, "application/vnd.spcampaign.v3+json")
 
     if action_key in {"pause_ad_group", "resume_ad_group"}:
         state = "PAUSED" if action_key == "pause_ad_group" else "ENABLED"
         body = {"adGroups": [{"adGroupId": target_id, "state": state}]}
-        response = _ads_request("PUT", "/sp/adGroups", body, dry_run, "application/vnd.spadgroup.v3+json")
-        _update_ad_group_state(db, target_id, state)
-        return response
+        return _ads_request("PUT", "/sp/adGroups", body, dry_run, "application/vnd.spadgroup.v3+json")
 
     if action_key == "update_campaign_budget":
         budget = payload.get("daily_budget", payload.get("budget", payload.get("budgetValue")))
         if budget is None:
             raise AdsWriteError("daily_budget is required")
         body = {"campaigns": [{"campaignId": target_id, "budget": {"budget": safe_float(budget), "budgetType": "DAILY"}}]}
-        response = _ads_request("PUT", "/sp/campaigns", body, dry_run, "application/vnd.spcampaign.v3+json")
-        campaign = db.execute(select(AdsCampaign).where(AdsCampaign.campaign_id == target_id)).scalar_one_or_none()
-        if campaign is not None:
-            campaign.daily_budget = safe_float(budget)
-        return response
+        return _ads_request("PUT", "/sp/campaigns", body, dry_run, "application/vnd.spcampaign.v3+json")
 
     if action_key == "update_keyword_bid":
         bid = payload.get("bid", payload.get("bidValue"))
         if bid is None:
             raise AdsWriteError("bid is required")
         body = {"targetingClauses": [{"targetId": target_id, "bid": safe_float(bid)}]}
-        response = _ads_request("PUT", "/sp/targets", body, dry_run, "application/vnd.sptargetingClause.v3+json")
-        targeting = db.execute(select(AdsTargeting).where(AdsTargeting.targeting_id == target_id)).scalar_one_or_none()
-        if targeting is not None:
-            targeting.bid = safe_float(bid)
-        return response
+        return _ads_request("PUT", "/sp/targets", body, dry_run, "application/vnd.sptargetingClause.v3+json")
 
     if action_key == "add_negative_keyword":
         keyword = payload.get("keyword") or payload.get("keyword_text") or payload.get("keywordText")
@@ -144,19 +133,7 @@ def _execute_one(
             "matchType": match_type,
         }]
         }
-        response = _ads_request("POST", "/sp/negativeKeywords", body, dry_run, "application/vnd.spnegativekeyword.v3+json")
-        negative_id = _created_negative_keyword_id(response)
-        db.add(AdsNegativeTargeting(
-            negative_id=str(negative_id or f"local:{campaign_id}:{ad_group_id}:{keyword}"),
-            campaign_id=str(campaign_id),
-            ad_group_id=str(ad_group_id) if ad_group_id else None,
-            keyword_text=str(keyword),
-            match_type=match_type,
-            state="enabled",
-            last_synced_at=datetime.now(timezone.utc),
-            raw_payload=response,
-        ))
-        return response
+        return _ads_request("POST", "/sp/negativeKeywords", body, dry_run, "application/vnd.spnegativekeyword.v3+json")
 
     raise AdsWriteError(f"Unsupported action_key: {action_key}")
 
@@ -197,6 +174,56 @@ def _created_negative_keyword_id(response: dict[str, Any]) -> str | None:
     return None
 
 
+def _apply_successful_local_cache(
+    db: Session,
+    action_key: str,
+    target_type: str,
+    target_id: str,
+    payload: dict[str, Any],
+    response: dict[str, Any],
+) -> None:
+    if action_key in {"pause_campaign", "resume_campaign"}:
+        state = "PAUSED" if action_key == "pause_campaign" else "ENABLED"
+        _update_campaign_state(db, target_id, state)
+        return
+
+    if action_key in {"pause_ad_group", "resume_ad_group"}:
+        state = "PAUSED" if action_key == "pause_ad_group" else "ENABLED"
+        _update_ad_group_state(db, target_id, state)
+        return
+
+    if action_key == "update_campaign_budget":
+        budget = payload.get("daily_budget", payload.get("budget", payload.get("budgetValue")))
+        campaign = db.execute(select(AdsCampaign).where(AdsCampaign.campaign_id == target_id)).scalar_one_or_none()
+        if campaign is not None and budget is not None:
+            campaign.daily_budget = safe_float(budget)
+        return
+
+    if action_key == "update_keyword_bid":
+        bid = payload.get("bid", payload.get("bidValue"))
+        targeting = db.execute(select(AdsTargeting).where(AdsTargeting.targeting_id == target_id)).scalar_one_or_none()
+        if targeting is not None and bid is not None:
+            targeting.bid = safe_float(bid)
+        return
+
+    if action_key == "add_negative_keyword":
+        keyword = payload.get("keyword") or payload.get("keyword_text") or payload.get("keywordText")
+        campaign_id = payload.get("campaign_id") or (target_id if target_type == "campaign" else None)
+        ad_group_id = payload.get("ad_group_id") or (target_id if target_type == "ad_group" else None)
+        match_type = _normalize_negative_match_type(str(payload.get("match_type") or payload.get("matchType") or "negativeExact"))
+        negative_id = _created_negative_keyword_id(response)
+        db.add(AdsNegativeTargeting(
+            negative_id=str(negative_id or f"amazon-confirmed:{campaign_id}:{ad_group_id}:{keyword}"),
+            campaign_id=str(campaign_id),
+            ad_group_id=str(ad_group_id) if ad_group_id else None,
+            keyword_text=str(keyword),
+            match_type=match_type,
+            state="enabled",
+            last_synced_at=datetime.now(timezone.utc),
+            raw_payload=response,
+        ))
+
+
 def _ads_request(method: str, path: str, body: dict[str, Any], dry_run: bool, content_type: str) -> dict[str, Any]:
     if dry_run:
         return {"_dry_run": True, "method": method, "path": path, "body": body}
@@ -235,6 +262,19 @@ def _ads_request(method: str, path: str, body: dict[str, Any], dry_run: bool, co
 
 
 def _ads_response_has_errors(response: dict[str, Any]) -> bool:
+    def has_error(value: Any) -> bool:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if key.lower() in {"error", "errors"} and bool(child):
+                    return True
+                if has_error(child):
+                    return True
+        if isinstance(value, list):
+            return any(has_error(item) for item in value)
+        return False
+
+    if has_error(response):
+        return True
     for value in response.values():
         if isinstance(value, dict) and value.get("error"):
             return True

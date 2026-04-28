@@ -18,6 +18,8 @@ from src.services.phase1_common import (
     sort_items,
 )
 
+STORE_TOTAL_SKU = "__store_total__"
+
 
 def _sales_totals(db: Session, start, end) -> dict[str, float]:
     row = db.execute(
@@ -155,6 +157,23 @@ def get_sku_ranking(
     page_size: int,
 ) -> dict[str, Any]:
     window = resolve_date_window(time_range, start_date, end_date)
+    store_total_row = db.execute(
+        select(
+            func.coalesce(func.sum(SalesDaily.sales_amount), 0).label("sales"),
+            func.coalesce(func.sum(SalesDaily.order_count), 0).label("orders"),
+            func.coalesce(func.sum(SalesDaily.units_sold), 0).label("units_sold"),
+        ).where(
+            SalesDaily.date.between(window.start, window.end),
+            SalesDaily.sku == STORE_TOTAL_SKU,
+        )
+    ).one()
+    store_total = {
+        "sku": STORE_TOTAL_SKU,
+        "sales": round(safe_float(store_total_row.sales), 2),
+        "orders": safe_int(store_total_row.orders),
+        "units_sold": safe_int(store_total_row.units_sold),
+    }
+    store_total_has_data = bool(store_total["sales"] or store_total["orders"] or store_total["units_sold"])
     sales_rows = db.execute(
         select(
             SalesDaily.sku,
@@ -163,7 +182,10 @@ def get_sku_ranking(
             func.coalesce(func.sum(SalesDaily.order_count), 0).label("orders"),
             func.coalesce(func.sum(SalesDaily.units_sold), 0).label("units_sold"),
         )
-        .where(SalesDaily.date.between(window.start, window.end))
+        .where(
+            SalesDaily.date.between(window.start, window.end),
+            SalesDaily.sku != STORE_TOTAL_SKU,
+        )
         .group_by(SalesDaily.sku)
     ).all()
     items_by_sku: dict[str, dict[str, Any]] = {}
@@ -232,4 +254,16 @@ def get_sku_ranking(
         "tacos": ratio(sum(safe_float(i.get("ad_spend")) for i in items), sum(safe_float(i.get("sales")) for i in items)),
         "fba_stock": sum(safe_int(i.get("fba_stock")) for i in items),
     }
-    return {"items": paged, "total_count": total, "summary_row": summary}
+    data_quality = {
+        "grain": "sku",
+        "source": "sales_daily",
+        "is_degraded": total == 0 and store_total_has_data,
+        "message": (
+            "当前 SP-API sales/v1/orderMetrics 只返回店铺聚合销售额，尚未接入 SKU 级销售来源；"
+            "因此 SKU 排名不展示 __store_total__ 伪 SKU。"
+            if total == 0 and store_total_has_data
+            else ""
+        ),
+        "excluded_store_total": store_total if store_total_has_data else None,
+    }
+    return {"items": paged, "total_count": total, "summary_row": summary, "data_quality": data_quality}

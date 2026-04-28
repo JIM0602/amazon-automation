@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [skuRanking, setSkuRanking] = useState<SkuRankingItem[]>([]);
   const [skuSummary, setSkuSummary] = useState<Partial<SkuRankingItem>>({});
   const [skuTotal, setSkuTotal] = useState(0);
+  const [skuNotice, setSkuNotice] = useState('');
   const [skuLoading, setSkuLoading] = useState(true);
   
   const [page, setPage] = useState(1);
@@ -149,9 +150,11 @@ export default function Dashboard() {
           setSkuRanking(res.data.items || []);
           setSkuTotal(res.data.total_count || 0);
           setSkuSummary(res.data.summary_row || {});
+          setSkuNotice(res.data.data_quality?.message || '');
         }
       } catch (err) {
         console.warn('SKU ranking not available', err);
+        if (mounted) setSkuNotice('');
       } finally {
         if (mounted) setSkuLoading(false);
       }
@@ -320,6 +323,11 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        {skuNotice ? (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+            {skuNotice}
+          </div>
+        ) : null}
         <div className="h-[calc(100vh-21rem)] min-h-[420px] overflow-hidden">
           <DataTable
             columns={columns}
