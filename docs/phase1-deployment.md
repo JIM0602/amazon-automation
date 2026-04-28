@@ -47,6 +47,27 @@ FEISHU_APP_ID=
 FEISHU_APP_SECRET=
 ```
 
+## Production layout
+
+The current production server uses Docker Compose rather than a bare `uvicorn` process:
+
+```text
+Host: ubuntu@52.221.207.30
+Domain: https://siqiangshangwu.com
+Project path: /opt/amazon-ai
+Compose path: /opt/amazon-ai/deploy/docker/docker-compose.yml
+Containers:
+  amazon-ai-app       FastAPI backend, runs alembic upgrade head on startup
+  amazon-ai-nginx     Nginx reverse proxy and frontend static files
+  amazon-ai-postgres  PostgreSQL + pgvector
+Volumes:
+  amazon-ai-postgres-data
+  amazon-ai-frontend-dist
+  amazon-ai-app-logs
+```
+
+The Docker image builds the frontend during `docker compose build app` and copies the built assets into the `amazon-ai-frontend-dist` volume for Nginx.
+
 ## Database migration
 
 Install backend dependencies:
@@ -88,49 +109,75 @@ ads_action_logs
 sync_jobs
 ```
 
-## Backend startup
+## Docker deployment
 
 ```bash
-source .venv/bin/activate
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+ssh -i /path/to/Pudiwind.pem ubuntu@52.221.207.30
+cd /opt/amazon-ai
+git fetch origin
+git checkout main
+git pull --ff-only origin main
 ```
 
-Health check:
+Configure `/opt/amazon-ai/.env` with the required variables from the first section. Then deploy:
 
 ```bash
-curl http://127.0.0.1:8000/health
+cd /opt/amazon-ai/deploy/docker
+sudo docker compose down
+sudo docker volume rm amazon-ai-frontend-dist 2>/dev/null || true
+sudo docker compose build app
+sudo docker compose up -d
 ```
 
-## Frontend build
+The `amazon-ai-app` container startup command runs:
 
 ```bash
-cd src/frontend
-npm install
-npm run build
+python -m alembic upgrade head
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 2
 ```
 
-The static output is:
+Health checks:
 
-```text
-src/frontend/dist
+```bash
+sudo docker compose ps
+sudo docker compose logs --tail=120 app
+curl -fsS http://127.0.0.1:8000/health
+curl -fsS https://siqiangshangwu.com/health
 ```
 
 ## Nginx routing
 
-Use one server block with the frontend as static root and `/api/` proxied to FastAPI:
+Nginx runs in `amazon-ai-nginx`, reads `deploy/nginx/nginx.conf`, serves `/usr/share/nginx/html` from the `amazon-ai-frontend-dist` volume, and proxies `/api/` to `app:8000`.
+
+Minimum route shape:
 
 ```nginx
 location / {
-    root /opt/amazon-automation/src/frontend/dist;
+    root /usr/share/nginx/html;
     try_files $uri $uri/ /index.html;
 }
 
 location /api/ {
-    proxy_pass http://127.0.0.1:8000/api/;
+    proxy_pass http://api;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Keep a dedicated `/api/sync/` location with longer timeouts. The first real Amazon Ads sync can take several minutes while waiting for Ads reporting jobs; if it uses the generic `/api/` 120-second timeout, Nginx can return `504` even though the backend job continues and eventually writes `sync_jobs=success`.
+
+```nginx
+location /api/sync/ {
+    proxy_pass http://api;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 10s;
+    proxy_send_timeout    900s;
+    proxy_read_timeout    900s;
 }
 ```
 
@@ -144,6 +191,15 @@ curl -X POST "http://127.0.0.1:8000/api/sync/ads?start_date=2026-04-01&end_date=
 ```
 
 The first ads sync can take several minutes because Phase 1 pulls campaigns, ad groups, targets, negative targets, campaign performance, and search term reports. Keep the backend process running until the sync endpoint returns and then check `sync_jobs` for status, record count, and `extra_payload.list_diagnostics`.
+
+If the public domain returns a proxy timeout during Ads sync, verify whether the backend completed the job before retrying:
+
+```sql
+select job_type, status, records_count, error_message, started_at, finished_at
+from sync_jobs
+order by started_at desc
+limit 5;
+```
 
 Ads v3 list pagination now continues until `nextToken` is exhausted. A safety limit is still present to avoid an infinite loop; if that limit is reached, the sync job is marked `failed` and `sync_jobs.extra_payload` records the endpoint, pages read, items read, and incomplete status.
 
